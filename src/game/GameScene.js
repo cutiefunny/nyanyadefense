@@ -1,21 +1,13 @@
 import Phaser from 'phaser';
 
-export const ALLY_TYPES = {
-    basic: { cost: 50, hp: 100, speed: 1.2, damage: 20, range: 10, cooldown: 1000, color: 0x43d8c9, w: 30, h: 30, name: 'Basic Square' },
-    tank: { cost: 150, hp: 500, speed: 0.6, damage: 15, range: 15, cooldown: 1500, color: 0x3498db, w: 45, h: 45, name: 'Tank Block' },
-    ranger: { cost: 200, hp: 60, speed: 1.0, damage: 35, range: 180, cooldown: 800, color: 0x9b59b6, w: 20, h: 40, name: 'Ranger Pillar' }
-};
-
-const ENEMY_TYPES = [
-    { type: 'weak', hp: 60, speed: -0.8, damage: 10, range: 10, cooldown: 1200, color: 0xe94560, w: 30, h: 30 },
-    { type: 'tank', hp: 300, speed: -0.4, damage: 15, range: 15, cooldown: 1800, color: 0xbdc3c7, w: 45, h: 45 },
-    { type: 'runner', hp: 40, speed: -2.0, damage: 25, range: 10, cooldown: 600, color: 0xe67e22, w: 20, h: 20 }
-];
+import { ALLY_TYPES, ENEMY_TYPES } from './unitsConfig';
 
 export default class GameScene extends Phaser.Scene {
     preload() {
+        this.load.image('bg_stage1', '/src/assets/backgrounds/sangsu.jpg');
         this.load.spritesheet('ally_basic', '/src/assets/units/normal.png', { frameWidth: 100, frameHeight: 100 });
         this.load.spritesheet('ally_tank', '/src/assets/units/tanker.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('ally_ranger', '/src/assets/units/shooter.png', { frameWidth: 100, frameHeight: 100 });
         this.load.spritesheet('enemy_dog', '/src/assets/units/dog.png', { frameWidth: 100, frameHeight: 100 });
     }
 
@@ -29,7 +21,7 @@ export default class GameScene extends Phaser.Scene {
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
         this.level = 1;
-        
+
         // Cannon
         this.cannonCooldown = 15000; // 15 seconds
         this.lastCannonTime = -15000;
@@ -38,7 +30,10 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
         this.cameras.main.setBackgroundColor('#1a1a2e');
-        
+
+        // Background Image
+        this.add.image(400, 240, 'bg_stage1').setDisplaySize(800, 480).setDepth(-10).setAlpha(0.7).set
+
         for (let i = 0; i < 50; i++) {
             const x = Phaser.Math.Between(0, 800);
             const y = Phaser.Math.Between(0, 400);
@@ -50,9 +45,9 @@ export default class GameScene extends Phaser.Scene {
         const fieldDepth = 300;
         const visibleHeight = Math.abs(fieldDepth * Math.sin(angleRad));
 
-        this.add.rectangle(400, 525, 800, 150, 0x16213e).setDepth(0);
+        //this.add.rectangle(400, 525, 800, 150, 0x16213e).setDepth(0);
         // Field visually thickened to represent depth from the 5-degree angle
-        this.add.rectangle(400, 450, 800, visibleHeight * 2, 0x0f3460).setDepth(1);
+        //this.add.rectangle(400, 450, 800, visibleHeight * 2, 0x0f3460).setDepth(1);
 
         this.playerBase = {
             rect: this.add.rectangle(60, 390, 60, 120, 0x0f3460).setStrokeStyle(4, 0x43d8c9).setDepth(450),
@@ -86,6 +81,12 @@ export default class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'ally_tank_attack', frames: this.anims.generateFrameNumbers('ally_tank', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
             this.anims.create({ key: 'ally_tank_hurt', frames: this.anims.generateFrameNumbers('ally_tank', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
         }
+        if (!this.anims.exists('ally_ranger_idle')) {
+            this.anims.create({ key: 'ally_ranger_idle', frames: this.anims.generateFrameNumbers('ally_ranger', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
+            this.anims.create({ key: 'ally_ranger_walk', frames: this.anims.generateFrameNumbers('ally_ranger', { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
+            this.anims.create({ key: 'ally_ranger_attack', frames: this.anims.generateFrameNumbers('ally_ranger', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
+            this.anims.create({ key: 'ally_ranger_hurt', frames: this.anims.generateFrameNumbers('ally_ranger', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
+        }
         if (!this.anims.exists('enemy_dog_idle')) {
             this.anims.create({ key: 'enemy_dog_idle', frames: this.anims.generateFrameNumbers('enemy_dog', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
             this.anims.create({ key: 'enemy_dog_walk', frames: this.anims.generateFrameNumbers('enemy_dog', { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
@@ -105,27 +106,29 @@ export default class GameScene extends Phaser.Scene {
     spawnAlly(typeKey) {
         const specs = ALLY_TYPES[typeKey];
         if (!specs || this.isGameOver) return;
-        
+
         if (this.money >= specs.cost) {
             this.money -= specs.cost;
             const angleRad = Phaser.Math.DegToRad(5);
             const zOffset = Phaser.Math.Between(-150, 150);
             const yOffset = zOffset * Math.sin(angleRad);
-            
+
             let ally;
-            if (typeKey === 'basic' || typeKey === 'tank') {
+            if (typeKey === 'basic' || typeKey === 'tank' || typeKey === 'ranger') {
                 const spriteKey = 'ally_' + typeKey;
                 ally = this.add.sprite(100, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
                 if (typeKey === 'basic') {
                     ally.setScale(0.5);
                 } else if (typeKey === 'tank') {
                     ally.setScale(0.7);
+                } else if (typeKey === 'ranger') {
+                    ally.setScale(0.5);
                 }
                 ally.play(spriteKey + '_walk');
                 ally.isSprite = true;
                 ally.spriteKey = spriteKey;
             } else {
-                ally = this.add.rectangle(100, 450 + yOffset - specs.h/2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffffff);
+                ally = this.add.rectangle(100, 450 + yOffset - specs.h / 2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffffff);
             }
             ally.setDepth(450 + yOffset);
             ally.isAlly = true;
@@ -140,6 +143,10 @@ export default class GameScene extends Phaser.Scene {
                 attackCooldown: specs.cooldown,
                 lastAttackTime: 0
             });
+
+            ally.hpBarBg = this.add.rectangle(ally.x, ally.y - 60, 40, 6, 0x000000).setDepth(2000);
+            ally.hpBarFill = this.add.rectangle(ally.x - 20, ally.y - 60, 40, 4, 0x2ecc71).setDepth(2001).setOrigin(0, 0.5);
+
             this.allies.push(ally);
         }
     }
@@ -160,14 +167,14 @@ export default class GameScene extends Phaser.Scene {
         const yOffset = zOffset * Math.sin(angleRad);
 
         const spriteKey = 'enemy_dog';
-        const enemy = this.add.sprite(700, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setScale(0.5);
+        const enemy = this.add.sprite(700, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setScale(0.6);
         enemy.play(spriteKey + '_walk');
         enemy.setDepth(450 + yOffset);
         enemy.isAlly = false;
         enemy.logicWidth = specs.w;
         enemy.isSprite = true;
         enemy.spriteKey = spriteKey;
-        
+
         const scale = 1 + (this.level * 0.1); // difficulty scaling
 
         Object.assign(enemy, {
@@ -179,6 +186,10 @@ export default class GameScene extends Phaser.Scene {
             attackCooldown: specs.cooldown,
             lastAttackTime: 0
         });
+
+        enemy.hpBarBg = this.add.rectangle(enemy.x, enemy.y - 60, 40, 6, 0x000000).setDepth(2000);
+        enemy.hpBarFill = this.add.rectangle(enemy.x - 20, enemy.y - 60, 40, 4, 0xe74c3c).setDepth(2001).setOrigin(0, 0.5);
+
         this.enemies.push(enemy);
     }
 
@@ -200,7 +211,7 @@ export default class GameScene extends Phaser.Scene {
         if (this.money >= cost && this.playerBase.hp < this.playerBase.maxHp && !this.isGameOver) {
             this.money -= cost;
             this.playerBase.hp = Math.min(this.playerBase.maxHp, this.playerBase.hp + 200);
-            
+
             // Healing effect
             const flash = this.add.rectangle(400, 300, 800, 600, 0x2ecc71).setAlpha(0.3).setDepth(2000);
             this.tweens.add({
@@ -217,7 +228,7 @@ export default class GameScene extends Phaser.Scene {
     fireCannon() {
         if (this.time.now - this.lastCannonTime >= this.cannonCooldown && !this.isGameOver) {
             this.lastCannonTime = this.time.now;
-            
+
             // Visual effect
             this.cannonBeam.setAlpha(1);
             this.tweens.add({
@@ -231,7 +242,7 @@ export default class GameScene extends Phaser.Scene {
             this.enemies.forEach(enemy => {
                 enemy.hp -= 200 + (this.level * 50);
             });
-            
+
             this.cameras.main.shake(300, 0.01);
             return true;
         }
@@ -246,7 +257,7 @@ export default class GameScene extends Phaser.Scene {
             this.sys.game.events.emit('game-over', 'defeat');
             return;
         }
-        
+
         if (this.enemyBase.hp <= 0) {
             this.isGameOver = true;
             this.sys.game.events.emit('game-over', 'victory');
@@ -258,7 +269,7 @@ export default class GameScene extends Phaser.Scene {
             if (this.money > this.maxMoney) this.money = this.maxMoney;
         }
         this.sys.game.events.emit('update-money', Math.floor(this.money));
-        
+
         const cannonReady = (time - this.lastCannonTime >= this.cannonCooldown);
         const cannonProgress = cannonReady ? 100 : Math.floor(((time - this.lastCannonTime) / this.cannonCooldown) * 100);
         this.sys.game.events.emit('update-cannon', cannonProgress);
@@ -266,7 +277,7 @@ export default class GameScene extends Phaser.Scene {
         // Auto spawn enemies
         this.enemySpawnTimer += delta;
         // spawn faster as level increases, but don't spawn faster than 800ms
-        const spawnDelay = Math.max(800, 4000 - this.level * 350); 
+        const spawnDelay = Math.max(800, 4000 - this.level * 350);
         if (this.enemySpawnTimer > spawnDelay) {
             this.spawnEnemy();
             this.enemySpawnTimer = 0;
@@ -279,6 +290,8 @@ export default class GameScene extends Phaser.Scene {
                 const unit = group[i];
 
                 if (unit.hp <= 0) {
+                    if (unit.hpBarBg) this.add.tween({ targets: unit.hpBarBg, alpha: 0, duration: 200, onComplete: () => unit.hpBarBg.destroy() });
+                    if (unit.hpBarFill) this.add.tween({ targets: unit.hpBarFill, alpha: 0, duration: 200, onComplete: () => unit.hpBarFill.destroy() });
                     this.add.tween({
                         targets: unit,
                         alpha: 0,
@@ -299,7 +312,7 @@ export default class GameScene extends Phaser.Scene {
                 const unitW = unit.logicWidth || unit.width || 0;
                 opponents.forEach(opp => {
                     const oppW = opp.logicWidth || opp.width || 0;
-                    const dist = Math.abs(unit.x - opp.x) - (unitW/2 + oppW/2);
+                    const dist = Math.abs(unit.x - opp.x) - (unitW / 2 + oppW / 2);
                     if ((isAlly && opp.x > unit.x) || (!isAlly && opp.x < unit.x)) {
                         if (dist < minDist) {
                             minDist = dist;
@@ -309,7 +322,7 @@ export default class GameScene extends Phaser.Scene {
                 });
 
                 const targetBaseW = targetBase.rect.width;
-                const distToBase = Math.abs(unit.x - targetBase.rect.x) - (unitW/2 + targetBaseW/2);
+                const distToBase = Math.abs(unit.x - targetBase.rect.x) - (unitW / 2 + targetBaseW / 2);
                 if ((isAlly && targetBase.rect.x > unit.x) || (!isAlly && targetBase.rect.x < unit.x)) {
                     if (distToBase < minDist) {
                         minDist = distToBase;
@@ -317,9 +330,43 @@ export default class GameScene extends Phaser.Scene {
                     }
                 }
 
+                let desiredMove = 1; // Default: forward
+                if (target) {
+                    if (unit.typeKey === 'ranger') {
+                        // Skirmish logic: stay between 110 and 170 units away
+                        if (minDist < 110) desiredMove = -1; // Retreat
+                        else if (minDist > 170) desiredMove = 1; // Advance
+                        else desiredMove = 0; // Sweet spot
+                    } else if (minDist <= unit.attackRange) {
+                        desiredMove = 0; // Normal units stop and attack
+                    }
+                }
+
+                // Handle Movement
+                let actuallyMoving = false;
+                if (desiredMove !== 0) {
+                    let moveAmount = unit.speed * (delta / 16) * desiredMove;
+                    // Clamp retreat to avoid going behind base
+                    if (desiredMove === -1) {
+                        if (isAlly && unit.x + moveAmount < 100) moveAmount = 0;
+                        if (!isAlly && unit.x + moveAmount > 700) moveAmount = 0;
+                    }
+
+                    if (moveAmount !== 0) {
+                        unit.x += moveAmount;
+                        actuallyMoving = true;
+                        if (unit.isSprite) {
+                            const walkKey = `${unit.spriteKey}_walk`;
+                            if (!unit.anims.currentAnim || unit.anims.currentAnim.key !== walkKey) {
+                                unit.play(walkKey, true);
+                            }
+                        }
+                    }
+                }
+
                 if (target && minDist <= unit.attackRange) {
-                    // Attack stance tracking
-                    if (unit.isSprite) {
+                    // Attack stance tracking: if staying still, make sure idle is playing before attack
+                    if (!actuallyMoving && unit.isSprite) {
                         const walkKey = `${unit.spriteKey}_walk`;
                         const idleKey = `${unit.spriteKey}_idle`;
                         if (unit.anims.currentAnim && unit.anims.currentAnim.key === walkKey) {
@@ -332,6 +379,43 @@ export default class GameScene extends Phaser.Scene {
                         target.hp -= unit.attackDamage;
                         unit.lastAttackTime = time;
 
+                        const targetVisual = target.rect || target;
+
+                        // 1. Spawning a hit spark particle
+                        const spark = this.add.star(targetVisual.x + (Math.random() - 0.5) * 30, targetVisual.y - 30 + (Math.random() - 0.5) * 30, 4, 3, 10, 0xffeb3b).setDepth(3000);
+                        this.tweens.add({
+                            targets: spark,
+                            scale: Math.random() * 1.5 + 1,
+                            alpha: 0,
+                            angle: Phaser.Math.Between(-90, 90),
+                            duration: 150,
+                            onComplete: () => spark.destroy()
+                        });
+
+                        // 2. Flash white quickly
+                        if (target.isSprite && targetVisual.active) {
+                            targetVisual.setTintFill(0xffffff);
+                            this.time.delayedCall(40, () => {
+                                if (targetVisual.active) targetVisual.clearTint();
+                            });
+                        }
+
+                        // 3. Vibration (Wobble Angle)
+                        this.tweens.add({
+                            targets: targetVisual,
+                            angle: (Math.random() > 0.5 ? 1 : -1) * 8,
+                            yoyo: true,
+                            duration: 50,
+                            onComplete: () => {
+                                if (targetVisual.active) targetVisual.angle = 0;
+                            }
+                        });
+
+                        // 4. Subtle screen shake for heavy hits
+                        if (unit.attackDamage >= 20) {
+                            this.cameras.main.shake(40, 0.002);
+                        }
+
                         if (target.isSprite && target.active && target.hp > 0) {
                             const hurtKey = `${target.spriteKey}_hurt`;
                             const idleKey = `${target.spriteKey}_idle`;
@@ -341,16 +425,17 @@ export default class GameScene extends Phaser.Scene {
                             });
                         } else {
                             this.tweens.add({
-                                targets: target.rect || target,
+                                targets: targetVisual,
                                 alpha: 0.5,
                                 duration: 100,
                                 yoyo: true,
                             });
                         }
 
-                        let projectileType = isAlly ? 0x43d8c9 : 0xe94560;
-                        if (unit.attackRange > 20) {
-                            // ranged visual
+                        // Ranged visual: No projectile for 'ranger' (instant hitscan feel)
+                        if (unit.attackRange > 20 && unit.typeKey !== 'ranger') {
+                            // Standard projectile for other ranged units
+                            let projectileType = isAlly ? 0x43d8c9 : 0xe94560;
                             const proj = this.add.circle(unit.x, unit.y, 4, projectileType).setDepth(2000);
                             this.tweens.add({
                                 targets: proj,
@@ -360,7 +445,7 @@ export default class GameScene extends Phaser.Scene {
                                 onComplete: () => proj.destroy()
                             });
                         }
-                        
+
                         // Attack animation vs lean tween
                         if (unit.isSprite) {
                             const attackKey = `${unit.spriteKey}_attack`;
@@ -378,15 +463,14 @@ export default class GameScene extends Phaser.Scene {
                             });
                         }
                     }
-                } else {
-                    // Move
-                    unit.x += unit.speed * (delta / 16);
-                    if (unit.isSprite) {
-                        const walkKey = `${unit.spriteKey}_walk`;
-                        if (!unit.anims.currentAnim || unit.anims.currentAnim.key !== walkKey) {
-                            unit.play(walkKey, true);
-                        }
-                    }
+                }
+
+                if (unit.hpBarBg && unit.hpBarFill) {
+                    unit.hpBarBg.x = unit.x;
+                    unit.hpBarBg.y = unit.y - 60;
+                    unit.hpBarFill.x = unit.x - 20;
+                    unit.hpBarFill.y = unit.y - 60;
+                    unit.hpBarFill.width = Math.max(0, 40 * (unit.hp / unit.maxHp));
                 }
             }
         });

@@ -1,6 +1,7 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
 import Phaser from 'phaser';
-import GameScene, { ALLY_TYPES } from './game/GameScene';
+import GameScene from './game/GameScene';
+import { ALLY_TYPES } from './game/unitsConfig';
 import './App.css';
 
 function App() {
