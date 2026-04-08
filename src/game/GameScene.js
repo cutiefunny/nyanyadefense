@@ -13,6 +13,11 @@ const ENEMY_TYPES = [
 ];
 
 export default class GameScene extends Phaser.Scene {
+    preload() {
+        this.load.spritesheet('ally_basic', '/src/assets/units/normal.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('ally_tank', '/src/assets/units/tanker.png', { frameWidth: 100, frameHeight: 100 });
+    }
+
     constructor() {
         super('GameScene');
         this.allies = [];
@@ -40,28 +45,46 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // Ground
-        this.add.rectangle(400, 525, 800, 150, 0x16213e);
-        this.add.rectangle(400, 450, 800, 5, 0x0f3460);
+        const angleRad = Phaser.Math.DegToRad(5);
+        const fieldDepth = 300;
+        const visibleHeight = Math.abs(fieldDepth * Math.sin(angleRad));
+
+        this.add.rectangle(400, 525, 800, 150, 0x16213e).setDepth(0);
+        // Field visually thickened to represent depth from the 5-degree angle
+        this.add.rectangle(400, 450, 800, visibleHeight * 2, 0x0f3460).setDepth(1);
 
         this.playerBase = {
-            rect: this.add.rectangle(60, 390, 60, 120, 0x0f3460).setStrokeStyle(4, 0x43d8c9),
+            rect: this.add.rectangle(60, 390, 60, 120, 0x0f3460).setStrokeStyle(4, 0x43d8c9).setDepth(450),
             hp: this.baseMaxHp,
             maxHp: this.baseMaxHp,
             isAlly: true
         };
 
         this.enemyBase = {
-            rect: this.add.rectangle(740, 390, 60, 120, 0xe94560).setStrokeStyle(4, 0xffb8b8),
+            rect: this.add.rectangle(740, 390, 60, 120, 0xe94560).setStrokeStyle(4, 0xffb8b8).setDepth(450),
             hp: 2000,
             maxHp: 2000,
             isAlly: false
         };
 
-        this.playerHpText = this.add.text(60, 310, `${this.baseMaxHp}`, { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#43d8c9', fontStyle: 'bold' }).setOrigin(0.5);
-        this.enemyHpText = this.add.text(740, 310, '2000', { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#e94560', fontStyle: 'bold' }).setOrigin(0.5);
+        this.playerHpText = this.add.text(60, 310, `${this.baseMaxHp}`, { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#43d8c9', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
+        this.enemyHpText = this.add.text(740, 310, '2000', { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#e94560', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
 
         // Cannon visual
-        this.cannonBeam = this.add.rectangle(400, 435, 800, 40, 0x43d8c9).setAlpha(0);
+        this.cannonBeam = this.add.rectangle(400, 435, 800, 40, 0x43d8c9).setAlpha(0).setDepth(2000);
+
+        if (!this.anims.exists('ally_basic_idle')) {
+            this.anims.create({ key: 'ally_basic_idle', frames: this.anims.generateFrameNumbers('ally_basic', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
+            this.anims.create({ key: 'ally_basic_walk', frames: this.anims.generateFrameNumbers('ally_basic', { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
+            this.anims.create({ key: 'ally_basic_attack', frames: this.anims.generateFrameNumbers('ally_basic', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
+            this.anims.create({ key: 'ally_basic_hurt', frames: this.anims.generateFrameNumbers('ally_basic', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
+        }
+        if (!this.anims.exists('ally_tank_idle')) {
+            this.anims.create({ key: 'ally_tank_idle', frames: this.anims.generateFrameNumbers('ally_tank', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
+            this.anims.create({ key: 'ally_tank_walk', frames: this.anims.generateFrameNumbers('ally_tank', { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
+            this.anims.create({ key: 'ally_tank_attack', frames: this.anims.generateFrameNumbers('ally_tank', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
+            this.anims.create({ key: 'ally_tank_hurt', frames: this.anims.generateFrameNumbers('ally_tank', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
+        }
 
         this.allies = [];
         this.enemies = [];
@@ -78,8 +101,23 @@ export default class GameScene extends Phaser.Scene {
         
         if (this.money >= specs.cost) {
             this.money -= specs.cost;
-            const ally = this.add.rectangle(100, 450 - specs.h/2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffffff);
+            const angleRad = Phaser.Math.DegToRad(5);
+            const zOffset = Phaser.Math.Between(-150, 150);
+            const yOffset = zOffset * Math.sin(angleRad);
+            
+            let ally;
+            if (typeKey === 'basic' || typeKey === 'tank') {
+                const spriteKey = 'ally_' + typeKey;
+                ally = this.add.sprite(100, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
+                if (typeKey === 'basic') ally.setScale(0.5);
+                ally.play(spriteKey + '_walk');
+            } else {
+                ally = this.add.rectangle(100, 450 + yOffset - specs.h/2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffffff);
+            }
+            ally.setDepth(450 + yOffset);
             ally.isAlly = true;
+            ally.typeKey = typeKey;
+            ally.logicWidth = specs.w;
             Object.assign(ally, {
                 hp: specs.hp,
                 maxHp: specs.hp,
@@ -104,8 +142,14 @@ export default class GameScene extends Phaser.Scene {
 
         const specs = ENEMY_TYPES[typeChoice];
 
-        const enemy = this.add.rectangle(700, 450 - specs.h/2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffb8b8);
+        const angleRad = Phaser.Math.DegToRad(5);
+        const zOffset = Phaser.Math.Between(-150, 150);
+        const yOffset = zOffset * Math.sin(angleRad);
+
+        const enemy = this.add.rectangle(700, 450 + yOffset - specs.h/2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffb8b8);
+        enemy.setDepth(450 + yOffset);
         enemy.isAlly = false;
+        enemy.logicWidth = specs.w;
         
         const scale = 1 + (this.level * 0.1); // difficulty scaling
 
@@ -141,7 +185,7 @@ export default class GameScene extends Phaser.Scene {
             this.playerBase.hp = Math.min(this.playerBase.maxHp, this.playerBase.hp + 200);
             
             // Healing effect
-            const flash = this.add.rectangle(400, 300, 800, 600, 0x2ecc71).setAlpha(0.3);
+            const flash = this.add.rectangle(400, 300, 800, 600, 0x2ecc71).setAlpha(0.3).setDepth(2000);
             this.tweens.add({
                 targets: flash,
                 alpha: 0,
@@ -235,8 +279,10 @@ export default class GameScene extends Phaser.Scene {
                 const opponents = isAlly ? this.enemies : this.allies;
                 const targetBase = isAlly ? this.enemyBase : this.playerBase;
 
+                const unitW = unit.logicWidth || unit.width || 0;
                 opponents.forEach(opp => {
-                    const dist = Math.abs(unit.x - opp.x) - (unit.width/2 + opp.width/2);
+                    const oppW = opp.logicWidth || opp.width || 0;
+                    const dist = Math.abs(unit.x - opp.x) - (unitW/2 + oppW/2);
                     if ((isAlly && opp.x > unit.x) || (!isAlly && opp.x < unit.x)) {
                         if (dist < minDist) {
                             minDist = dist;
@@ -245,7 +291,8 @@ export default class GameScene extends Phaser.Scene {
                     }
                 });
 
-                const distToBase = Math.abs(unit.x - targetBase.rect.x) - (unit.width/2 + targetBase.rect.width/2);
+                const targetBaseW = targetBase.rect.width;
+                const distToBase = Math.abs(unit.x - targetBase.rect.x) - (unitW/2 + targetBaseW/2);
                 if ((isAlly && targetBase.rect.x > unit.x) || (!isAlly && targetBase.rect.x < unit.x)) {
                     if (distToBase < minDist) {
                         minDist = distToBase;
@@ -254,15 +301,40 @@ export default class GameScene extends Phaser.Scene {
                 }
 
                 if (target && minDist <= unit.attackRange) {
-                    // Attack
+                    // Attack stance tracking
+                    if (unit.isAlly && (unit.typeKey === 'basic' || unit.typeKey === 'tank')) {
+                        const walkKey = `ally_${unit.typeKey}_walk`;
+                        const idleKey = `ally_${unit.typeKey}_idle`;
+                        if (unit.anims.currentAnim && unit.anims.currentAnim.key === walkKey) {
+                            unit.play(idleKey, true);
+                        }
+                    }
+
+                    // Perform Attack
                     if (time - unit.lastAttackTime >= unit.attackCooldown) {
                         target.hp -= unit.attackDamage;
                         unit.lastAttackTime = time;
 
+                        if (target.isAlly && (target.typeKey === 'basic' || target.typeKey === 'tank') && target.active && target.hp > 0) {
+                            const hurtKey = `ally_${target.typeKey}_hurt`;
+                            const idleKey = `ally_${target.typeKey}_idle`;
+                            target.play(hurtKey, true);
+                            target.once(`animationcomplete-${hurtKey}`, () => {
+                                if (target.active && target.hp > 0) target.play(idleKey, true);
+                            });
+                        } else {
+                            this.tweens.add({
+                                targets: target.rect || target,
+                                alpha: 0.5,
+                                duration: 100,
+                                yoyo: true,
+                            });
+                        }
+
                         let projectileType = isAlly ? 0x43d8c9 : 0xe94560;
                         if (unit.attackRange > 20) {
                             // ranged visual
-                            const proj = this.add.circle(unit.x, unit.y, 4, projectileType);
+                            const proj = this.add.circle(unit.x, unit.y, 4, projectileType).setDepth(2000);
                             this.tweens.add({
                                 targets: proj,
                                 x: target.rect ? target.rect.x : target.x,
@@ -271,24 +343,33 @@ export default class GameScene extends Phaser.Scene {
                                 onComplete: () => proj.destroy()
                             });
                         }
-
-                        this.tweens.add({
-                            targets: target.rect || target,
-                            alpha: 0.5,
-                            duration: 100,
-                            yoyo: true,
-                        });
                         
-                        this.tweens.add({
-                            targets: unit,
-                            x: unit.x + (isAlly ? 8 : -8),
-                            duration: 80,
-                            yoyo: true,
-                        });
+                        // Attack animation vs lean tween
+                        if (unit.typeKey === 'basic' || unit.typeKey === 'tank') {
+                            const attackKey = `ally_${unit.typeKey}_attack`;
+                            const idleKey = `ally_${unit.typeKey}_idle`;
+                            unit.play(attackKey, true);
+                            unit.once(`animationcomplete-${attackKey}`, () => {
+                                if (unit.active && unit.hp > 0) unit.play(idleKey, true);
+                            });
+                        } else {
+                            this.tweens.add({
+                                targets: unit,
+                                x: unit.x + (isAlly ? 8 : -8),
+                                duration: 80,
+                                yoyo: true,
+                            });
+                        }
                     }
                 } else {
                     // Move
                     unit.x += unit.speed * (delta / 16);
+                    if (unit.isAlly && (unit.typeKey === 'basic' || unit.typeKey === 'tank')) {
+                        const walkKey = `ally_${unit.typeKey}_walk`;
+                        if (!unit.anims.currentAnim || unit.anims.currentAnim.key !== walkKey) {
+                            unit.play(walkKey, true);
+                        }
+                    }
                 }
             }
         });
