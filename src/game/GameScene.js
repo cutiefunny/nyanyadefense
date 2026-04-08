@@ -147,6 +147,9 @@ export default class GameScene extends Phaser.Scene {
             ally.hpBarBg = this.add.rectangle(ally.x, ally.y - 60, 40, 6, 0x000000).setDepth(2000);
             ally.hpBarFill = this.add.rectangle(ally.x - 20, ally.y - 60, 40, 4, 0x2ecc71).setDepth(2001).setOrigin(0, 0.5);
 
+            // Shadow
+            ally.shadow = this.add.ellipse(ally.x, ally.y, 40, 12, 0x000000, 0.25).setDepth(ally.depth - 0.1);
+
             this.allies.push(ally);
         }
     }
@@ -189,6 +192,9 @@ export default class GameScene extends Phaser.Scene {
 
         enemy.hpBarBg = this.add.rectangle(enemy.x, enemy.y - 60, 40, 6, 0x000000).setDepth(2000);
         enemy.hpBarFill = this.add.rectangle(enemy.x - 20, enemy.y - 60, 40, 4, 0xe74c3c).setDepth(2001).setOrigin(0, 0.5);
+
+        // Shadow
+        enemy.shadow = this.add.ellipse(enemy.x, enemy.y, 40, 12, 0x000000, 0.25).setDepth(enemy.depth - 0.1);
 
         this.enemies.push(enemy);
     }
@@ -292,6 +298,7 @@ export default class GameScene extends Phaser.Scene {
                 if (unit.hp <= 0) {
                     if (unit.hpBarBg) this.add.tween({ targets: unit.hpBarBg, alpha: 0, duration: 200, onComplete: () => unit.hpBarBg.destroy() });
                     if (unit.hpBarFill) this.add.tween({ targets: unit.hpBarFill, alpha: 0, duration: 200, onComplete: () => unit.hpBarFill.destroy() });
+                    if (unit.shadow) this.add.tween({ targets: unit.shadow, alpha: 0, duration: 200, onComplete: () => unit.shadow.destroy() });
                     this.add.tween({
                         targets: unit,
                         alpha: 0,
@@ -471,6 +478,11 @@ export default class GameScene extends Phaser.Scene {
                     unit.hpBarFill.x = unit.x - 20;
                     unit.hpBarFill.y = unit.y - 60;
                     unit.hpBarFill.width = Math.max(0, 40 * (unit.hp / unit.maxHp));
+                }
+                
+                if (unit.shadow) {
+                    unit.shadow.x = unit.x;
+                    unit.shadow.y = unit.y;
                 }
             }
         });
