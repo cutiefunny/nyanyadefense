@@ -16,6 +16,7 @@ export default class GameScene extends Phaser.Scene {
     preload() {
         this.load.spritesheet('ally_basic', '/src/assets/units/normal.png', { frameWidth: 100, frameHeight: 100 });
         this.load.spritesheet('ally_tank', '/src/assets/units/tanker.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('enemy_dog', '/src/assets/units/dog.png', { frameWidth: 100, frameHeight: 100 });
     }
 
     constructor() {
@@ -85,6 +86,12 @@ export default class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'ally_tank_attack', frames: this.anims.generateFrameNumbers('ally_tank', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
             this.anims.create({ key: 'ally_tank_hurt', frames: this.anims.generateFrameNumbers('ally_tank', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
         }
+        if (!this.anims.exists('enemy_dog_idle')) {
+            this.anims.create({ key: 'enemy_dog_idle', frames: this.anims.generateFrameNumbers('enemy_dog', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
+            this.anims.create({ key: 'enemy_dog_walk', frames: this.anims.generateFrameNumbers('enemy_dog', { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
+            this.anims.create({ key: 'enemy_dog_attack', frames: this.anims.generateFrameNumbers('enemy_dog', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
+            this.anims.create({ key: 'enemy_dog_hurt', frames: this.anims.generateFrameNumbers('enemy_dog', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
+        }
 
         this.allies = [];
         this.enemies = [];
@@ -109,8 +116,14 @@ export default class GameScene extends Phaser.Scene {
             if (typeKey === 'basic' || typeKey === 'tank') {
                 const spriteKey = 'ally_' + typeKey;
                 ally = this.add.sprite(100, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
-                if (typeKey === 'basic') ally.setScale(0.5);
+                if (typeKey === 'basic') {
+                    ally.setScale(0.5);
+                } else if (typeKey === 'tank') {
+                    ally.setScale(0.7);
+                }
                 ally.play(spriteKey + '_walk');
+                ally.isSprite = true;
+                ally.spriteKey = spriteKey;
             } else {
                 ally = this.add.rectangle(100, 450 + yOffset - specs.h/2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffffff);
             }
@@ -146,10 +159,14 @@ export default class GameScene extends Phaser.Scene {
         const zOffset = Phaser.Math.Between(-150, 150);
         const yOffset = zOffset * Math.sin(angleRad);
 
-        const enemy = this.add.rectangle(700, 450 + yOffset - specs.h/2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffb8b8);
+        const spriteKey = 'enemy_dog';
+        const enemy = this.add.sprite(700, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setScale(0.5);
+        enemy.play(spriteKey + '_walk');
         enemy.setDepth(450 + yOffset);
         enemy.isAlly = false;
         enemy.logicWidth = specs.w;
+        enemy.isSprite = true;
+        enemy.spriteKey = spriteKey;
         
         const scale = 1 + (this.level * 0.1); // difficulty scaling
 
@@ -302,9 +319,9 @@ export default class GameScene extends Phaser.Scene {
 
                 if (target && minDist <= unit.attackRange) {
                     // Attack stance tracking
-                    if (unit.isAlly && (unit.typeKey === 'basic' || unit.typeKey === 'tank')) {
-                        const walkKey = `ally_${unit.typeKey}_walk`;
-                        const idleKey = `ally_${unit.typeKey}_idle`;
+                    if (unit.isSprite) {
+                        const walkKey = `${unit.spriteKey}_walk`;
+                        const idleKey = `${unit.spriteKey}_idle`;
                         if (unit.anims.currentAnim && unit.anims.currentAnim.key === walkKey) {
                             unit.play(idleKey, true);
                         }
@@ -315,9 +332,9 @@ export default class GameScene extends Phaser.Scene {
                         target.hp -= unit.attackDamage;
                         unit.lastAttackTime = time;
 
-                        if (target.isAlly && (target.typeKey === 'basic' || target.typeKey === 'tank') && target.active && target.hp > 0) {
-                            const hurtKey = `ally_${target.typeKey}_hurt`;
-                            const idleKey = `ally_${target.typeKey}_idle`;
+                        if (target.isSprite && target.active && target.hp > 0) {
+                            const hurtKey = `${target.spriteKey}_hurt`;
+                            const idleKey = `${target.spriteKey}_idle`;
                             target.play(hurtKey, true);
                             target.once(`animationcomplete-${hurtKey}`, () => {
                                 if (target.active && target.hp > 0) target.play(idleKey, true);
@@ -345,9 +362,9 @@ export default class GameScene extends Phaser.Scene {
                         }
                         
                         // Attack animation vs lean tween
-                        if (unit.typeKey === 'basic' || unit.typeKey === 'tank') {
-                            const attackKey = `ally_${unit.typeKey}_attack`;
-                            const idleKey = `ally_${unit.typeKey}_idle`;
+                        if (unit.isSprite) {
+                            const attackKey = `${unit.spriteKey}_attack`;
+                            const idleKey = `${unit.spriteKey}_idle`;
                             unit.play(attackKey, true);
                             unit.once(`animationcomplete-${attackKey}`, () => {
                                 if (unit.active && unit.hp > 0) unit.play(idleKey, true);
@@ -364,8 +381,8 @@ export default class GameScene extends Phaser.Scene {
                 } else {
                     // Move
                     unit.x += unit.speed * (delta / 16);
-                    if (unit.isAlly && (unit.typeKey === 'basic' || unit.typeKey === 'tank')) {
-                        const walkKey = `ally_${unit.typeKey}_walk`;
+                    if (unit.isSprite) {
+                        const walkKey = `${unit.spriteKey}_walk`;
                         if (!unit.anims.currentAnim || unit.anims.currentAnim.key !== walkKey) {
                             unit.play(walkKey, true);
                         }
