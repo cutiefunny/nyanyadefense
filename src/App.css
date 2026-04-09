@@ -25,38 +25,36 @@ body {
   flex-direction: column;
   align-items: center;
   background: var(--box-bg);
-  padding: 20px;
+  padding: 10px;
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
+  width: 100%;
+  max-width: 95vw;
+  box-sizing: border-box;
 }
 
-.top-bar {
-  width: 800px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.top-bar h1 {
-  margin: 0;
-  font-size: 2.2rem;
-  font-weight: 900;
-  color: var(--primary);
-  text-shadow: 0 2px 10px rgba(67, 216, 201, 0.4);
-}
+/* Removed top-bar */
 
 .stats {
   display: flex;
-  gap: 20px;
-  font-size: 1.3rem;
+  gap: 15px;
+  font-size: 1.1rem;
   font-weight: 700;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 8px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 14px;
+  border-radius: 0 0 0 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+.hud-stats {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 5;
 }
 
 .money { color: #fbd46d; }
@@ -64,12 +62,14 @@ body {
 
 .game-wrapper {
   position: relative;
-  width: 800px;
-  height: 480px;
+  width: 100%;
+  max-width: 800px;
+  aspect-ratio: 800 / 300;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 0 20px rgba(0,0,0,0.8);
   border: 4px solid rgba(255, 255, 255, 0.05);
+  background: #000;
 }
 
 .phaser-container {
@@ -102,19 +102,20 @@ body {
 .defeat-msg { color: var(--danger); text-shadow: 0 0 30px var(--danger); }
 
 .controls-panel {
-  width: 800px;
+  width: 100%;
+  max-width: 800px;
+  margin-top: 10px;
+}
+
+.main-controls {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-top: 15px;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .controls-row h4 {
-  margin: 0 0 8px 0;
-  color: #bdc3c7;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  letter-spacing: 1px;
+  display: none;
 }
 
 .button-group {
@@ -140,14 +141,35 @@ body {
   background: #1a1a2e;
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ally-btn {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  padding: 0;
 }
 
 .btn .cost {
   font-size: 0.9rem;
   color: #fbd46d;
-  background: rgba(0,0,0,0.4);
-  padding: 4px 10px;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 8px;
   border-radius: 12px;
+}
+
+.ally-btn .cost {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  width: 90%;
+  text-align: center;
+  padding: 1px 0;
+  white-space: nowrap;
 }
 
 .btn .cost.ready {
@@ -206,8 +228,88 @@ body {
   box-shadow: 0 0 30px rgba(67, 216, 201, 0.5);
 }
 
+/* Unit Icons */
+.unit-icon {
+  width: 40px;
+  height: 40px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  /* Reduced from 250px 50px to 200px 40px for the 40px frame */
+  background-size: 200px 40px;
+  image-rendering: pixelated;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.basic-icon { background-image: url('/src/assets/units/normal.png'); }
+.tank-icon { background-image: url('/src/assets/units/tanker.png'); }
+.ranger-icon { background-image: url('/src/assets/units/shooter.png'); }
+
+.ability-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
+}
+
 @keyframes pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
+}
+
+/* Orientation Warning */
+.orientation-warning {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--bg-color);
+  color: white;
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.warning-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.phone-icon {
+  font-size: 80px;
+  animation: rotatePhone 2s infinite ease-in-out;
+}
+
+@keyframes rotatePhone {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@media screen and (orientation: portrait) {
+  .orientation-warning {
+    display: flex;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .stats {
+    font-size: 0.85rem;
+    gap: 8px;
+    padding: 4px 10px;
+  }
+  .btn {
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+  .controls-row h4 {
+    font-size: 0.8rem;
+  }
+  .button-group {
+    gap: 8px;
+  }
 }

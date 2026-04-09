@@ -32,7 +32,10 @@ export default class GameScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor('#1a1a2e');
 
         // Background Image
-        this.add.image(400, 240, 'bg_stage1').setDisplaySize(800, 480).setDepth(-10).setAlpha(0.7).set
+        const bg = this.add.image(400, 300, 'bg_stage1').setOrigin(0.5, 1).setDepth(-10).setAlpha(0.7);
+        // Scale to fit width while maintaining aspect ratio
+        const scale = 800 / bg.width;
+        bg.setScale(scale);
 
         for (let i = 0; i < 50; i++) {
             const x = Phaser.Math.Between(0, 800);
@@ -50,24 +53,24 @@ export default class GameScene extends Phaser.Scene {
         //this.add.rectangle(400, 450, 800, visibleHeight * 2, 0x0f3460).setDepth(1);
 
         this.playerBase = {
-            rect: this.add.rectangle(60, 390, 60, 120, 0x0f3460).setStrokeStyle(4, 0x43d8c9).setDepth(450),
+            rect: this.add.rectangle(60, 210, 60, 120, 0x0f3460).setStrokeStyle(4, 0x43d8c9).setDepth(450),
             hp: this.baseMaxHp,
             maxHp: this.baseMaxHp,
             isAlly: true
         };
 
         this.enemyBase = {
-            rect: this.add.rectangle(740, 390, 60, 120, 0xe94560).setStrokeStyle(4, 0xffb8b8).setDepth(450),
+            rect: this.add.rectangle(740, 210, 60, 120, 0xe94560).setStrokeStyle(4, 0xffb8b8).setDepth(450),
             hp: 2000,
             maxHp: 2000,
             isAlly: false
         };
 
-        this.playerHpText = this.add.text(60, 310, `${this.baseMaxHp}`, { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#43d8c9', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
-        this.enemyHpText = this.add.text(740, 310, '2000', { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#e94560', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
+        this.playerHpText = this.add.text(60, 130, `${this.baseMaxHp}`, { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#43d8c9', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
+        this.enemyHpText = this.add.text(740, 130, '2000', { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#e94560', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
 
         // Cannon visual
-        this.cannonBeam = this.add.rectangle(400, 435, 800, 40, 0x43d8c9).setAlpha(0).setDepth(2000);
+        this.cannonBeam = this.add.rectangle(400, 255, 800, 40, 0x43d8c9).setAlpha(0).setDepth(2000);
 
         if (!this.anims.exists('ally_basic_idle')) {
             this.anims.create({ key: 'ally_basic_idle', frames: this.anims.generateFrameNumbers('ally_basic', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
@@ -116,7 +119,7 @@ export default class GameScene extends Phaser.Scene {
             let ally;
             if (typeKey === 'basic' || typeKey === 'tank' || typeKey === 'ranger') {
                 const spriteKey = 'ally_' + typeKey;
-                ally = this.add.sprite(100, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
+                ally = this.add.sprite(100, 270 + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
                 if (typeKey === 'basic') {
                     ally.setScale(0.5);
                 } else if (typeKey === 'tank') {
@@ -170,7 +173,7 @@ export default class GameScene extends Phaser.Scene {
         const yOffset = zOffset * Math.sin(angleRad);
 
         const spriteKey = 'enemy_dog';
-        const enemy = this.add.sprite(700, 450 + yOffset, spriteKey).setOrigin(0.5, 1).setScale(0.6);
+        const enemy = this.add.sprite(700, 270 + yOffset, spriteKey).setOrigin(0.5, 1).setScale(0.6);
         enemy.play(spriteKey + '_walk');
         enemy.setDepth(450 + yOffset);
         enemy.isAlly = false;
@@ -219,7 +222,7 @@ export default class GameScene extends Phaser.Scene {
             this.playerBase.hp = Math.min(this.playerBase.maxHp, this.playerBase.hp + 200);
 
             // Healing effect
-            const flash = this.add.rectangle(400, 300, 800, 600, 0x2ecc71).setAlpha(0.3).setDepth(2000);
+            const flash = this.add.rectangle(400, 150, 800, 300, 0x2ecc71).setAlpha(0.3).setDepth(2000);
             this.tweens.add({
                 targets: flash,
                 alpha: 0,

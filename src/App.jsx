@@ -17,9 +17,14 @@ function App() {
     const config = {
       type: Phaser.AUTO,
       width: 800,
-      height: 480,
+      height: 300,
       parent: gameContainer,
       backgroundColor: '#1a1a2e',
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        orientation: Phaser.Scale.Orientation.LANDSCAPE
+      },
       scene: GameScene
     };
 
@@ -81,15 +86,17 @@ function App() {
 
   return (
     <div class="app-container">
-      <header class="top-bar">
-        <h1>Nyanya Defense</h1>
-        <div class="stats">
-          <div class="money">🪙 ${money()}</div>
+      <div class="orientation-warning">
+        <div class="warning-content">
+          <div class="phone-icon">📱</div>
+          <p>Please rotate your device to landscape for the best experience!</p>
+        </div>
+      </div>
+      <div class="game-wrapper">
+        <div class="stats hud-stats">
+          <div class="money">🪙 ${Math.floor(money())}</div>
           <div class="level">Income Lvl: {level()}</div>
         </div>
-      </header>
-
-      <div class="game-wrapper">
         <div ref={gameContainer} class="phaser-container"></div>
         {gameOver() !== '' && (
           <div class="game-over-screen">
@@ -102,37 +109,33 @@ function App() {
       </div>
 
       <div class="controls-panel">
-        <div class="controls-row">
-            <h4>Deploy Units</h4>
-            <div class="button-group">
+        <div class="main-controls">
+            <div class="button-group allies-group">
                 <button class="btn ally-btn basic-btn" disabled={money() < ALLY_TYPES.basic.cost || gameOver() !== ''} onClick={() => handleSpawn('basic')}>
-                    {ALLY_TYPES.basic.name}
+                    <div class="unit-icon basic-icon"></div>
                     <span class="cost">🪙 {ALLY_TYPES.basic.cost}</span>
                 </button>
                 <button class="btn ally-btn tank-btn" disabled={money() < ALLY_TYPES.tank.cost || gameOver() !== ''} onClick={() => handleSpawn('tank')}>
-                    {ALLY_TYPES.tank.name}
+                    <div class="unit-icon tank-icon"></div>
                     <span class="cost">🪙 {ALLY_TYPES.tank.cost}</span>
                 </button>
                 <button class="btn ally-btn ranger-btn" disabled={money() < ALLY_TYPES.ranger.cost || gameOver() !== ''} onClick={() => handleSpawn('ranger')}>
-                    {ALLY_TYPES.ranger.name}
+                    <div class="unit-icon ranger-icon"></div>
                     <span class="cost">🪙 {ALLY_TYPES.ranger.cost}</span>
                 </button>
             </div>
-        </div>
 
-        <div class="controls-row">
-            <h4>Upgrades & Abilities</h4>
-            <div class="button-group">
-                <button class="btn upgrade-btn" disabled={money() < upgradeCost() || gameOver() !== ''} onClick={handleUpgradeIncome}>
-                    Upgrade Income
+            <div class="button-group upgrades-group">
+                <button class="btn ally-btn upgrade-btn" disabled={money() < upgradeCost() || gameOver() !== ''} onClick={handleUpgradeIncome}>
+                    <div class="ability-icon">📈</div>
                     <span class="cost">🪙 {upgradeCost()}</span>
                 </button>
-                <button class="btn heal-btn" disabled={money() < 100 || gameOver() !== ''} onClick={handleHeal}>
-                    Heal Base (+200)
+                <button class="btn ally-btn heal-btn" disabled={money() < 100 || gameOver() !== ''} onClick={handleHeal}>
+                    <div class="ability-icon">💚</div>
                     <span class="cost">🪙 100</span>
                 </button>
-                <button class="btn cannon-btn" disabled={cannonProgress() < 100 || gameOver() !== ''} onClick={handleCannon}>
-                    Laser Cannon
+                <button class="btn ally-btn cannon-btn" disabled={cannonProgress() < 100 || gameOver() !== ''} onClick={handleCannon}>
+                    <div class="ability-icon">⚡</div>
                     <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
                         {cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`}
                     </span>
