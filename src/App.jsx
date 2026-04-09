@@ -64,12 +64,6 @@ function App() {
     }
   };
 
-  const handleUpgradeIncome = () => {
-    if (currentScene && money() >= upgradeCost()) {
-      currentScene.upgradeIncome();
-    }
-  };
-
   const handleHeal = () => {
     if (currentScene && money() >= 100) {
       currentScene.healBase();
@@ -82,14 +76,12 @@ function App() {
     }
   };
 
-  const upgradeCost = () => 100 + level() * 50;
-
   return (
     <div class="app-container">
       <div class="game-wrapper">
         <div class="stats hud-stats">
           <div class="money">🪙 ${Math.floor(money())}</div>
-          <div class="level">Income Lvl: {level()}</div>
+          <div class="level">Level: {level()}</div>
         </div>
         <div ref={gameContainer} class="phaser-container"></div>
         {gameOver() !== '' && (
@@ -120,10 +112,6 @@ function App() {
             </div>
 
             <div class="button-group upgrades-group">
-                <button class="btn ally-btn upgrade-btn" disabled={money() < upgradeCost() || gameOver() !== ''} onClick={handleUpgradeIncome}>
-                    <div class="ability-icon">📈</div>
-                    <span class="cost">🪙 {upgradeCost()}</span>
-                </button>
                 <button class="btn ally-btn heal-btn" disabled={money() < 100 || gameOver() !== ''} onClick={handleHeal}>
                     <div class="ability-icon">💚</div>
                     <span class="cost">🪙 100</span>

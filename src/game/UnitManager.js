@@ -62,18 +62,23 @@ export default class UnitManager {
 
     spawnEnemy(level, yOffsetBase = 270) {
         this.enemySpawnCount++;
-        let typeChoice = 0; // basic
+        const enemyCount = ENEMY_TYPES.length;
+        let typeChoice = 0; // Default to first enemy
         
-        // Income Lvl 3+ spawns wawa every 5th enemy
-        if (level >= 3 && this.enemySpawnCount % 5 === 0) {
-            typeChoice = 3; // wawa
+        // Dynamic selection based on available enemy types and level
+        if (level >= 3 && this.enemySpawnCount % 5 === 0 && enemyCount >= 2) {
+            // Special spawn: use the last element or a specific index if available
+            typeChoice = Math.min(3, enemyCount - 1);
         } else {
             const rand = Phaser.Math.Between(1, 100);
-            if (level >= 3 && rand > 70) typeChoice = 1; // 30% chance heavy after lv3
-            if (level >= 5 && rand > 60 && rand <= 85) typeChoice = 2; // 25% chance fast after lv5
+            if (level >= 5 && enemyCount >= 3 && rand > 60 && rand <= 85) {
+                typeChoice = 2;
+            } else if (level >= 3 && enemyCount >= 2 && rand > 70) {
+                typeChoice = 1;
+            }
         }
 
-        const specs = ENEMY_TYPES[typeChoice];
+        const specs = ENEMY_TYPES[typeChoice] || ENEMY_TYPES[0];
 
         const angleRad = Phaser.Math.DegToRad(5);
         const zOffset = Phaser.Math.Between(-150, 150);
@@ -112,7 +117,8 @@ export default class UnitManager {
             bonusKnockback: specs.bonusKnockback || 0,
             isKnockbackImmune: specs.isKnockbackImmune || false,
             stunRemainingTime: 0,
-            buffRemainingTime: 0
+            buffRemainingTime: 0,
+            reward: specs.reward || 0
         });
 
         enemy.shadow = this.scene.add.ellipse(enemy.x, enemy.y, 40, 12, 0x000000, 0.25).setDepth(enemy.depth - 0.1);
@@ -155,7 +161,8 @@ export default class UnitManager {
             lastAttackTime: 0,
             isKnockbackImmune: true,
             stunRemainingTime: 0,
-            buffRemainingTime: 0
+            buffRemainingTime: 0,
+            reward: specs.reward || 0
         });
 
         boss.shadow = this.scene.add.ellipse(boss.x, boss.y, isAlly ? 80 : 120, 16, 0x000000, 0.25).setDepth(boss.depth - 0.1);
@@ -196,6 +203,9 @@ export default class UnitManager {
 
                 if (unit.hp <= 0) {
                     if (unit.isBoss) gameOverResult = isAlly ? 'defeat' : 'victory';
+                    if (!isAlly && unit.reward) {
+                        this.scene.addMoney(unit.reward);
+                    }
                     this.effectManager.playDeathEffect(unit);
                     group.splice(i, 1);
                     continue;
@@ -269,7 +279,11 @@ export default class UnitManager {
                         actuallyMoving = true;
                         
                         if (unit.isSprite) {
-                            unit.setFlipX(moveAmount > 0);
+                            if (unit.typeKey === 'shooter') {
+                                unit.setFlipX(true); // Always face right
+                            } else {
+                                unit.setFlipX(moveAmount > 0);
+                            }
                         }
                     } else if (unit.isBoss && unit.isAlly && unit.isSprite) {
                         // Face right when halted manually
@@ -327,6 +341,17 @@ export default class UnitManager {
                         }
 
                         this.effectManager.playAttackAnimation(unit, isAlly);
+
+                        // Recoil effect for shooter
+                        if (unit.typeKey === 'shooter') {
+                            this.scene.tweens.add({
+                                targets: unit,
+                                x: unit.x - (isAlly ? 8 : -8),
+                                duration: 50,
+                                yoyo: true,
+                                ease: 'Cubic.easeOut'
+                            });
+                        }
                     }
                 }
 

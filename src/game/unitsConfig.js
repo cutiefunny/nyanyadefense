@@ -5,11 +5,11 @@ export const ALLY_TYPES = {
 };
 
 export const ENEMY_TYPES = [
-    { type: 'dog', hp: 120, speed: -0.8, damage: 12, range: 10, cooldown: 1200, color: 0xe94560, w: 40, h: 40, bonusKnockback: 0, scale: 0.6 },
-    { type: 'wawa', hp: 80, speed: -2.2, damage: 5, range: 10, cooldown: 300, color: 0xffffff, w: 25, h: 25, bonusKnockback: 0, scale: 0.4 }
+    { type: 'dog', hp: 120, speed: -0.8, damage: 12, range: 10, cooldown: 1200, color: 0xe94560, w: 40, h: 40, bonusKnockback: 0, scale: 0.6, reward: 20 },
+    { type: 'wawa', hp: 100, speed: -2.5, damage: 8, range: 10, cooldown: 300, color: 0xffffff, w: 25, h: 25, bonusKnockback: 0, scale: 0.4, reward: 15 }
 ];
 
 export const BOSS_CONFIG = {
-    leader: { hp: 2000, speed: 1.2, damage: 30, range: 20, cooldown: 1500, w: 60, h: 60, isKnockbackImmune: true, scale: 0.7 },
-    boss: { hp: 5000, speed: 0, damage: 60, range: 30, cooldown: 2000, w: 100, h: 100, isKnockbackImmune: true, scale: 0.5 }
+    leader: { hp: 2000, speed: 1.2, damage: 30, range: 20, cooldown: 1500, w: 60, h: 60, isKnockbackImmune: true, scale: 0.7, reward: 0 },
+    boss: { hp: 5000, speed: 0, damage: 60, range: 30, cooldown: 2000, w: 100, h: 100, isKnockbackImmune: true, scale: 0.5, reward: 500 }
 };

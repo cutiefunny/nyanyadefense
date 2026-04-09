@@ -36,8 +36,7 @@ export default class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
         this.money = 0;
-        this.maxMoney = 1000;
-        this.incomeRate = 10;
+        this.totalMoneyEarned = 0;
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
         this.allyAutoSpawnTimer = 0;
@@ -121,7 +120,7 @@ export default class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'enemy_boss_hurt', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 1, end: 1 }), frameRate: 10, repeat: 0 });
         }
 
-        this.money = 0;
+        this.totalMoneyEarned = 0;
         this.level = 1;
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
@@ -148,17 +147,19 @@ export default class GameScene extends Phaser.Scene {
         this.unitManager.spawnEnemy(this.level);
     }
 
-    upgradeIncome() {
-        const cost = 100 + this.level * 50;
-        if (this.money >= cost && !this.isGameOver) {
-            this.money -= cost;
-            this.incomeRate += 5;
-            this.maxMoney += 500; // Increase capacity too
+    addMoney(amount) {
+        if (this.isGameOver) return;
+        this.money += amount;
+        this.totalMoneyEarned += amount;
+        
+        // Automatic Level Up Logic (LoL style)
+        // For example, level 2 requires 100 total money, level 3 requires 300, etc.
+        const requiredMoneyForNextLevel = 100 + (this.level * this.level * 50);
+        
+        if (this.totalMoneyEarned >= requiredMoneyForNextLevel) {
             this.level += 1;
             this.sys.game.events.emit('level-up', this.level);
-            return true;
         }
-        return false;
     }
 
     healBase() {
@@ -172,11 +173,6 @@ export default class GameScene extends Phaser.Scene {
 
     update(time, delta) {
         if (this.isGameOver) return;
-
-        if (this.money < this.maxMoney) {
-            this.money += (this.incomeRate * delta / 1000);
-            if (this.money > this.maxMoney) this.money = this.maxMoney;
-        }
         this.sys.game.events.emit('update-money', Math.floor(this.money));
 
         const cannonProgress = this.skillManager.getCannonProgress();
