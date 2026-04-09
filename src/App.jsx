@@ -23,7 +23,7 @@ function App() {
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        orientation: Phaser.Scale.Orientation.LANDSCAPE
+        orientation: Phaser.Scale.Orientation.ANY
       },
       scene: GameScene
     };
@@ -86,12 +86,6 @@ function App() {
 
   return (
     <div class="app-container">
-      <div class="orientation-warning">
-        <div class="warning-content">
-          <div class="phone-icon">📱</div>
-          <p>Please rotate your device to landscape for the best experience!</p>
-        </div>
-      </div>
       <div class="game-wrapper">
         <div class="stats hud-stats">
           <div class="money">🪙 ${Math.floor(money())}</div>

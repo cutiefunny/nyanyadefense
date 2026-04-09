@@ -257,43 +257,29 @@ body {
   100% { transform: scale(1); }
 }
 
-/* Orientation Warning */
+/* Orientation Handling */
+@media screen and (orientation: portrait) {
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .app-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 100vh;
+    height: 100vw;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center;
+    padding: 10px;
+    border-radius: 0;
+  }
+}
+
 .orientation-warning {
   display: none;
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: var(--bg-color);
-  color: white;
-  z-index: 9999;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 20px;
-}
-
-.warning-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.phone-icon {
-  font-size: 80px;
-  animation: rotatePhone 2s infinite ease-in-out;
-}
-
-@keyframes rotatePhone {
-  0% { transform: rotate(0deg); }
-  50% { transform: rotate(90deg); }
-  100% { transform: rotate(0deg); }
-}
-
-@media screen and (orientation: portrait) {
-  .orientation-warning {
-    display: flex;
-  }
 }
 
 @media screen and (max-width: 600px) {
