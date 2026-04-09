@@ -1,7 +1,7 @@
 {
-  "name": "Nyanya Defense",
-  "short_name": "NyanyaDef",
-  "description": "Protect your base with adorable cat warriors!",
+  "name": "냐냐디펜스",
+  "short_name": "냐냐디펜스",
+  "description": "들개들로부터 길냥이들의 영토를 지켜내세요!",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1a2e",
