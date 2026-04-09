@@ -24,6 +24,13 @@ export default class GameScene extends Phaser.Scene {
             const imgUrl = unitImages[`../assets/units/${enemy.type}.png`];
             if (imgUrl) this.load.spritesheet(`enemy_${enemy.type}`, imgUrl, { frameWidth: 100, frameHeight: 100 });
         });
+
+        // Load Boss Assets
+        const bossUrl = unitImages['../assets/units/boss.png'];
+        if (bossUrl) this.load.spritesheet('enemy_boss', bossUrl, { frameWidth: 200, frameHeight: 200 });
+        
+        const leaderUrl = unitImages['../assets/units/leader.png'];
+        if (leaderUrl) this.load.spritesheet('ally_leader', leaderUrl, { frameWidth: 100, frameHeight: 100 });
     }
 
     constructor() {
@@ -57,12 +64,26 @@ export default class GameScene extends Phaser.Scene {
         const fieldDepth = 300;
         const visibleHeight = Math.abs(fieldDepth * Math.sin(angleRad));
 
-        this.playerBase = { isAlly: true };
-        this.enemyBase = { isAlly: false };
-
         this.effectManager = new EffectManager(this);
         this.unitManager = new UnitManager(this, this.effectManager);
         this.skillManager = new SkillManager(this, this.unitManager);
+
+        // Spawn Bosses (Objective Units)
+        const leader = this.unitManager.spawnBoss(true); // Ally Leader
+        this.unitManager.spawnBoss(false); // Enemy Boss
+
+        // Enable Drag to move for Ally Leader
+        leader.setInteractive({ draggable: true });
+        leader.on('dragstart', () => {
+            leader.isDragging = true;
+        });
+        leader.on('drag', (pointer, dragX, dragY) => {
+            leader.targetX = dragX;
+        });
+        leader.on('dragend', () => {
+            leader.isDragging = false;
+            delete leader.targetX;
+        });
 
         // Dynamically create animations for loaded allies
         Object.keys(ALLY_TYPES).forEach(key => {
@@ -84,6 +105,21 @@ export default class GameScene extends Phaser.Scene {
                 this.anims.create({ key: `enemy_${key}_hurt`, frames: this.anims.generateFrameNumbers(`enemy_${key}`, { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
             }
         });
+
+        // Add Boss/Leader specific animations
+        if (this.textures.exists('ally_leader') && !this.anims.exists('ally_leader_idle')) {
+            this.anims.create({ key: 'ally_leader_idle', frames: this.anims.generateFrameNumbers('ally_leader', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
+            this.anims.create({ key: 'ally_leader_walk', frames: this.anims.generateFrameNumbers('ally_leader', { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
+            this.anims.create({ key: 'ally_leader_attack', frames: this.anims.generateFrameNumbers('ally_leader', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
+            this.anims.create({ key: 'ally_leader_hurt', frames: this.anims.generateFrameNumbers('ally_leader', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
+        }
+
+        if (this.textures.exists('enemy_boss') && !this.anims.exists('enemy_boss_idle')) {
+            this.anims.create({ key: 'enemy_boss_idle', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
+            this.anims.create({ key: 'enemy_boss_walk', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 1, end: 1 }), frameRate: 6, repeat: -1 });
+            this.anims.create({ key: 'enemy_boss_attack', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 1, end: 1 }), frameRate: 10, repeat: 0 });
+            this.anims.create({ key: 'enemy_boss_hurt', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 1, end: 1 }), frameRate: 10, repeat: 0 });
+        }
 
         this.money = 0;
         this.level = 1;
@@ -129,9 +165,9 @@ export default class GameScene extends Phaser.Scene {
         return false; // Heals logic removed for now as bases don't have HP
     }
 
-    fireCannon() {
+    fireShouting() {
         if (this.isGameOver) return false;
-        return this.skillManager.fireCannon();
+        return this.skillManager.useShouting();
     }
 
     update(time, delta) {

@@ -76,9 +76,9 @@ function App() {
     }
   };
 
-  const handleCannon = () => {
+  const handleShouting = () => {
     if (currentScene && cannonProgress() >= 100) {
-      currentScene.fireCannon();
+      currentScene.fireShouting();
     }
   };
 
@@ -128,8 +128,8 @@ function App() {
                     <div class="ability-icon">💚</div>
                     <span class="cost">🪙 100</span>
                 </button>
-                <button class="btn ally-btn cannon-btn" disabled={cannonProgress() < 100 || gameOver() !== ''} onClick={handleCannon}>
-                    <div class="ability-icon">⚡</div>
+                <button class="btn ally-btn shouting-btn" disabled={cannonProgress() < 100 || gameOver() !== ''} onClick={handleShouting}>
+                    <div class="ability-icon">🗣️</div>
                     <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
                         {cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`}
                     </span>

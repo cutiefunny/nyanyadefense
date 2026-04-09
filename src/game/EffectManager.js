@@ -1,29 +1,32 @@
 export default class EffectManager {
     constructor(scene) {
         this.scene = scene;
+        
+        // 1. Create a centralized Particle Emitter for performance (Avoid GC)
+        this.hitEmitter = this.scene.add.particles(0, 0, '__white', {
+            speed: { min: 50, max: 150 },
+            scale: { start: 0.1, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: 200,
+            gravityY: 200,
+            blendMode: 'ADD',
+            tint: [0xfff176, 0xffeb3b, 0xffc107],
+            emitting: false
+        }).setDepth(3000);
     }
 
     playHitEffect(target, damage) {
         const targetVisual = target.rect || target;
         if (!targetVisual || !targetVisual.active) return;
 
-        // 1. Spawning a hit spark particle
-        const spark = this.scene.add.star(
-            targetVisual.x + (Math.random() - 0.5) * 30,
-            targetVisual.y - 30 + (Math.random() - 0.5) * 30,
-            4, 3, 10, 0xffeb3b
-        ).setDepth(3000);
+        // 2. Emit particles (Very cheap compared to creating new Stars/Tweens)
+        this.hitEmitter.emitParticleAt(
+            targetVisual.x + (Math.random() - 0.5) * 20,
+            targetVisual.y - 30 + (Math.random() - 0.5) * 20,
+            4
+        );
 
-        this.scene.tweens.add({
-            targets: spark,
-            scale: Math.random() * 1.5 + 1,
-            alpha: 0,
-            angle: Phaser.Math.Between(-90, 90),
-            duration: 150,
-            onComplete: () => spark.destroy()
-        });
-
-        // 2. Vibration (Position & Angle Shake)
+        // 3. Vibration (Optimized shake)
         const originalX = targetVisual.x;
         const dir = Math.random() > 0.5 ? 1 : -1;
         
@@ -53,13 +56,6 @@ export default class EffectManager {
             target.play(hurtKey, true);
             target.once(`animationcomplete-${hurtKey}`, () => {
                 if (target.active && target.hp > 0) target.play(idleKey, true);
-            });
-        } else if (!target.isSprite) {
-            this.scene.tweens.add({
-                targets: targetVisual,
-                alpha: 0.5,
-                duration: 100,
-                yoyo: true,
             });
         }
     }
@@ -99,11 +95,23 @@ export default class EffectManager {
         if (unit.hpBarFill) this.scene.add.tween({ targets: unit.hpBarFill, alpha: 0, duration: 200, onComplete: () => unit.hpBarFill.destroy() });
         if (unit.shadow) this.scene.add.tween({ targets: unit.shadow, alpha: 0, duration: 200, onComplete: () => unit.shadow.destroy() });
         
+        if (unit.isSprite) {
+            unit.stop(); // Stop any playing animation
+            // 5번 프레임 (0-indexed 라서 4)
+            unit.setFrame(4); 
+            unit.clearTint();
+        }
+
+        // isAlly: faces right. Fall backward -> rotate counter-clockwise (-90)
+        // !isAlly: faces left. Fall backward -> rotate clockwise (90)
+        const fallAngle = unit.isAlly ? -90 : 90; 
+
         this.scene.add.tween({
             targets: unit,
             alpha: 0,
-            scale: 1.5,
-            duration: 200,
+            angle: fallAngle,
+            duration: 500, // Fall down over 0.5s
+            ease: 'Quad.easeIn',
             onComplete: () => unit.destroy()
         });
     }
