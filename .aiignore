@@ -1,0 +1,25 @@
+# Dependencies and builds
+node_modules/
+dist/
+dist-ssr/
+build/
+.git/
+
+# Media and assets (AI usually doesn't need to read raw binaries)
+src/assets/
+public/assets/
+public/*.png
+public/*.jpg
+public/*.svg
+
+# Logs and temp files
+*.log
+tmp/
+.tempmediaStorage/
+.system_generated/
+browser/
+
+# Project configs (optional to ignore, but often redundant for logic)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

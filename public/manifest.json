@@ -1,0 +1,30 @@
+{
+  "name": "Nyanya Defense",
+  "short_name": "NyanyaDef",
+  "description": "Protect your base with adorable cat warriors!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "/tanker.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/tanker.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/tanker.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
