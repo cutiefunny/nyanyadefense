@@ -2,13 +2,20 @@ import Phaser from 'phaser';
 
 import { ALLY_TYPES, ENEMY_TYPES } from './unitsConfig';
 
+// Import assets to let Vite handle URL resolution
+import bg_stage1_img from '../assets/backgrounds/sangsu.jpg';
+import ally_basic_img from '../assets/units/normal.png';
+import ally_tank_img from '../assets/units/tanker.png';
+import ally_ranger_img from '../assets/units/shooter.png';
+import enemy_dog_img from '../assets/units/dog.png';
+
 export default class GameScene extends Phaser.Scene {
     preload() {
-        this.load.image('bg_stage1', '/src/assets/backgrounds/sangsu.jpg');
-        this.load.spritesheet('ally_basic', '/src/assets/units/normal.png', { frameWidth: 100, frameHeight: 100 });
-        this.load.spritesheet('ally_tank', '/src/assets/units/tanker.png', { frameWidth: 100, frameHeight: 100 });
-        this.load.spritesheet('ally_ranger', '/src/assets/units/shooter.png', { frameWidth: 100, frameHeight: 100 });
-        this.load.spritesheet('enemy_dog', '/src/assets/units/dog.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.image('bg_stage1', bg_stage1_img);
+        this.load.spritesheet('ally_basic', ally_basic_img, { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('ally_tank', ally_tank_img, { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('ally_ranger', ally_ranger_img, { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('enemy_dog', enemy_dog_img, { frameWidth: 100, frameHeight: 100 });
     }
 
     constructor() {
