@@ -20,12 +20,12 @@ export default class GameScene extends Phaser.Scene {
         this.incomeRate = 10;
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
+        this.allyAutoSpawnTimer = 0;
         this.level = 1;
 
         // Cannon
         this.cannonCooldown = 15000; // 15 seconds
         this.lastCannonTime = -15000;
-        this.baseMaxHp = 1000;
     }
 
     create() {
@@ -48,26 +48,13 @@ export default class GameScene extends Phaser.Scene {
         const fieldDepth = 300;
         const visibleHeight = Math.abs(fieldDepth * Math.sin(angleRad));
 
-        //this.add.rectangle(400, 525, 800, 150, 0x16213e).setDepth(0);
-        // Field visually thickened to represent depth from the 5-degree angle
-        //this.add.rectangle(400, 450, 800, visibleHeight * 2, 0x0f3460).setDepth(1);
-
         this.playerBase = {
-            rect: this.add.rectangle(60, 210, 60, 120, 0x0f3460).setStrokeStyle(4, 0x43d8c9).setDepth(450),
-            hp: this.baseMaxHp,
-            maxHp: this.baseMaxHp,
             isAlly: true
         };
 
         this.enemyBase = {
-            rect: this.add.rectangle(740, 210, 60, 120, 0xe94560).setStrokeStyle(4, 0xffb8b8).setDepth(450),
-            hp: 2000,
-            maxHp: 2000,
             isAlly: false
         };
-
-        this.playerHpText = this.add.text(60, 130, `${this.baseMaxHp}`, { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#43d8c9', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
-        this.enemyHpText = this.add.text(740, 130, '2000', { fontFamily: 'Outfit, sans-serif', fontSize: '24px', fill: '#e94560', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2000);
 
         // Cannon visual
         this.cannonBeam = this.add.rectangle(400, 255, 800, 40, 0x43d8c9).setAlpha(0).setDepth(2000);
@@ -102,16 +89,18 @@ export default class GameScene extends Phaser.Scene {
         this.money = 0;
         this.level = 1;
         this.isGameOver = false;
+        this.enemySpawnTimer = 0;
+        this.allyAutoSpawnTimer = 0;
 
         this.sys.game.events.emit('game-ready', this);
     }
 
-    spawnAlly(typeKey) {
+    spawnAlly(typeKey, isAuto = false) {
         const specs = ALLY_TYPES[typeKey];
         if (!specs || this.isGameOver) return;
 
-        if (this.money >= specs.cost) {
-            this.money -= specs.cost;
+        if (isAuto || this.money >= specs.cost) {
+            if (!isAuto) this.money -= specs.cost;
             const angleRad = Phaser.Math.DegToRad(5);
             const zOffset = Phaser.Math.Between(-150, 150);
             const yOffset = zOffset * Math.sin(angleRad);
@@ -119,7 +108,7 @@ export default class GameScene extends Phaser.Scene {
             let ally;
             if (typeKey === 'basic' || typeKey === 'tank' || typeKey === 'ranger') {
                 const spriteKey = 'ally_' + typeKey;
-                ally = this.add.sprite(100, 270 + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
+                ally = this.add.sprite(0, 270 + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
                 if (typeKey === 'basic') {
                     ally.setScale(0.5);
                 } else if (typeKey === 'tank') {
@@ -173,7 +162,7 @@ export default class GameScene extends Phaser.Scene {
         const yOffset = zOffset * Math.sin(angleRad);
 
         const spriteKey = 'enemy_dog';
-        const enemy = this.add.sprite(700, 270 + yOffset, spriteKey).setOrigin(0.5, 1).setScale(0.6);
+        const enemy = this.add.sprite(800, 270 + yOffset, spriteKey).setOrigin(0.5, 1).setScale(0.6);
         enemy.play(spriteKey + '_walk');
         enemy.setDepth(450 + yOffset);
         enemy.isAlly = false;
@@ -216,22 +205,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     healBase() {
-        const cost = 100;
-        if (this.money >= cost && this.playerBase.hp < this.playerBase.maxHp && !this.isGameOver) {
-            this.money -= cost;
-            this.playerBase.hp = Math.min(this.playerBase.maxHp, this.playerBase.hp + 200);
-
-            // Healing effect
-            const flash = this.add.rectangle(400, 150, 800, 300, 0x2ecc71).setAlpha(0.3).setDepth(2000);
-            this.tweens.add({
-                targets: flash,
-                alpha: 0,
-                duration: 500,
-                onComplete: () => flash.destroy()
-            });
-            return true;
-        }
-        return false;
+        return false; // Heals logic removed for now as bases don't have HP
     }
 
     fireCannon() {
@@ -261,18 +235,6 @@ export default class GameScene extends Phaser.Scene {
     update(time, delta) {
         if (this.isGameOver) return;
 
-        if (this.playerBase.hp <= 0) {
-            this.isGameOver = true;
-            this.sys.game.events.emit('game-over', 'defeat');
-            return;
-        }
-
-        if (this.enemyBase.hp <= 0) {
-            this.isGameOver = true;
-            this.sys.game.events.emit('game-over', 'victory');
-            return;
-        }
-
         if (this.money < this.maxMoney) {
             this.money += (this.incomeRate * delta / 1000);
             if (this.money > this.maxMoney) this.money = this.maxMoney;
@@ -285,11 +247,18 @@ export default class GameScene extends Phaser.Scene {
 
         // Auto spawn enemies
         this.enemySpawnTimer += delta;
-        // spawn faster as level increases, but don't spawn faster than 800ms
         const spawnDelay = Math.max(800, 4000 - this.level * 350);
         if (this.enemySpawnTimer > spawnDelay) {
             this.spawnEnemy();
             this.enemySpawnTimer = 0;
+        }
+
+        // Auto spawn allies (minions)
+        this.allyAutoSpawnTimer += delta;
+        const allySpawnDelay = 5000; // Every 5 seconds
+        if (this.allyAutoSpawnTimer > allySpawnDelay) {
+            this.spawnAlly('basic', true);
+            this.allyAutoSpawnTimer = 0;
         }
 
         // Unit logic
@@ -297,6 +266,18 @@ export default class GameScene extends Phaser.Scene {
             const isAlly = isAllyIdx === 0;
             for (let i = group.length - 1; i >= 0; i--) {
                 const unit = group[i];
+
+                // Victory/Defeat detection
+                if (isAlly && unit.x >= 780) {
+                    this.isGameOver = true;
+                    this.sys.game.events.emit('game-over', 'victory');
+                    return;
+                }
+                if (!isAlly && unit.x <= 20) {
+                    this.isGameOver = true;
+                    this.sys.game.events.emit('game-over', 'defeat');
+                    return;
+                }
 
                 if (unit.hp <= 0) {
                     if (unit.hpBarBg) this.add.tween({ targets: unit.hpBarBg, alpha: 0, duration: 200, onComplete: () => unit.hpBarBg.destroy() });
@@ -317,7 +298,6 @@ export default class GameScene extends Phaser.Scene {
                 let minDist = Infinity;
 
                 const opponents = isAlly ? this.enemies : this.allies;
-                const targetBase = isAlly ? this.enemyBase : this.playerBase;
 
                 const unitW = unit.logicWidth || unit.width || 0;
                 opponents.forEach(opp => {
@@ -330,15 +310,6 @@ export default class GameScene extends Phaser.Scene {
                         }
                     }
                 });
-
-                const targetBaseW = targetBase.rect.width;
-                const distToBase = Math.abs(unit.x - targetBase.rect.x) - (unitW / 2 + targetBaseW / 2);
-                if ((isAlly && targetBase.rect.x > unit.x) || (!isAlly && targetBase.rect.x < unit.x)) {
-                    if (distToBase < minDist) {
-                        minDist = distToBase;
-                        target = targetBase;
-                    }
-                }
 
                 let desiredMove = 1; // Default: forward
                 if (target) {
@@ -489,8 +460,5 @@ export default class GameScene extends Phaser.Scene {
                 }
             }
         });
-
-        this.playerHpText.setText(`${Math.max(0, Math.floor(this.playerBase.hp))}/${this.playerBase.maxHp}`);
-        this.enemyHpText.setText(`${Math.max(0, Math.floor(this.enemyBase.hp))}/${this.enemyBase.maxHp}`);
     }
 }
