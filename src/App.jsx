@@ -105,17 +105,17 @@ function App() {
       <div class="controls-panel">
         <div class="main-controls">
             <div class="button-group allies-group">
-                <button class="btn ally-btn basic-btn" disabled={money() < ALLY_TYPES.basic.cost || gameOver() !== ''} onClick={() => handleSpawn('basic')}>
+                <button class="btn ally-btn basic-btn" disabled={money() < ALLY_TYPES.normal.cost || gameOver() !== ''} onClick={() => handleSpawn('normal')}>
                     <div class="unit-icon basic-icon"></div>
-                    <span class="cost">🪙 {ALLY_TYPES.basic.cost}</span>
+                    <span class="cost">🪙 {ALLY_TYPES.normal.cost}</span>
                 </button>
-                <button class="btn ally-btn tank-btn" disabled={money() < ALLY_TYPES.tank.cost || gameOver() !== ''} onClick={() => handleSpawn('tank')}>
+                <button class="btn ally-btn tank-btn" disabled={money() < ALLY_TYPES.tanker.cost || gameOver() !== ''} onClick={() => handleSpawn('tanker')}>
                     <div class="unit-icon tank-icon"></div>
-                    <span class="cost">🪙 {ALLY_TYPES.tank.cost}</span>
+                    <span class="cost">🪙 {ALLY_TYPES.tanker.cost}</span>
                 </button>
-                <button class="btn ally-btn ranger-btn" disabled={money() < ALLY_TYPES.ranger.cost || gameOver() !== ''} onClick={() => handleSpawn('ranger')}>
+                <button class="btn ally-btn ranger-btn" disabled={money() < ALLY_TYPES.shooter.cost || gameOver() !== ''} onClick={() => handleSpawn('shooter')}>
                     <div class="unit-icon ranger-icon"></div>
-                    <span class="cost">🪙 {ALLY_TYPES.ranger.cost}</span>
+                    <span class="cost">🪙 {ALLY_TYPES.shooter.cost}</span>
                 </button>
             </div>
 
