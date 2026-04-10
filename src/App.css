@@ -262,7 +262,7 @@ body {
 }
 
 /* Orientation Handling (Forced Landscape on Portrait) */
-@media screen and (orientation: portrait) {
+@media screen and (orientation: portrait) and (max-device-width: 1024px) {
   .app-container {
     position: absolute;
     top: 50%;

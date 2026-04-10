@@ -25,7 +25,7 @@ export default class UnitManager {
             ally = this.scene.add.sprite(0, yOffsetBase + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
             ally.setScale(specs.scale || 0.5);
             ally.baseScale = specs.scale || 0.5;
-            
+
             // Check if walk animation exists
             if (this.scene.anims.exists(spriteKey + '_walk')) {
                 ally.play(spriteKey + '_walk');
@@ -35,7 +35,7 @@ export default class UnitManager {
         } else {
             ally = this.scene.add.rectangle(100, 450 + yOffset - specs.h / 2, specs.w, specs.h, specs.color).setStrokeStyle(2, 0xffffff);
         }
-        
+
         ally.setDepth(450 + yOffset);
         ally.isAlly = true;
         ally.typeKey = typeKey;
@@ -64,7 +64,7 @@ export default class UnitManager {
         this.enemySpawnCount++;
         const enemyCount = ENEMY_TYPES.length;
         let typeChoice = 0; // Default to first enemy
-        
+
         // Dynamic selection based on available enemy types and level
         if (level >= 3 && this.enemySpawnCount % 5 === 0 && enemyCount >= 2) {
             // Special spawn: use the last element or a specific index if available
@@ -132,30 +132,41 @@ export default class UnitManager {
         const specs = BOSS_CONFIG[type];
         const x = isAlly ? 50 : 750;
         const y = 270;
-        
-        const spriteKey = (isAlly ? 'ally_' : 'enemy_') + type;
+
+        let spriteKey = (isAlly ? 'ally_' : 'enemy_') + type;
+        let scale = specs.scale || 1.0;
+        let hp = specs.hp;
+        let damage = specs.damage || 0;
+
+        if (!isAlly && this.scene.stage === 1) {
+            spriteKey = 'enemy_dog';
+            scale = 0.8; // 2x normal minion size (0.6 * 2)
+            hp = 1000;
+            damage = 15;
+        }
+
         const boss = this.scene.add.sprite(x, y, spriteKey).setOrigin(0.5, 1);
-        
+
         if (isAlly) {
             boss.setFlipX(true);
         }
-        boss.setScale(specs.scale || 1.0);
-        boss.baseScale = specs.scale || 1.0;
+        boss.setScale(scale);
+        boss.baseScale = scale;
         boss.setFrame(0);
         boss.setDepth(450);
         boss.isSprite = true;
         boss.spriteKey = spriteKey;
-        
+
         boss.isAlly = isAlly;
         boss.typeKey = type;
         boss.isBoss = true;
         boss.logicWidth = specs.w;
-        
+
         Object.assign(boss, {
-            hp: specs.hp,
-            maxHp: specs.hp,
+            hp: hp,
+            maxHp: hp,
             speed: specs.speed || 0,
-            attackDamage: specs.damage || 0,
+            attackDamage: damage,
             attackRange: specs.range || 0,
             attackCooldown: specs.cooldown,
             lastAttackTime: 0,
@@ -181,12 +192,31 @@ export default class UnitManager {
         const barW = isAlly ? 80 : 120;
         const barY = boss.y - boss.displayHeight - 10;
         boss.hpBarBg = this.scene.add.rectangle(boss.x, barY, barW, 8, 0x000000).setDepth(2000);
-        boss.hpBarFill = this.scene.add.rectangle(boss.x - barW/2, barY, barW, 6, isAlly ? 0x2ecc71 : 0xe74c3c).setDepth(2001).setOrigin(0, 0.5);
+        boss.hpBarFill = this.scene.add.rectangle(boss.x - barW / 2, barY, barW, 6, isAlly ? 0x2ecc71 : 0xe74c3c).setDepth(2001).setOrigin(0, 0.5);
 
         if (isAlly) this.allies.push(boss);
         else this.enemies.push(boss);
-        
+
         return boss;
+    }
+
+    clearField() {
+        for (let i = this.allies.length - 1; i >= 0; i--) {
+            const ally = this.allies[i];
+            if (!ally.isBoss) {
+                if (ally.shadow) ally.shadow.destroy();
+                ally.destroy();
+                this.allies.splice(i, 1);
+            }
+        }
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (enemy.shadow) enemy.shadow.destroy();
+            if (enemy.hpBarBg) enemy.hpBarBg.destroy();
+            if (enemy.hpBarFill) enemy.hpBarFill.destroy();
+            enemy.destroy();
+            this.enemies.splice(i, 1);
+        }
     }
 
     updateUnits(time, delta) {
@@ -205,7 +235,10 @@ export default class UnitManager {
                     if (unit.isBoss) gameOverResult = isAlly ? 'defeat' : 'victory';
                     if (!isAlly && unit.reward) {
                         this.scene.addMoney(unit.reward);
+                    } else if (isAlly && !unit.isBoss) {
+                        this.scene.addEnemyExp(50);
                     }
+                    this.scene.sound.play('ouch' + Phaser.Math.Between(1, 2), { volume: 0.5 });
                     this.effectManager.playDeathEffect(unit);
                     group.splice(i, 1);
                     continue;
@@ -219,7 +252,7 @@ export default class UnitManager {
                 for (let j = 0; j < opponents.length; j++) {
                     const opp = opponents[j];
                     const dist = Math.abs(unit.x - opp.x) - (halfW + opp.logicWidth / 2);
-                    
+
                     if ((isAlly && opp.x > unit.x) || (!isAlly && opp.x < unit.x)) {
                         if (dist < minDist) {
                             minDist = dist;
@@ -229,7 +262,7 @@ export default class UnitManager {
                 }
 
                 let desiredMove = 1; // Default: forward
-                
+
                 // Special handling for ally leader: Manual movement only
                 if (unit.isBoss && unit.isAlly) {
                     if (unit.isDragging && unit.targetX !== undefined) {
@@ -254,7 +287,7 @@ export default class UnitManager {
                         else if (minDist > 160) desiredMove = 1; // Advance
                         else desiredMove = 0; // Sweet spot
                     } else if (minDist <= unit.attackRange) {
-                        desiredMove = 0; 
+                        desiredMove = 0;
                     }
                 }
 
@@ -277,7 +310,7 @@ export default class UnitManager {
                     if (moveAmount !== 0) {
                         unit.x += moveAmount;
                         actuallyMoving = true;
-                        
+
                         if (unit.isSprite) {
                             if (unit.typeKey === 'shooter') {
                                 unit.setFlipX(true); // Always face right
@@ -324,6 +357,9 @@ export default class UnitManager {
 
                         this.effectManager.playHitEffect(target, unit.attackDamage);
 
+                        // Play random hit sound
+                        this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.5 });
+
                         // Knockback Logic
                         const knockbackChance = 0.10 + unit.bonusKnockback;
                         if (!target.isKnockbackImmune && Math.random() <= knockbackChance) {
@@ -357,12 +393,12 @@ export default class UnitManager {
 
                 if (unit.buffRemainingTime > 0) {
                     unit.buffRemainingTime -= delta;
-                    
+
                     if (unit.isSprite) {
                         const ratio = Math.max(0, unit.buffRemainingTime / 10000);
                         // Scale fades from 1.1x to 1.0x
                         unit.setScale(unit.baseScale * (1 + 0.1 * ratio));
-                        
+
                         // Tint fades from Red (0xff8888) to White (0xffffff)
                         const greenBlue = Math.floor(136 + (255 - 136) * (1 - ratio));
                         unit.setTint(Phaser.Display.Color.GetColor(255, greenBlue, greenBlue));
