@@ -10,6 +10,44 @@ export default class UnitManager {
         this.enemySpawnCount = 0;
     }
 
+    getStageScaleMultiplier() {
+        // Stage 1: 1.0, Stage 2: 1.2
+        return this.scene.stage === 2 ? 1.2 : 1.0;
+    }
+
+    updateAllUnitScales() {
+        const multiplier = this.getStageScaleMultiplier();
+        [...this.allies, ...this.enemies].forEach(unit => {
+            if (unit.isSprite) {
+                // Stop breathing tween if exists to prevent it from overriding vertical scale
+                if (unit.breathingTween) {
+                    unit.breathingTween.stop();
+                    unit.breathingTween = null;
+                }
+                
+                unit.setScale(unit.baseScale * multiplier);
+                unit.logicWidth = (unit.baseWidth || 0) * multiplier;
+                
+                // Restart breathing for bosses
+                if (unit.isBoss) {
+                    this.addBreathingEffect(unit);
+                }
+            }
+        });
+    }
+
+    addBreathingEffect(unit) {
+        if (unit.breathingTween) unit.breathingTween.stop();
+        unit.breathingTween = this.scene.tweens.add({
+            targets: unit,
+            scaleY: unit.scaleY * 1.05,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    }
+
     spawnAlly(typeKey, yOffsetBase = 270) {
         const specs = ALLY_TYPES[typeKey];
         if (!specs) return null;
@@ -23,8 +61,9 @@ export default class UnitManager {
 
         if (this.scene.textures.exists(spriteKey)) {
             ally = this.scene.add.sprite(0, yOffsetBase + yOffset, spriteKey).setOrigin(0.5, 1).setFlipX(true);
-            ally.setScale(specs.scale || 0.5);
-            ally.baseScale = specs.scale || 0.5;
+            const baseScale = specs.scale || 0.5;
+            ally.baseScale = baseScale;
+            ally.setScale(baseScale * this.getStageScaleMultiplier());
 
             // Check if walk animation exists
             if (this.scene.anims.exists(spriteKey + '_walk')) {
@@ -39,7 +78,9 @@ export default class UnitManager {
         ally.setDepth(450 + yOffset);
         ally.isAlly = true;
         ally.typeKey = typeKey;
-        ally.logicWidth = specs.w;
+        const multiplier = this.getStageScaleMultiplier();
+        ally.baseWidth = specs.w;
+        ally.logicWidth = ally.baseWidth * multiplier;
         Object.assign(ally, {
             hp: specs.hp,
             maxHp: specs.hp,
@@ -89,8 +130,9 @@ export default class UnitManager {
 
         if (this.scene.textures.exists(spriteKey)) {
             enemy = this.scene.add.sprite(800, yOffsetBase + yOffset, spriteKey).setOrigin(0.5, 1);
-            enemy.setScale(specs.scale || 0.6);
-            enemy.baseScale = specs.scale || 0.6;
+            const baseScale = specs.scale || 0.6;
+            enemy.baseScale = baseScale;
+            enemy.setScale(baseScale * this.getStageScaleMultiplier());
             if (this.scene.anims.exists(spriteKey + '_walk')) {
                 enemy.play(spriteKey + '_walk');
             }
@@ -102,7 +144,9 @@ export default class UnitManager {
 
         enemy.setDepth(450 + yOffset);
         enemy.isAlly = false;
-        enemy.logicWidth = specs.w;
+        const multiplier = this.getStageScaleMultiplier();
+        enemy.baseWidth = specs.w;
+        enemy.logicWidth = enemy.baseWidth * multiplier;
 
         const scale = 1 + (level * 0.1); // difficulty scaling
 
@@ -137,12 +181,14 @@ export default class UnitManager {
         let scale = specs.scale || 1.0;
         let hp = specs.hp;
         let damage = specs.damage || 0;
+        let baseWidth = specs.w;
 
         if (!isAlly && this.scene.stage === 1) {
             spriteKey = 'enemy_dog';
             scale = 0.8; // 2x normal minion size (0.6 * 2)
             hp = 1000;
             damage = 15;
+            baseWidth = 80; // 2x normal dog minion width (40 * 2)
         }
 
         const boss = this.scene.add.sprite(x, y, spriteKey).setOrigin(0.5, 1);
@@ -150,8 +196,9 @@ export default class UnitManager {
         if (isAlly) {
             boss.setFlipX(true);
         }
-        boss.setScale(scale);
         boss.baseScale = scale;
+        const multiplier = this.getStageScaleMultiplier();
+        boss.setScale(scale * multiplier);
         boss.setFrame(0);
         boss.setDepth(450);
         boss.isSprite = true;
@@ -160,7 +207,8 @@ export default class UnitManager {
         boss.isAlly = isAlly;
         boss.typeKey = type;
         boss.isBoss = true;
-        boss.logicWidth = specs.w;
+        boss.baseWidth = baseWidth;
+        boss.logicWidth = baseWidth * multiplier;
 
         Object.assign(boss, {
             hp: hp,
@@ -179,14 +227,7 @@ export default class UnitManager {
         boss.shadow = this.scene.add.ellipse(boss.x, boss.y, isAlly ? 80 : 120, 16, 0x000000, 0.25).setDepth(boss.depth - 0.1);
 
         // Breathing animation effect
-        this.scene.tweens.add({
-            targets: boss,
-            scaleY: boss.scaleY * 1.05,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+        this.addBreathingEffect(boss);
 
         // Boss HP Bar (Always visible)
         const barW = isAlly ? 80 : 120;
@@ -395,9 +436,10 @@ export default class UnitManager {
                     unit.buffRemainingTime -= delta;
 
                     if (unit.isSprite) {
+                        const multiplier = this.getStageScaleMultiplier();
                         const ratio = Math.max(0, unit.buffRemainingTime / 10000);
-                        // Scale fades from 1.1x to 1.0x
-                        unit.setScale(unit.baseScale * (1 + 0.1 * ratio));
+                        // Scale fades from 1.1x to 1.0x, multiplied by stage factor
+                        unit.setScale(unit.baseScale * multiplier * (1 + 0.1 * ratio));
 
                         // Tint fades from Red (0xff8888) to White (0xffffff)
                         const greenBlue = Math.floor(136 + (255 - 136) * (1 - ratio));
@@ -406,7 +448,7 @@ export default class UnitManager {
 
                     if (unit.buffRemainingTime <= 0) {
                         if (unit.isSprite) {
-                            unit.setScale(unit.baseScale);
+                            unit.setScale(unit.baseScale * this.getStageScaleMultiplier());
                             unit.clearTint();
                         }
                     }

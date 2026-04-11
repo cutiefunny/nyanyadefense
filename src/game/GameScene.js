@@ -182,6 +182,8 @@ export default class GameScene extends Phaser.Scene {
             const scale = 800 / this.bg.width;
             this.bg.setScale(scale);
         }
+        // Update all existing units to match the new stage's scale multiplier
+        this.unitManager.updateAllUnitScales();
     }
 
     spawnEnemy() {

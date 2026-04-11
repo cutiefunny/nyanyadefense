@@ -246,7 +246,7 @@ body {
 }
 
 .basic-icon { background-image: url('./assets/units/normal.png'); }
-.tank-icon { background-image: url('./assets/units/tanker.png'); }
+.tank-icon { background-image: url('./assets/units/tanker.png'); background-size: 240px 40px; }
 .ranger-icon { background-image: url('./assets/units/shooter.png'); }
 
 .ability-icon {
