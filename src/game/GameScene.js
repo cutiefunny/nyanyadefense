@@ -5,6 +5,7 @@ import EffectManager from './EffectManager';
 import SkillManager from './SkillManager';
 
 import { ALLY_TYPES, ENEMY_TYPES } from './unitsConfig';
+import { STAGE_CONFIG } from './stagesConfig';
 
 import hit1_sound from '../assets/sounds/Hit1.wav';
 import hit2_sound from '../assets/sounds/Hit2.wav';
@@ -48,9 +49,15 @@ export default class GameScene extends Phaser.Scene {
             if (imgUrl) this.load.spritesheet(`enemy_${enemy.type}`, imgUrl, { frameWidth: 100, frameHeight: 100 });
         });
 
-        // Load Boss Assets
-        const bossUrl = unitImages['../assets/units/boss.png'];
-        if (bossUrl) this.load.spritesheet('enemy_boss', bossUrl, { frameWidth: 200, frameHeight: 200 });
+        // Load Boss Assets (Support boss.png, boss2.png, boss3.png, etc.)
+        Object.keys(unitImages).forEach(path => {
+            const match = path.match(/boss(\d*)\.png$/);
+            if (match) {
+                const suffix = match[1];
+                const key = `enemy_boss${suffix}`;
+                this.load.spritesheet(key, unitImages[path], { frameWidth: 200, frameHeight: 200 });
+            }
+        });
         
         const leaderUrl = unitImages['../assets/units/leader.png'];
         if (leaderUrl) this.load.spritesheet('ally_leader', leaderUrl, { frameWidth: 100, frameHeight: 100 });
@@ -61,6 +68,9 @@ export default class GameScene extends Phaser.Scene {
         this.money = 0;
         this.totalMoneyEarned = 0;
         this.isGameOver = false;
+        this.isAutoMode = false;
+        this.isAutoBuy = false;
+        this.gameSpeed = 1;
         this.enemySpawnTimer = 0;
         this.allyAutoSpawnTimer = 0;
         this.level = 1;
@@ -114,41 +124,17 @@ export default class GameScene extends Phaser.Scene {
             delete leader.targetX;
         });
 
-        // Dynamically create animations for loaded allies
-        Object.keys(ALLY_TYPES).forEach(key => {
-            if (this.textures.exists(`ally_${key}`) && !this.anims.exists(`ally_${key}_idle`)) {
-                this.anims.create({ key: `ally_${key}_idle`, frames: this.anims.generateFrameNumbers(`ally_${key}`, { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
-                this.anims.create({ key: `ally_${key}_walk`, frames: this.anims.generateFrameNumbers(`ally_${key}`, { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
-                this.anims.create({ key: `ally_${key}_attack`, frames: this.anims.generateFrameNumbers(`ally_${key}`, { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
-                this.anims.create({ key: `ally_${key}_hurt`, frames: this.anims.generateFrameNumbers(`ally_${key}`, { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
-            }
-        });
+        // Dynamically create animations for ALL units including potential stage bosses
+        const allUnitKeys = [
+            ...Object.keys(ALLY_TYPES).map(k => `ally_${k}`),
+            ...ENEMY_TYPES.map(e => `enemy_${e.type}`),
+            'ally_leader',
+            'enemy_boss',
+            'enemy_boss2',
+            'enemy_boss3'
+        ];
 
-        // Dynamically create animations for loaded enemies
-        ENEMY_TYPES.forEach(enemy => {
-            const key = enemy.type;
-            if (this.textures.exists(`enemy_${key}`) && !this.anims.exists(`enemy_${key}_idle`)) {
-                this.anims.create({ key: `enemy_${key}_idle`, frames: this.anims.generateFrameNumbers(`enemy_${key}`, { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
-                this.anims.create({ key: `enemy_${key}_walk`, frames: this.anims.generateFrameNumbers(`enemy_${key}`, { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
-                this.anims.create({ key: `enemy_${key}_attack`, frames: this.anims.generateFrameNumbers(`enemy_${key}`, { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
-                this.anims.create({ key: `enemy_${key}_hurt`, frames: this.anims.generateFrameNumbers(`enemy_${key}`, { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
-            }
-        });
-
-        // Add Boss/Leader specific animations
-        if (this.textures.exists('ally_leader') && !this.anims.exists('ally_leader_idle')) {
-            this.anims.create({ key: 'ally_leader_idle', frames: this.anims.generateFrameNumbers('ally_leader', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
-            this.anims.create({ key: 'ally_leader_walk', frames: this.anims.generateFrameNumbers('ally_leader', { start: 1, end: 2 }), frameRate: 6, repeat: -1 });
-            this.anims.create({ key: 'ally_leader_attack', frames: this.anims.generateFrameNumbers('ally_leader', { start: 3, end: 3 }), frameRate: 10, repeat: 0 });
-            this.anims.create({ key: 'ally_leader_hurt', frames: this.anims.generateFrameNumbers('ally_leader', { start: 4, end: 4 }), frameRate: 10, repeat: 0 });
-        }
-
-        if (this.textures.exists('enemy_boss') && !this.anims.exists('enemy_boss_idle')) {
-            this.anims.create({ key: 'enemy_boss_idle', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
-            this.anims.create({ key: 'enemy_boss_walk', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 1, end: 1 }), frameRate: 6, repeat: -1 });
-            this.anims.create({ key: 'enemy_boss_attack', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 1, end: 1 }), frameRate: 10, repeat: 0 });
-            this.anims.create({ key: 'enemy_boss_hurt', frames: this.anims.generateFrameNumbers('enemy_boss', { start: 1, end: 1 }), frameRate: 10, repeat: 0 });
-        }
+        allUnitKeys.forEach(key => this.createUnitAnimations(key));
 
         this.totalMoneyEarned = 0;
         this.level = 1;
@@ -159,6 +145,18 @@ export default class GameScene extends Phaser.Scene {
         this.allyAutoSpawnTimer = 0;
 
         this.sys.game.events.emit('game-ready', this);
+    }
+
+    createUnitAnimations(key) {
+        if (!this.textures.exists(key) || this.anims.exists(`${key}_idle`)) return;
+
+        const isBossSprite = key.includes('boss');
+        const frameConfig = isBossSprite ? { walk: [0, 1], attack: [0, 1], hurt: [0, 1] } : { walk: [1, 2], attack: [3, 3], hurt: [4, 4] };
+
+        this.anims.create({ key: `${key}_idle`, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
+        this.anims.create({ key: `${key}_walk`, frames: this.anims.generateFrameNumbers(key, { start: frameConfig.walk[0], end: frameConfig.walk[1] }), frameRate: 4, repeat: -1 });
+        this.anims.create({ key: `${key}_attack`, frames: this.anims.generateFrameNumbers(key, { start: frameConfig.attack[0], end: frameConfig.attack[1] }), frameRate: 8, repeat: 0 });
+        this.anims.create({ key: `${key}_hurt`, frames: this.anims.generateFrameNumbers(key, { start: frameConfig.hurt[0], end: frameConfig.hurt[1] }), frameRate: 8, repeat: 0 });
     }
 
     spawnAlly(typeKey, isAuto = false) {
@@ -174,9 +172,34 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    setAutoMode(val) {
+        this.isAutoMode = val;
+    }
+
+    setAutoBuy(val) {
+        this.isAutoBuy = val;
+    }
+
+    setGameSpeed(val) {
+        this.gameSpeed = val;
+        // Also update Phaser's internal timeScale for tweens and particles
+        this.time.timeScale = val;
+    }
+
+    instantWin() {
+        if (this.isGameOver) return;
+        const enemyBoss = this.unitManager.enemies.find(e => e.isBoss);
+        if (enemyBoss) {
+            enemyBoss.takeDamage(enemyBoss.hp + 9999, true);
+        }
+    }
+
     changeStage(stageNum) {
         this.stage = stageNum;
-        const textureKey = `bg_stage${stageNum}`;
+        const config = STAGE_CONFIG[stageNum];
+        if (!config) return;
+
+        const textureKey = config.background;
         if (this.textures.exists(textureKey)) {
             this.bg.setTexture(textureKey);
             const scale = 800 / this.bg.width;
@@ -228,33 +251,54 @@ export default class GameScene extends Phaser.Scene {
 
     update(time, delta) {
         if (this.isGameOver) return;
+
+        // Apply game speed multiplier to delta for custom logic
+        const scaledDelta = delta * this.gameSpeed;
+        
         this.sys.game.events.emit('update-money', Math.floor(this.money));
 
         const cannonProgress = this.skillManager.getCannonProgress();
         this.sys.game.events.emit('update-cannon', cannonProgress);
 
+        // Auto Buy AI
+        if (this.isAutoBuy && !this.isGameOver) {
+            this.updateAutoBuyLogic(scaledDelta);
+        }
+
         // Auto spawn enemies
-        this.enemySpawnTimer += delta;
-        const spawnDelay = Math.max(800, 4000 - this.level * 350);
+        this.enemySpawnTimer += scaledDelta;
+        // 수정: 적의 스폰 속도는 플레이어의 level이 아닌 enemyLevel(난이도)에 비례하도록 변경합니다.
+        const spawnDelay = Math.max(800, 4000 - this.enemyLevel * 350);
         if (this.enemySpawnTimer > spawnDelay) {
             this.spawnEnemy();
             this.enemySpawnTimer = 0;
         }
 
         // Auto spawn allies (minions)
-        this.allyAutoSpawnTimer += delta;
+        this.allyAutoSpawnTimer += scaledDelta;
         const allySpawnDelay = 5000; // Every 5 seconds
         if (this.allyAutoSpawnTimer > allySpawnDelay) {
             this.spawnAlly('normal', true);
             this.allyAutoSpawnTimer = 0;
         }
 
+        // Auto Fire Skills in Auto Mode
+        if (this.isAutoMode) {
+            this.fireShouting();
+        }
+
         // Delegate unit logic update
-        const gameResult = this.unitManager.updateUnits(time, delta);
+        const gameResult = this.unitManager.updateUnits(time, scaledDelta);
         if (gameResult) {
-            if (gameResult === 'victory' && this.stage === 1) {
-                this.scene.pause();
-                this.sys.game.events.emit('stage-clear', { stage: 1, reward: 500 });
+            if (gameResult === 'victory') {
+                const config = STAGE_CONFIG[this.stage];
+                if (config && config.nextStage) {
+                    this.scene.pause();
+                    this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: config.clearReward });
+                } else {
+                    this.isGameOver = true;
+                    this.sys.game.events.emit('game-over', 'victory');
+                }
             } else {
                 this.isGameOver = true;
                 this.sys.game.events.emit('game-over', gameResult);
@@ -262,21 +306,67 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    updateAutoBuyLogic(delta) {
+        // Run AI decision roughly every 0.5s to avoid spamming
+        this.autoBuyTimer = (this.autoBuyTimer || 0) + delta;
+        if (this.autoBuyTimer < 500) return;
+        this.autoBuyTimer = 0;
+
+        const tankerCount = this.unitManager.allies.filter(a => a.typeKey === 'tanker').length;
+        const shooterCount = this.unitManager.allies.filter(a => a.typeKey === 'shooter').length;
+        const normalCount = this.unitManager.allies.filter(a => a.typeKey === 'normal').length;
+        const totalCount = tankerCount + shooterCount + normalCount;
+
+        // Efficiency/Strategic Logic:
+        // 1. Tanker Check: Need at least 1 tanker per 5 units, or if enemy is close
+        const leader = this.unitManager.allies.find(a => a.isBoss);
+        let enemyNear = false;
+        if (leader) {
+            enemyNear = this.unitManager.enemies.some(e => Math.abs(e.x - leader.x) < 300);
+        }
+
+        if (this.money >= ALLY_TYPES.tanker.cost && (tankerCount < 1 || (enemyNear && tankerCount < totalCount / 3))) {
+            this.spawnAlly('tanker');
+        } 
+        // 2. Shooter Check: Maintain a good ratio for DPS
+        else if (this.money >= ALLY_TYPES.shooter.cost && (shooterCount < normalCount || shooterCount < 2)) {
+            this.spawnAlly('shooter');
+        }
+    }
+
     proceedToNextStage() {
-        if (this.stage === 1) {
-            this.changeStage(2);
-            this.sys.game.events.emit('stage-up', 2);
+        const currentConfig = STAGE_CONFIG[this.stage];
+        if (currentConfig && currentConfig.nextStage) {
+            // 보상 지급
+            if (currentConfig.clearReward) {
+                this.addMoney(currentConfig.clearReward);
+            }
+
+            const nextStageNum = currentConfig.nextStage;
+            this.changeStage(nextStageNum);
+            this.sys.game.events.emit('stage-up', nextStageNum);
             
             // Clear existing units
             this.unitManager.clearField();
             
-            this.unitManager.spawnBoss(false); // Spawn Stage 2 Boss
+            this.unitManager.spawnBoss(false); // Spawn Next Stage Boss
             
             // Heal the ally leader and reset position
             const leader = this.unitManager.allies.find(a => a.isBoss);
             if (leader) {
                 leader.hp = leader.maxHp;
                 leader.x = 50; 
+                
+                // Ensure states are reset when moving to next stage
+                leader.isDragging = false;
+                delete leader.targetX;
+                leader.stunRemainingTime = 0;
+                leader.buffRemainingTime = 0;
+                
+                if (leader.isSprite) {
+                    leader.clearTint();
+                    leader.setScale(leader.baseScale * this.unitManager.getStageScaleMultiplier());
+                }
             }
             
             this.scene.resume();

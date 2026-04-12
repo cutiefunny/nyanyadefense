@@ -12,6 +12,9 @@ function App() {
   const [showDevMenu, setShowDevMenu] = createSignal(false);
   const [stage, setStage] = createSignal(1);
   const [stageCleared, setStageCleared] = createSignal(null);
+  const [isAutoMode, setIsAutoMode] = createSignal(false);
+  const [isAutoBuy, setIsAutoBuy] = createSignal(false);
+  const [gameSpeed, setGameSpeed] = createSignal(1);
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -95,6 +98,29 @@ function App() {
     }
   };
 
+  const toggleAutoMode = () => {
+    const newVal = !isAutoMode();
+    setIsAutoMode(newVal);
+    if (currentScene) {
+      currentScene.setAutoMode(newVal);
+    }
+  };
+
+  const toggleAutoBuy = () => {
+    const newVal = !isAutoBuy();
+    setIsAutoBuy(newVal);
+    if (currentScene) {
+      currentScene.setAutoBuy(newVal);
+    }
+  };
+
+  const changeGameSpeed = (speed) => {
+    setGameSpeed(speed);
+    if (currentScene) {
+      currentScene.setGameSpeed(speed);
+    }
+  };
+
   return (
     <div class="app-container">
       <div class="game-wrapper">
@@ -121,6 +147,18 @@ function App() {
             }} class="btn restart" style={{ "width": "auto", "padding": "10px 30px" }}>다음 스테이지</button>
           </div>
         )}
+        <div class="auto-mode-toggle" onClick={toggleAutoMode}>
+          <div class={`toggle-switch ${isAutoMode() ? 'on' : 'off'}`}>
+            <div class={isAutoMode() ? 'toggle-label on' : 'toggle-label off'}>AUTO</div>
+            <div class="toggle-handle"></div>
+          </div>
+        </div>
+        <div class="auto-buy-toggle" onClick={toggleAutoBuy}>
+          <div class={`toggle-switch build ${isAutoBuy() ? 'on' : 'off'}`}>
+            <div class={isAutoBuy() ? 'toggle-label on' : 'toggle-label off'}>BUY</div>
+            <div class="toggle-handle"></div>
+          </div>
+        </div>
       </div>
 
       <div class="controls-panel">
@@ -162,11 +200,18 @@ function App() {
             <button onClick={() => { setMoney(m => m + 1000); if (currentScene) currentScene.addMoney(1000); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>+1000 Money</button>
             <button onClick={() => { setLevel(l => l + 1); if (currentScene) currentScene.level++; }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>+1 Level</button>
             <button onClick={() => { setCannonProgress(100); if (currentScene) currentScene.skillManager.shoutingCooldown = 100; }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>Max Cannon</button>
-            <button onClick={() => { if (currentScene) currentScene.spawnEnemy(); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "border-radius": "4px", "cursor": "pointer" }}>Spawn Enemy</button>
+            <button onClick={() => { if (currentScene) currentScene.instantWin(); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fbd46d", "border": "1px solid #fbd46d", "border-radius": "4px", "cursor": "pointer" }}>Instant Win</button>
             <div style={{ "display": "flex", "align-items": "center", "gap": "5px", "border": "1px solid #e74c3c", "padding": "5px", "border-radius": "4px" }}>
               <span style={{ "color": "#e74c3c", "font-weight": "bold" }}>Stage (Current: {stage()}):</span>
               <button onClick={() => { setStage(1); if (currentScene) currentScene.changeStage(1); }} style={{ "padding": "2px 8px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "cursor": "pointer" }}>1</button>
               <button onClick={() => { setStage(2); if (currentScene) currentScene.changeStage(2); }} style={{ "padding": "2px 8px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "cursor": "pointer" }}>2</button>
+              <button onClick={() => { setStage(3); if (currentScene) currentScene.changeStage(3); }} style={{ "padding": "2px 8px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "cursor": "pointer" }}>3</button>
+            </div>
+            <div style={{ "display": "flex", "align-items": "center", "gap": "5px", "border": "1px solid #a29bfe", "padding": "5px", "border-radius": "4px" }}>
+              <span style={{ "color": "#a29bfe", "font-weight": "bold" }}>Speed:</span>
+              <button onClick={() => changeGameSpeed(1)} style={{ "padding": "2px 8px", "background": gameSpeed() === 1 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 1 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>1x</button>
+              <button onClick={() => changeGameSpeed(2)} style={{ "padding": "2px 8px", "background": gameSpeed() === 2 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 2 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>2x</button>
+              <button onClick={() => changeGameSpeed(3)} style={{ "padding": "2px 8px", "background": gameSpeed() === 3 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 3 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>3x</button>
             </div>
           </div>
         </div>

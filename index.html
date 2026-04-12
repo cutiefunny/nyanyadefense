@@ -9,9 +9,18 @@
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
   <script>
+    // 서비스 워커 및 캐시 제거 (PWA 오프라인 기능 제거 및 강제 업데이트)
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    // 캐시 저장소 강제 삭제
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
       });
     }
   </script>
