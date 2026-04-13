@@ -9,8 +9,10 @@ export const STAGE_CONFIG = {
             damage: 15,
             w: 80,
             scale: 0.8,
-            reward: 500
+            reward: 500,
+            isBoss: true
         },
+
         clearReward: 500,
         scaleMultiplier: 1.0,
         nextStage: 2,

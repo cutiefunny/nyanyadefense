@@ -91,28 +91,43 @@ export default class EffectManager {
     }
 
     playDeathEffect(unit) {
-        if (unit.hpBarBg) this.scene.add.tween({ targets: unit.hpBarBg, alpha: 0, duration: 200, onComplete: () => unit.hpBarBg.destroy() });
-        if (unit.hpBarFill) this.scene.add.tween({ targets: unit.hpBarFill, alpha: 0, duration: 200, onComplete: () => unit.hpBarFill.destroy() });
-        if (unit.shadow) this.scene.add.tween({ targets: unit.shadow, alpha: 0, duration: 200, onComplete: () => unit.shadow.destroy() });
+        // Fade out UI elements
+        const uiElements = [unit.hpBarBg, unit.hpBarFill, unit.shadow].filter(e => e);
+        if (uiElements.length > 0) {
+            this.scene.tweens.add({
+                targets: uiElements,
+                alpha: 0,
+                duration: 250
+            });
+        }
         
         if (unit.isSprite) {
             unit.stop(); // Stop any playing animation
-            // 5번 프레임 (0-indexed 라서 4)
-            unit.setFrame(4); 
+            // Use frame 4 (hurt) for normal units, frame 0 for bosses
+            const deathFrame = unit.isBoss ? 0 : 4;
+            try {
+                unit.setFrame(deathFrame);
+            } catch (e) {
+                unit.setFrame(0);
+            }
             unit.clearTint();
         }
 
-        // isAlly: faces right. Fall backward -> rotate counter-clockwise (-90)
-        // !isAlly: faces left. Fall backward -> rotate clockwise (90)
+        // isAlly faces right: falls left (-90 deg)
+        // !isAlly faces left: falls right (90 deg)
         const fallAngle = unit.isAlly ? -90 : 90; 
 
-        this.scene.add.tween({
+        this.scene.tweens.add({
             targets: unit,
             alpha: 0,
             angle: fallAngle,
-            duration: 500, // Fall down over 0.5s
-            ease: 'Quad.easeIn',
-            onComplete: () => unit.destroy()
+            y: unit.y + 20, // Feel like falling into the ground
+            duration: 600,
+            ease: 'Cubic.easeIn',
+            onComplete: () => {
+                if (unit.active) unit.destroy();
+            }
         });
     }
+
 }

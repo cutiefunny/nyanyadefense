@@ -63,23 +63,28 @@ export default class GameScene extends Phaser.Scene {
         if (leaderUrl) this.load.spritesheet('ally_leader', leaderUrl, { frameWidth: 100, frameHeight: 100 });
     }
 
-    constructor() {
-        super('GameScene');
-        this.money = 0;
-        this.totalMoneyEarned = 0;
+    init(data) {
+        this.stage = data?.stage || 1;
         this.isGameOver = false;
-        this.isAutoMode = false;
-        this.isAutoBuy = false;
-        this.gameSpeed = 1;
-        this.enemySpawnTimer = 0;
-        this.allyAutoSpawnTimer = 0;
+        this.isPaused = false; // Start unpaused for now, or true if App handles start
+        this.money = 200; // Starting gold
+        this.totalMoneyEarned = 200;
         this.level = 1;
-        this.stage = 1;
         this.enemyLevel = 1;
         this.totalEnemyExp = 0;
         this.stageTime = 0;
         this.processedEvents = new Set();
+        this.gameSpeed = 1;
+        
+        // Reset timeScale if it was changed
+        this.time.timeScale = 1;
     }
+
+
+    constructor() {
+        super('GameScene');
+    }
+
 
     create() {
         this.cameras.main.setBackgroundColor('#1a1a2e');
@@ -307,6 +312,11 @@ export default class GameScene extends Phaser.Scene {
         if (gameResult) {
             if (gameResult === 'victory') {
                 const config = STAGE_CONFIG[this.stage];
+                
+                // Add reward to global gold immediately on victory
+                const currentGlobal = this.registry.get('globalGold') || 0;
+                this.registry.set('globalGold', currentGlobal + (config.clearReward || 0));
+
                 if (config && config.nextStage) {
                     this.scene.pause();
                     this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: config.clearReward });
@@ -315,6 +325,7 @@ export default class GameScene extends Phaser.Scene {
                     this.sys.game.events.emit('game-over', 'victory');
                 }
             } else {
+
                 this.isGameOver = true;
                 this.sys.game.events.emit('game-over', gameResult);
             }
@@ -397,10 +408,12 @@ export default class GameScene extends Phaser.Scene {
     proceedToNextStage() {
         const currentConfig = STAGE_CONFIG[this.stage];
         if (currentConfig && currentConfig.nextStage) {
-            // 보상 지급
+            // 보상 지급 (전투용 캐쉬)
             if (currentConfig.clearReward) {
                 this.addMoney(currentConfig.clearReward);
             }
+
+
 
             const nextStageNum = currentConfig.nextStage;
             this.changeStage(nextStageNum);

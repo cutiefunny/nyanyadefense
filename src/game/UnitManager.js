@@ -58,8 +58,20 @@ export default class UnitManager {
         const zOffset = Phaser.Math.Between(-150, 150);
         const yOffset = zOffset * Math.sin(angleRad);
 
+        const unitLevels = this.scene.registry.get('unitLevels') || {};
+        const level = unitLevels[typeKey] || 1;
+        const levelBonus = 1 + (level - 1) * 0.1; // 10% bonus per level
+
+        const finalSpecs = { 
+            ...specs, 
+            typeKey,
+            hp: specs.hp * levelBonus,
+            damage: specs.damage * levelBonus
+        };
+
         const spriteKey = 'ally_' + typeKey;
-        const ally = new Unit(this.scene, 0, yOffsetBase + yOffset, spriteKey, { ...specs, typeKey }, true, this);
+        const ally = new Unit(this.scene, 0, yOffsetBase + yOffset, spriteKey, finalSpecs, true, this);
+
         
         this.allies.push(ally);
         return ally;
@@ -129,8 +141,9 @@ export default class UnitManager {
         const x = isAlly ? 50 : 750;
         const y = 270;
 
+        specs.isBoss = true;
         const boss = new Unit(this.scene, x, y, spriteKey, specs, isAlly, this);
-        boss.isBoss = true;
+
 
         // Breathing animation effect
         this.addBreathingEffect(boss);
@@ -184,6 +197,12 @@ export default class UnitManager {
         const updateResult = unit.update(time, delta, opponents);
         
         if (updateResult === 'dead') {
+            const group = isAlly ? this.allies : this.enemies;
+            group.splice(index, 1);
+
+            this.scene.sound.play('ouch' + Phaser.Math.Between(1, 2), { volume: 0.5 });
+            this.effectManager.playDeathEffect(unit);
+
             if (unit.isBoss) return isAlly ? 'defeat' : 'victory';
             
             if (!isAlly && unit.reward) {
@@ -191,14 +210,8 @@ export default class UnitManager {
             } else if (isAlly && !unit.isBoss) {
                 this.scene.addEnemyExp(50);
             }
-            
-            this.scene.sound.play('ouch' + Phaser.Math.Between(1, 2), { volume: 0.5 });
-            this.effectManager.playDeathEffect(unit);
-            
-            const group = isAlly ? this.allies : this.enemies;
-            group.splice(index, 1);
-            unit.destroy();
         }
+
         return null;
     }
 }

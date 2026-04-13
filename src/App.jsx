@@ -1,5 +1,6 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
 import Phaser from 'phaser';
+import LobbyScene from './game/LobbyScene';
 import GameScene from './game/GameScene';
 import { ALLY_TYPES } from './game/unitsConfig';
 import './App.css';
@@ -8,6 +9,7 @@ function App() {
   const [money, setMoney] = createSignal(0);
   const [level, setLevel] = createSignal(1);
   const [gameOver, setGameOver] = createSignal('');
+  const [currentSceneKey, setCurrentSceneKey] = createSignal('LobbyScene');
   const [cannonProgress, setCannonProgress] = createSignal(0);
   const [showDevMenu, setShowDevMenu] = createSignal(false);
   const [stage, setStage] = createSignal(1);
@@ -20,6 +22,13 @@ function App() {
   let currentScene = null;
 
   onMount(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === '`') {
+        setShowDevMenu((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     const config = {
       type: Phaser.AUTO,
       width: 800,
@@ -31,22 +40,24 @@ function App() {
         autoCenter: Phaser.Scale.CENTER_BOTH,
         orientation: Phaser.Scale.Orientation.ANY
       },
-      scene: GameScene
+      scene: [LobbyScene, GameScene]
     };
 
     gameInstance = new Phaser.Game(config);
 
-    const handleKeyDown = (e) => {
-      if (e.key === '`') {
-        setShowDevMenu((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
+    gameInstance.events.on('lobby-ready', () => {
+      setCurrentSceneKey('LobbyScene');
+      setGameOver('');
+      setStageCleared(null);
+    });
 
     gameInstance.events.on('game-ready', (scene) => {
       currentScene = scene;
+      setCurrentSceneKey('GameScene');
       setGameOver('');
+      setStage(scene.stage);
     });
+
 
     gameInstance.events.on('update-money', (m) => {
       setMoney(m);
@@ -124,17 +135,23 @@ function App() {
   return (
     <div class="app-container">
       <div class="game-wrapper">
-        <div class="stats hud-stats">
-          <div class="money">🪙 ${Math.floor(money())}</div>
-          <div class="level">Level: {level()}</div>
-        </div>
+        {currentSceneKey() === 'GameScene' && (
+          <div class="stats hud-stats">
+            <div class="money">🪙 ${Math.floor(money())}</div>
+            <div class="level">Level: {level()}</div>
+          </div>
+        )}
         <div ref={gameContainer} class="phaser-container"></div>
         {gameOver() !== '' && (
           <div class="game-over-screen">
             <h2 class={gameOver() === 'victory' ? 'victory-msg' : 'defeat-msg'}>
               {gameOver() === 'victory' ? 'Victory!' : 'Defeat...'}
             </h2>
-            <button onClick={() => window.location.reload()} class="btn restart">Play Again</button>
+            <button onClick={() => { 
+                if (gameInstance) gameInstance.scene.start('LobbyScene');
+                setCurrentSceneKey('LobbyScene');
+                setGameOver('');
+            }} class="btn restart">Back to Lobby</button>
           </div>
         )}
         {stageCleared() && (
@@ -145,53 +162,66 @@ function App() {
               setStageCleared(null);
               if (currentScene) currentScene.proceedToNextStage();
             }} class="btn restart" style={{ "width": "auto", "padding": "10px 30px" }}>다음 스테이지</button>
+            <button onClick={() => {
+              setStageCleared(null);
+              if (gameInstance) gameInstance.scene.start('LobbyScene');
+              setCurrentSceneKey('LobbyScene');
+            }} class="btn restart" style={{ "width": "auto", "padding": "10px 30px", "background": "#16213e", "margin-top": "10px" }}>로비로 이동</button>
           </div>
         )}
-        <div class="auto-mode-toggle" onClick={toggleAutoMode}>
-          <div class={`toggle-switch ${isAutoMode() ? 'on' : 'off'}`}>
-            <div class={isAutoMode() ? 'toggle-label on' : 'toggle-label off'}>AUTO</div>
-            <div class="toggle-handle"></div>
-          </div>
-        </div>
-        <div class="auto-buy-toggle" onClick={toggleAutoBuy}>
-          <div class={`toggle-switch build ${isAutoBuy() ? 'on' : 'off'}`}>
-            <div class={isAutoBuy() ? 'toggle-label on' : 'toggle-label off'}>BUY</div>
-            <div class="toggle-handle"></div>
-          </div>
-        </div>
+        {currentSceneKey() === 'GameScene' && (
+          <>
+            <div class="auto-mode-toggle" onClick={toggleAutoMode}>
+              <div class={`toggle-switch ${isAutoMode() ? 'on' : 'off'}`}>
+                <div class={isAutoMode() ? 'toggle-label on' : 'toggle-label off'}>AUTO</div>
+                <div class="toggle-handle"></div>
+              </div>
+            </div>
+            <div class="auto-buy-toggle" onClick={toggleAutoBuy}>
+              <div class={`toggle-switch build ${isAutoBuy() ? 'on' : 'off'}`}>
+                <div class={isAutoBuy() ? 'toggle-label on' : 'toggle-label off'}>BUY</div>
+                <div class="toggle-handle"></div>
+              </div>
+            </div>
+          </>
+        )}
+
       </div>
 
-      <div class="controls-panel">
-        <div class="main-controls">
-            <div class="button-group allies-group">
-                <button class="btn ally-btn basic-btn" disabled={money() < ALLY_TYPES.normal.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('normal')}>
-                    <div class="unit-icon basic-icon"></div>
-                    <span class="cost">🪙 {ALLY_TYPES.normal.cost}</span>
-                </button>
-                <button class="btn ally-btn tank-btn" disabled={money() < ALLY_TYPES.tanker.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('tanker')}>
-                    <div class="unit-icon tank-icon"></div>
-                    <span class="cost">🪙 {ALLY_TYPES.tanker.cost}</span>
-                </button>
-                <button class="btn ally-btn ranger-btn" disabled={money() < ALLY_TYPES.shooter.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('shooter')}>
-                    <div class="unit-icon ranger-icon"></div>
-                    <span class="cost">🪙 {ALLY_TYPES.shooter.cost}</span>
-                </button>
-            </div>
+      {currentSceneKey() === 'GameScene' && (
+        <div class="controls-panel">
+          <div class="main-controls">
+              <div class="button-group allies-group">
+                  <button class="btn ally-btn basic-btn" disabled={money() < ALLY_TYPES.normal.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('normal')}>
+                      <div class="unit-icon basic-icon"></div>
+                      <span class="cost">🪙 {ALLY_TYPES.normal.cost}</span>
+                  </button>
+                  <button class="btn ally-btn tank-btn" disabled={money() < ALLY_TYPES.tanker.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('tanker')}>
+                      <div class="unit-icon tank-icon"></div>
+                      <span class="cost">🪙 {ALLY_TYPES.tanker.cost}</span>
+                  </button>
+                  <button class="btn ally-btn ranger-btn" disabled={money() < ALLY_TYPES.shooter.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('shooter')}>
+                      <div class="unit-icon ranger-icon"></div>
+                      <span class="cost">🪙 {ALLY_TYPES.shooter.cost}</span>
+                  </button>
+              </div>
 
-            <div class="button-group upgrades-group">
-                <button class="btn ally-btn heal-btn" disabled={money() < 100 || gameOver() !== '' || stageCleared()} onClick={handleHeal}>
-                    <div class="ability-icon">💚</div>
-                    <span class="cost">🪙 100</span>
-                </button>
-                <button class="btn ally-btn shouting-btn" disabled={cannonProgress() < 100 || gameOver() !== '' || stageCleared()} onClick={handleShouting}>
-                    <div class="ability-icon">🗣️</div>
-                    <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
-                        {cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`}
-                    </span>
-                </button>
-            </div>
+              <div class="button-group upgrades-group">
+                  <button class="btn ally-btn heal-btn" disabled={money() < 100 || gameOver() !== '' || stageCleared()} onClick={handleHeal}>
+                      <div class="ability-icon">💚</div>
+                      <span class="cost">🪙 100</span>
+                  </button>
+                  <button class="btn ally-btn shouting-btn" disabled={cannonProgress() < 100 || gameOver() !== '' || stageCleared()} onClick={handleShouting}>
+                      <div class="ability-icon">🗣️</div>
+                      <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
+                          {cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`}
+                      </span>
+                  </button>
+              </div>
+          </div>
         </div>
-      </div>
+      )}
+
       
       {showDevMenu() && (
         <div class="dev-menu" style={{ "margin-top": "15px", "background": "rgba(0,0,0,0.8)", "padding": "15px", "border-radius": "12px", "width": "100%", "max-width": "800px", "color": "#43d8c9", "font-family": "monospace", "border": "1px solid #43d8c9" }}>
