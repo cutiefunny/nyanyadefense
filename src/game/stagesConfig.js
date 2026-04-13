@@ -13,7 +13,13 @@ export const STAGE_CONFIG = {
         },
         clearReward: 500,
         scaleMultiplier: 1.0,
-        nextStage: 2
+        nextStage: 2,
+        events: [],
+        traits: {
+            enemySpeedMultiplier: 1.0,
+            spawnRateMultiplier: 1.0,
+            description: 'Standard stage with normal difficulty.'
+        }
     },
     2: {
         background: 'bg_stage2',
@@ -29,8 +35,14 @@ export const STAGE_CONFIG = {
             isBoss: true
         },
         clearReward: 1000,
-        scaleMultiplier: 1.1,
-        nextStage: 3
+        scaleMultiplier: 1.2,
+        nextStage: 3,
+        events: [],
+        traits: {
+            enemySpeedMultiplier: 1.1,
+            spawnRateMultiplier: 1.2,
+            description: 'Increased enemy speed and spawn rate.'
+        }
     },
     3: {
         background: 'bg_stage3',
@@ -40,13 +52,25 @@ export const STAGE_CONFIG = {
             spriteKey: 'enemy_boss3',
             hp: 6000,
             damage: 50,
-            w: 150,
-            scale: 0.7,
+            w: 120,
+            scale: 0.6,
             reward: 2000,
             isBoss: true
         },
         clearReward: 2000,
-        scaleMultiplier: 1.2,
-        nextStage: null
+        scaleMultiplier: 1.5,
+        nextStage: null,
+        events: [
+            {
+                type: 'warning',
+                time: 10000,
+                message: 'Massive enemies detected!'
+            }
+        ],
+        traits: {
+            enemySpeedMultiplier: 0.9,
+            spawnRateMultiplier: 1.5,
+            description: 'Large units stage. Enemies are slower but much bigger and spawn frequently.'
+        }
     }
 };

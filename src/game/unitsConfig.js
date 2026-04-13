@@ -5,8 +5,8 @@ export const ALLY_TYPES = {
 };
 
 export const ENEMY_TYPES = [
-    { type: 'dog', hp: 120, speed: -0.8, damage: 12, range: 10, cooldown: 1200, color: 0xe94560, w: 40, h: 40, bonusKnockback: 0, scale: 0.6, reward: 20 },
-    { type: 'wawa', hp: 100, speed: -2.5, damage: 8, range: 10, cooldown: 300, color: 0xffffff, w: 25, h: 25, bonusKnockback: 0, scale: 0.4, reward: 15 }
+    { type: 'dog', hp: 120, speed: -0.8, damage: 12, range: 10, cooldown: 1200, color: 0xe94560, w: 40, h: 40, bonusKnockback: 0, scale: 0.65, reward: 20 },
+    { type: 'wawa', hp: 100, speed: -2.5, damage: 8, range: 10, cooldown: 300, color: 0xffffff, w: 25, h: 25, bonusKnockback: 0, scale: 0.5, reward: 15 }
 ];
 
 export const BOSS_CONFIG = {

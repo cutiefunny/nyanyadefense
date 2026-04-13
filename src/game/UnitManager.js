@@ -82,9 +82,13 @@ export default class UnitManager {
         }
 
         const specs = { ...(ENEMY_TYPES[typeChoice] || ENEMY_TYPES[0]) };
+        const stageConfig = STAGE_CONFIG[this.scene.stage];
+        const traitMultiplier = stageConfig?.traits?.enemySpeedMultiplier || 1.0;
+        
         const scale = 1 + (level * 0.1);
         specs.hp *= scale;
         specs.damage *= scale;
+        specs.speed *= traitMultiplier; // Apply stage trait
 
         const angleRad = Phaser.Math.DegToRad(5);
         const zOffset = Phaser.Math.Between(-150, 150);

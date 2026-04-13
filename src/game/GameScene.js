@@ -77,6 +77,8 @@ export default class GameScene extends Phaser.Scene {
         this.stage = 1;
         this.enemyLevel = 1;
         this.totalEnemyExp = 0;
+        this.stageTime = 0;
+        this.processedEvents = new Set();
     }
 
     create() {
@@ -207,6 +209,10 @@ export default class GameScene extends Phaser.Scene {
         }
         // Update all existing units to match the new stage's scale multiplier
         this.unitManager.updateAllUnitScales();
+        
+        // Reset stage timer and processed events
+        this.stageTime = 0;
+        this.processedEvents.clear();
     }
 
     spawnEnemy() {
@@ -254,6 +260,9 @@ export default class GameScene extends Phaser.Scene {
 
         // Apply game speed multiplier to delta for custom logic
         const scaledDelta = delta * this.gameSpeed;
+        this.stageTime += scaledDelta;
+
+        this.processStageEvents();
         
         this.sys.game.events.emit('update-money', Math.floor(this.money));
 
@@ -267,8 +276,14 @@ export default class GameScene extends Phaser.Scene {
 
         // Auto spawn enemies
         this.enemySpawnTimer += scaledDelta;
-        // 수정: 적의 스폰 속도는 플레이어의 level이 아닌 enemyLevel(난이도)에 비례하도록 변경합니다.
-        const spawnDelay = Math.max(800, 4000 - this.enemyLevel * 350);
+        
+        const config = STAGE_CONFIG[this.stage];
+        const spawnRateMultiplier = config?.traits?.spawnRateMultiplier || 1.0;
+        
+        // 수정: 적의 스폰 속도는 플레이어의 level이 아닌 enemyLevel(난이도)에 비례하도록 변경하며, 스테이지 특성을 반영합니다.
+        const baseSpawnDelay = Math.max(800, 4000 - this.enemyLevel * 350);
+        const spawnDelay = baseSpawnDelay / spawnRateMultiplier;
+        
         if (this.enemySpawnTimer > spawnDelay) {
             this.spawnEnemy();
             this.enemySpawnTimer = 0;
@@ -303,6 +318,51 @@ export default class GameScene extends Phaser.Scene {
                 this.isGameOver = true;
                 this.sys.game.events.emit('game-over', gameResult);
             }
+        }
+    }
+
+    processStageEvents() {
+        const config = STAGE_CONFIG[this.stage];
+        if (!config || !config.events) return;
+
+        config.events.forEach((event, index) => {
+            const eventId = `${this.stage}_${index}`;
+            if (this.processedEvents.has(eventId)) return;
+
+            if (this.stageTime >= (event.time || 0)) {
+                this.processedEvents.add(eventId);
+                this.handleEvent(event);
+            }
+        });
+    }
+
+    handleEvent(event) {
+        switch (event.type) {
+            case 'warning':
+                this.sys.game.events.emit('stage-event', { type: 'warning', message: event.message });
+                // Also show a temporary text in the middle of the screen
+                const text = this.add.text(400, 200, event.message, {
+                    fontSize: '32px',
+                    fill: '#ff0000',
+                    fontStyle: 'bold',
+                    stroke: '#000',
+                    strokeThickness: 6
+                }).setOrigin(0.5);
+                
+                this.tweens.add({
+                    targets: text,
+                    alpha: 0,
+                    y: 150,
+                    duration: 3000,
+                    onComplete: () => text.destroy()
+                });
+                break;
+            case 'spawn_swarm':
+                const count = event.details?.count || 5;
+                for (let i = 0; i < count; i++) {
+                    this.time.delayedCall(i * 200, () => this.spawnEnemy());
+                }
+                break;
         }
     }
 
