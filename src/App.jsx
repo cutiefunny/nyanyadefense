@@ -86,6 +86,21 @@ function App() {
       setGameOver(result);
     });
 
+    gameInstance.events.on('toggle-dev-menu', () => {
+      setShowDevMenu((prev) => !prev);
+    });
+
+    // Registry Persistence (Global listeners)
+    gameInstance.registry.events.on('changedata-globalGold', (parent, value) => {
+        localStorage.setItem('nyanya_xp', value);
+    });
+    gameInstance.registry.events.on('changedata-unitLevels', (parent, value) => {
+        localStorage.setItem('nyanya_unitLevels', JSON.stringify(value));
+    });
+    gameInstance.registry.events.on('changedata-stageClears', (parent, value) => {
+        localStorage.setItem('nyanya_stageClears', JSON.stringify(value));
+    });
+
     onCleanup(() => {
       window.removeEventListener('keydown', handleKeyDown);
       if (gameInstance) {
@@ -219,6 +234,13 @@ function App() {
       {showDevMenu() && (
         <div class="dev-menu" style={{ "margin-top": "15px", "background": "rgba(0,0,0,0.8)", "padding": "15px", "border-radius": "12px", "width": "100%", "max-width": "800px", "color": "#43d8c9", "font-family": "monospace", "border": "1px solid #43d8c9" }}>
           <h4 style={{ "margin-top": "0", "margin-bottom": "10px", "text-transform": "uppercase" }}>Developer Menu</h4>
+          
+          <div class="storage-info" style={{ "margin-bottom": "15px", "font-size": "12px", "color": "#fbd46d", "border-bottom": "1px solid #43d8c9", "padding-bottom": "10px" }}>
+            <strong>[Local Storage]</strong><br/>
+            XP: {localStorage.getItem('nyanya_xp') || 0} | 
+            Clears: {localStorage.getItem('nyanya_stageClears') || 'N/A'} | 
+            Device: {localStorage.getItem('nyanya_deviceId')}
+          </div>
           <div style={{ "display": "flex", "gap": "10px", "flex-wrap": "wrap" }}>
             <button onClick={() => { setMoney(m => m + 1000); if (currentScene) currentScene.addMoney(1000); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>+1000 Money</button>
             <button onClick={() => { 

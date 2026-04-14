@@ -8,8 +8,8 @@ export default class SkillManager {
     }
 
     useShouting() {
-        if (this.scene.time.now - this.lastCannonTime >= this.cannonCooldown) {
-            this.lastCannonTime = this.scene.time.now;
+        if (this.scene.battleTime - this.lastCannonTime >= this.cannonCooldown) {
+            this.lastCannonTime = this.scene.battleTime;
 
             const leader = this.unitManager.allies.find(u => u.isBoss && u.isAlly);
             if (leader) {
@@ -63,7 +63,7 @@ export default class SkillManager {
     }
 
     getCannonProgress() {
-        const time = this.scene.time.now;
+        const time = this.scene.battleTime;
         const ready = (time - this.lastCannonTime >= this.cannonCooldown);
         return ready ? 100 : Math.floor(((time - this.lastCannonTime) / this.cannonCooldown) * 100);
     }

@@ -73,6 +73,7 @@ export default class GameScene extends Phaser.Scene {
         this.enemyLevel = 1;
         this.totalEnemyExp = 0;
         this.stageTime = 0;
+        this.battleTime = 0; // 게임 배속이 적용된 누적 시간
         this.processedEvents = new Set();
         this.gameSpeed = 1;
         this.isAutoMode = true;
@@ -272,6 +273,7 @@ export default class GameScene extends Phaser.Scene {
         // Apply game speed multiplier to delta for custom logic
         const scaledDelta = delta * this.gameSpeed;
         this.stageTime += scaledDelta;
+        this.battleTime += scaledDelta;
 
         this.processStageEvents();
         
@@ -313,15 +315,25 @@ export default class GameScene extends Phaser.Scene {
             this.fireShouting();
         }
 
-        // Delegate unit logic update
-        const gameResult = this.unitManager.updateUnits(time, scaledDelta);
+        // Delegate unit logic update (Pass custom battleTime for speed control)
+        const gameResult = this.unitManager.updateUnits(this.battleTime, scaledDelta);
         if (gameResult) {
             if (gameResult === 'victory') {
                 const config = STAGE_CONFIG[this.stage];
-                
                 // Add reward to global gold immediately on victory
+                const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
+                const clearCount = stageClearsBefore[this.stage] || 0;
+                const clearRewardMultiplier = 1 + (clearCount * 0.1);
+                
                 const currentGlobal = this.registry.get('globalGold') || 0;
-                this.registry.set('globalGold', currentGlobal + (config.clearReward || 0));
+                const finalReward = Math.floor((config.clearReward || 0) * clearRewardMultiplier);
+                
+                this.registry.set('globalGold', currentGlobal + finalReward);
+
+                // Update clear counts (Clone object to trigger registry change event)
+                const stageClears = { ...stageClearsBefore };
+                stageClears[this.stage] = clearCount + 1;
+                this.registry.set('stageClears', stageClears);
 
                 if (config && config.nextStage) {
                     this.scene.pause();

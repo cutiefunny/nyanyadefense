@@ -97,9 +97,14 @@ export default class UnitManager {
         const stageConfig = STAGE_CONFIG[this.scene.stage];
         const traitMultiplier = stageConfig?.traits?.enemySpeedMultiplier || 1.0;
         
-        const scale = 1 + (level * 0.1);
+        const stageClears = this.scene.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
+        const clearCount = stageClears[this.scene.stage] || 0;
+        const clearBonus = 1 + (clearCount * 0.1);
+
+        const scale = (1 + (level * 0.1)) * clearBonus;
         specs.hp *= scale;
         specs.damage *= scale;
+        specs.reward = (specs.reward || 10) * clearBonus; // 보상도 10% 증가 (적 처치 보상)
         specs.speed *= traitMultiplier; // Apply stage trait
 
         const angleRad = Phaser.Math.DegToRad(5);
@@ -138,11 +143,16 @@ export default class UnitManager {
             }
         }
 
-        const x = isAlly ? 50 : 750;
-        const y = 270;
+        if (!isAlly) {
+            const stageClears = this.scene.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
+            const clearCount = stageClears[this.scene.stage] || 0;
+            const clearBonus = 1 + (clearCount * 0.1);
+            specs.hp *= clearBonus;
+            specs.damage *= clearBonus;
+        }
 
-        specs.isBoss = true;
-        const boss = new Unit(this.scene, x, y, spriteKey, specs, isAlly, this);
+        const yOffset = 270;
+        const boss = new Unit(this.scene, isAlly ? 50 : 750, yOffset, spriteKey, specs, isAlly, this);
 
 
         // Breathing animation effect

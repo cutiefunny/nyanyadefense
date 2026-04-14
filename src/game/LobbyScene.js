@@ -49,30 +49,30 @@ export default class LobbyScene extends Phaser.Scene {
             this.setDefaultLevels();
         }
 
-        // Listen for registry changes for certain keys to auto-save
-        // (Remove existing listeners first to prevent duplicates on restart)
-        this.registry.events.off('changedata-globalGold');
-        this.registry.events.off('changedata-unitLevels');
+        // Stage Clears
+        let savedClears = localStorage.getItem('nyanya_stageClears');
+        if (savedClears) {
+            try {
+                this.registry.set('stageClears', JSON.parse(savedClears));
+            } catch (e) {
+                this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0 });
+            }
+        } else {
+            this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0 });
+        }
 
         const onGoldChange = (parent, value) => {
-            localStorage.setItem('nyanya_xp', value);
             // 씬이 활성화된 상태일 때만 텍스트 업데이트 (렌더링 에러 방지)
             if (this.scene.isActive() && this.goldText) {
                 this.goldText.setText(`XP: ${Math.floor(value)}`);
             }
         };
 
-        const onLevelsChange = (parent, value) => {
-            localStorage.setItem('nyanya_unitLevels', JSON.stringify(value));
-        };
-
         this.registry.events.on('changedata-globalGold', onGoldChange);
-        this.registry.events.on('changedata-unitLevels', onLevelsChange);
 
-        // 씬이 정지되거나 shutdown될 때 리스너 해제
+        // 씬이 정지되거나 shutdown될 때 UI 리스너만 해제
         this.events.once('shutdown', () => {
             this.registry.events.off('changedata-globalGold', onGoldChange);
-            this.registry.events.off('changedata-unitLevels', onLevelsChange);
         });
     }
 
@@ -131,13 +131,30 @@ export default class LobbyScene extends Phaser.Scene {
             fill: '#fbd46d'
         }).setOrigin(1, 0.5);
 
-        this.add.text(20, headerY, 'NYANYA BASE', {
+        const debugText = this.add.text(20, headerY, 'NYANYA BASE', {
             fontSize: '18px',
             fontFamily: 'Arial Black',
             fill: '#ffffff',
             stroke: '#000',
             strokeThickness: 3
-        }).setOrigin(0, 0.5);
+        }).setOrigin(0, 0.5).setInteractive();
+
+        let clickCount = 0;
+        debugText.on('pointerdown', () => {
+            clickCount++;
+            if (clickCount >= 10) {
+                this.sys.game.events.emit('toggle-dev-menu');
+                clickCount = 0;
+                // 시각적 피드백 (반짝임)
+                this.tweens.add({
+                    targets: debugText,
+                    alpha: 0,
+                    duration: 50,
+                    yoyo: true,
+                    repeat: 5
+                });
+            }
+        });
     }
 
     renderMainScreen() {
@@ -270,42 +287,68 @@ export default class LobbyScene extends Phaser.Scene {
             strokeThickness: 5
         }).setOrigin(0.5);
 
+        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
         const stages = [1, 2, 3];
         stages.forEach((s, i) => {
             const x = 200 + i * 200;
             const y = 160;
+            
+            // Unlock logic: Stage 1 is always open. Stage N is open if Stage N-1 clear count > 0.
+            const isLocked = s > 1 && (stageClears[s - 1] || 0) <= 0;
+            const clears = stageClears[s] || 0;
 
             // Background image preview
             const bgKey = `bg_stage${s}`;
             if (this.textures.exists(bgKey)) {
-                this.add.image(x, y, bgKey).setDisplaySize(160, 100).setAlpha(0.6);
+                this.add.image(x, y, bgKey).setDisplaySize(160, 100).setAlpha(isLocked ? 0.2 : 0.6);
             }
 
-            const card = this.add.rectangle(x, y, 160, 100, 0xffffff, 0.2)
-                .setStrokeStyle(4, 0x000000)
-                .setInteractive({ useHandCursor: true });
+            const card = this.add.rectangle(x, y, 160, 100, 0xffffff, isLocked ? 0.1 : 0.2)
+                .setStrokeStyle(4, isLocked ? 0x444444 : 0x000000);
 
-            this.add.text(x, y - 10, `STAGE ${s}`, {
-                fontSize: '24px',
-                fontFamily: 'Arial Black',
-                fill: '#000000',
-                stroke: '#fff',
-                strokeThickness: 2
-            }).setOrigin(0.5);
+            if (isLocked) {
+                this.add.text(x, y - 10, `STAGE ${s}`, {
+                    fontSize: '24px',
+                    fontFamily: 'Arial Black',
+                    fill: '#444444'
+                }).setOrigin(0.5);
+                this.add.text(x, y + 25, 'LOCKED', {
+                    fontSize: '18px',
+                    fontFamily: 'Arial Black',
+                    fill: '#ff0000'
+                }).setOrigin(0.5);
+            } else {
+                card.setInteractive({ useHandCursor: true });
+                
+                this.add.text(x, y - 10, `STAGE ${s}`, {
+                    fontSize: '24px',
+                    fontFamily: 'Arial Black',
+                    fill: '#000000',
+                    stroke: '#fff',
+                    strokeThickness: 2
+                }).setOrigin(0.5);
 
-            this.add.text(x, y + 25, '전투개시!!', {
-                fontSize: '16px',
-                fontFamily: 'Arial Black',
-                fill: '#e74c3c',
-                stroke: '#fff',
-                strokeThickness: 2
-            }).setOrigin(0.5);
+                this.add.text(x, y + 20, '전투개시!!', {
+                    fontSize: '16px',
+                    fontFamily: 'Arial Black',
+                    fill: '#e74c3c',
+                    stroke: '#fff',
+                    strokeThickness: 2
+                }).setOrigin(0.5);
 
-            card.on('pointerover', () => card.setAlpha(1.0).setScale(1.05));
-            card.on('pointerout', () => card.setAlpha(0.2).setScale(1.0));
-            card.on('pointerdown', () => {
-                this.scene.start('GameScene', { stage: s });
-            });
+                // Clear Count Display
+                this.add.text(x, y + 42, `Cleared: ${clears} times`, {
+                    fontSize: '12px',
+                    fontFamily: 'Arial Black',
+                    fill: '#333333'
+                }).setOrigin(0.5);
+
+                card.on('pointerover', () => card.setAlpha(1.0).setScale(1.05));
+                card.on('pointerout', () => card.setAlpha(0.2).setScale(1.0));
+                card.on('pointerdown', () => {
+                    this.scene.start('GameScene', { stage: s });
+                });
+            }
         });
 
         const backBtn = this.add.text(400, 275, '< 돌아가기', {
