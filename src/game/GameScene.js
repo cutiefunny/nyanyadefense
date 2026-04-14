@@ -151,6 +151,10 @@ export default class GameScene extends Phaser.Scene {
         this.enemySpawnTimer = 0;
         this.allyAutoSpawnTimer = 0;
 
+        // Initial minion spawn
+        this.spawnAlly('normal', true);
+        this.spawnEnemy();
+
         this.sys.game.events.emit('game-ready', this);
     }
 
@@ -423,6 +427,14 @@ export default class GameScene extends Phaser.Scene {
             this.unitManager.clearField();
             
             this.unitManager.spawnBoss(false); // Spawn Next Stage Boss
+            
+            // Initial minion spawn for the next stage
+            this.spawnAlly('normal', true);
+            this.spawnEnemy();
+            
+            // Reset timers
+            this.enemySpawnTimer = 0;
+            this.allyAutoSpawnTimer = 0;
             
             // Heal the ally leader and reset position
             const leader = this.unitManager.allies.find(a => a.isBoss);
