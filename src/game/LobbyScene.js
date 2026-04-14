@@ -11,17 +11,79 @@ export default class LobbyScene extends Phaser.Scene {
         this.tab = 'MAIN'; // Default tab is now the cat base
     }
 
-    init() {
-        if (!this.registry.has('globalGold')) {
-            this.registry.set('globalGold', 1000);
+    init(data) {
+        // 내부 탭 전환이 아닌 경우(외부에서 씬 시작)에만 MAIN으로 리셋
+        if (!data?.keepTab) {
+            this.tab = 'MAIN';
         }
-        if (!this.registry.has('unitLevels')) {
-            this.registry.set('unitLevels', {
-                normal: 1,
-                tanker: 1,
-                shooter: 1
-            });
+
+        this.loadPersistentData();
+    }
+
+    loadPersistentData() {
+        // Device ID
+        let deviceId = localStorage.getItem('nyanya_deviceId');
+        if (!deviceId) {
+            deviceId = 'user-' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('nyanya_deviceId', deviceId);
         }
+        this.registry.set('deviceId', deviceId);
+
+        // Global XP (stored as globalGold)
+        let savedXp = localStorage.getItem('nyanya_xp');
+        if (savedXp === null) {
+            savedXp = 0;
+            localStorage.setItem('nyanya_xp', savedXp);
+        }
+        this.registry.set('globalGold', parseInt(savedXp));
+
+        // Unit Levels
+        let savedLevels = localStorage.getItem('nyanya_unitLevels');
+        if (savedLevels) {
+            try {
+                this.registry.set('unitLevels', JSON.parse(savedLevels));
+            } catch (e) {
+                this.setDefaultLevels();
+            }
+        } else {
+            this.setDefaultLevels();
+        }
+
+        // Listen for registry changes for certain keys to auto-save
+        // (Remove existing listeners first to prevent duplicates on restart)
+        this.registry.events.off('changedata-globalGold');
+        this.registry.events.off('changedata-unitLevels');
+
+        const onGoldChange = (parent, value) => {
+            localStorage.setItem('nyanya_xp', value);
+            // 씬이 활성화된 상태일 때만 텍스트 업데이트 (렌더링 에러 방지)
+            if (this.scene.isActive() && this.goldText) {
+                this.goldText.setText(`XP: ${Math.floor(value)}`);
+            }
+        };
+
+        const onLevelsChange = (parent, value) => {
+            localStorage.setItem('nyanya_unitLevels', JSON.stringify(value));
+        };
+
+        this.registry.events.on('changedata-globalGold', onGoldChange);
+        this.registry.events.on('changedata-unitLevels', onLevelsChange);
+
+        // 씬이 정지되거나 shutdown될 때 리스너 해제
+        this.events.once('shutdown', () => {
+            this.registry.events.off('changedata-globalGold', onGoldChange);
+            this.registry.events.off('changedata-unitLevels', onLevelsChange);
+        });
+    }
+
+    setDefaultLevels() {
+        const defaultLevels = {
+            normal: 1,
+            tanker: 1,
+            shooter: 1
+        };
+        this.registry.set('unitLevels', defaultLevels);
+        localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
     }
 
     preload() {
@@ -122,7 +184,7 @@ export default class LobbyScene extends Phaser.Scene {
             btnRect.on('pointerdown', () => {
                 if (config.tab === 'MAIN') return;
                 this.tab = config.tab;
-                this.scene.restart();
+                this.scene.restart({ keepTab: true });
             });
         });
     }
@@ -179,7 +241,7 @@ export default class LobbyScene extends Phaser.Scene {
                     this.registry.set('globalGold', gold - cost);
                     levels[type]++;
                     this.registry.set('unitLevels', levels);
-                    this.scene.restart();
+                    this.scene.restart({ keepTab: true });
                 }
             });
         });
@@ -194,7 +256,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         backBtn.on('pointerdown', () => {
             this.tab = 'MAIN';
-            this.scene.restart();
+            this.scene.restart({ keepTab: true });
         });
     }
 
@@ -256,7 +318,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         backBtn.on('pointerdown', () => {
             this.tab = 'MAIN';
-            this.scene.restart();
+            this.scene.restart({ keepTab: true });
         });
     }
 }

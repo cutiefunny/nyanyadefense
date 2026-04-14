@@ -14,8 +14,8 @@ function App() {
   const [showDevMenu, setShowDevMenu] = createSignal(false);
   const [stage, setStage] = createSignal(1);
   const [stageCleared, setStageCleared] = createSignal(null);
-  const [isAutoMode, setIsAutoMode] = createSignal(false);
-  const [isAutoBuy, setIsAutoBuy] = createSignal(false);
+  const [isAutoMode, setIsAutoMode] = createSignal(true);
+  const [isAutoBuy, setIsAutoBuy] = createSignal(true);
   const [gameSpeed, setGameSpeed] = createSignal(1);
   let gameContainer;
   let gameInstance = null;
@@ -46,9 +46,12 @@ function App() {
     gameInstance = new Phaser.Game(config);
 
     gameInstance.events.on('lobby-ready', () => {
+      currentScene = null;  // stale 참조 해제
       setCurrentSceneKey('LobbyScene');
       setGameOver('');
       setStageCleared(null);
+      setIsAutoMode(true);
+      setIsAutoBuy(true);
     });
 
     gameInstance.events.on('game-ready', (scene) => {
@@ -112,15 +115,9 @@ function App() {
   const toggleAutoMode = () => {
     const newVal = !isAutoMode();
     setIsAutoMode(newVal);
+    setIsAutoBuy(newVal); // 자동 구매도 함께 토글
     if (currentScene) {
       currentScene.setAutoMode(newVal);
-    }
-  };
-
-  const toggleAutoBuy = () => {
-    const newVal = !isAutoBuy();
-    setIsAutoBuy(newVal);
-    if (currentScene) {
       currentScene.setAutoBuy(newVal);
     }
   };
@@ -148,10 +145,13 @@ function App() {
               {gameOver() === 'victory' ? 'Victory!' : 'Defeat...'}
             </h2>
             <button onClick={() => { 
-                if (gameInstance) gameInstance.scene.start('LobbyScene');
+                if (gameInstance) {
+                    gameInstance.scene.stop('GameScene');
+                    gameInstance.scene.start('LobbyScene');
+                }
                 setCurrentSceneKey('LobbyScene');
                 setGameOver('');
-            }} class="btn restart">Back to Lobby</button>
+            }} class="btn restart">돌아가기</button>
           </div>
         )}
         {stageCleared() && (
@@ -160,13 +160,12 @@ function App() {
             <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin-bottom": "20px" }}>Bonus: {stageCleared().reward} 골드 지급!</p>
             <button onClick={() => {
               setStageCleared(null);
-              if (currentScene) currentScene.proceedToNextStage();
-            }} class="btn restart" style={{ "width": "auto", "padding": "10px 30px" }}>다음 스테이지</button>
-            <button onClick={() => {
-              setStageCleared(null);
-              if (gameInstance) gameInstance.scene.start('LobbyScene');
+              if (gameInstance) {
+                  gameInstance.scene.stop('GameScene');
+                  gameInstance.scene.start('LobbyScene');
+              }
               setCurrentSceneKey('LobbyScene');
-            }} class="btn restart" style={{ "width": "auto", "padding": "10px 30px", "background": "#16213e", "margin-top": "10px" }}>로비로 이동</button>
+            }} class="btn restart">돌아가기</button>
           </div>
         )}
         {currentSceneKey() === 'GameScene' && (
@@ -174,12 +173,6 @@ function App() {
             <div class="auto-mode-toggle" onClick={toggleAutoMode}>
               <div class={`toggle-switch ${isAutoMode() ? 'on' : 'off'}`}>
                 <div class={isAutoMode() ? 'toggle-label on' : 'toggle-label off'}>AUTO</div>
-                <div class="toggle-handle"></div>
-              </div>
-            </div>
-            <div class="auto-buy-toggle" onClick={toggleAutoBuy}>
-              <div class={`toggle-switch build ${isAutoBuy() ? 'on' : 'off'}`}>
-                <div class={isAutoBuy() ? 'toggle-label on' : 'toggle-label off'}>BUY</div>
                 <div class="toggle-handle"></div>
               </div>
             </div>
@@ -228,6 +221,15 @@ function App() {
           <h4 style={{ "margin-top": "0", "margin-bottom": "10px", "text-transform": "uppercase" }}>Developer Menu</h4>
           <div style={{ "display": "flex", "gap": "10px", "flex-wrap": "wrap" }}>
             <button onClick={() => { setMoney(m => m + 1000); if (currentScene) currentScene.addMoney(1000); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>+1000 Money</button>
+            <button onClick={() => { 
+              if (gameInstance) {
+                const cur = gameInstance.registry.get('globalGold') || 0;
+                gameInstance.registry.set('globalGold', cur + 1000);
+              }
+            }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fbd46d", "border": "1px solid #fbd46d", "border-radius": "4px", "cursor": "pointer" }}>+1000 XP</button>
+            <button onClick={() => { 
+              if (gameInstance) gameInstance.registry.set('globalGold', 0);
+            }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "border-radius": "4px", "cursor": "pointer" }}>Reset XP</button>
             <button onClick={() => { setLevel(l => l + 1); if (currentScene) currentScene.level++; }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>+1 Level</button>
             <button onClick={() => { setCannonProgress(100); if (currentScene) currentScene.skillManager.shoutingCooldown = 100; }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>Max Cannon</button>
             <button onClick={() => { if (currentScene) currentScene.instantWin(); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fbd46d", "border": "1px solid #fbd46d", "border-radius": "4px", "cursor": "pointer" }}>Instant Win</button>

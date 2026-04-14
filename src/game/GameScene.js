@@ -75,6 +75,8 @@ export default class GameScene extends Phaser.Scene {
         this.stageTime = 0;
         this.processedEvents = new Set();
         this.gameSpeed = 1;
+        this.isAutoMode = true;
+        this.isAutoBuy = true;
         
         // Reset timeScale if it was changed
         this.time.timeScale = 1;
@@ -456,5 +458,28 @@ export default class GameScene extends Phaser.Scene {
             
             this.scene.resume();
         }
+    }
+
+    shutdown() {
+        // 씬 전환 시 모든 리소스를 정리합니다
+        this.isGameOver = true;
+
+        // BGM 정지
+        if (this.bgm) {
+            this.bgm.stop();
+            this.bgm = null;
+        }
+
+        // 모든 유닛 파괴 (shadow, HP bar 포함)
+        if (this.unitManager) {
+            [...this.unitManager.allies, ...this.unitManager.enemies].forEach(unit => {
+                unit.destroy();
+            });
+            this.unitManager.allies = [];
+            this.unitManager.enemies = [];
+        }
+
+        // 진행 중인 모든 트윈 정지
+        this.tweens.killAll();
     }
 }
