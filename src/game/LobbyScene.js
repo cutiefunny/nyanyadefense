@@ -4,6 +4,7 @@ import lobby_bg from '../assets/lobby_bg.png';
 import lobby_cat from '../assets/lobby_cat.png';
 
 const bgImages = import.meta.glob('../assets/backgrounds/stage*.jpg', { eager: true, import: 'default' });
+const unitImages = import.meta.glob('../assets/units/*.png', { eager: true, import: 'default' });
 
 export default class LobbyScene extends Phaser.Scene {
     constructor() {
@@ -106,6 +107,14 @@ export default class LobbyScene extends Phaser.Scene {
             const match = path.match(/stage(\d+)\.jpg$/);
             if (match) {
                 this.load.image(`bg_stage${match[1]}`, bgImages[path]);
+            }
+        });
+
+        // Load ally spritesheets for UI thumbnails
+        Object.keys(ALLY_TYPES).forEach(key => {
+            const imgUrl = unitImages[`../assets/units/${key}.png`];
+            if (imgUrl) {
+                this.load.spritesheet(`ally_${key}`, imgUrl, { frameWidth: 100, frameHeight: 100 });
             }
         });
     }
@@ -365,7 +374,29 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
-        const backBtn = this.add.text(400, 275, '< 돌아가기', {
+        // ─── Current Deck Display ───
+        const squad = this.registry.get('squad') || { deck: [null, null, null, null, null] };
+        const deckSlots = squad.deck;
+        
+        this.add.text(400, 225, '현재 출격 부대', {
+            fontSize: '14px',
+            fontFamily: 'Arial Black',
+            fill: '#aaaaaa'
+        }).setOrigin(0.5);
+
+        for (let i = 0; i < 5; i++) {
+            const x = 400 + (i - 2) * 45;
+            const y = 248;
+            const unitType = deckSlots[i];
+            
+            this.add.rectangle(x, y, 40, 40, 0x000000, 0.3).setStrokeStyle(1, 0xffffff, 0.3);
+            
+            if (unitType && this.textures.exists(`ally_${unitType}`)) {
+                this.add.sprite(x, y, `ally_${unitType}`, 0).setDisplaySize(32, 32);
+            }
+        }
+
+        const backBtn = this.add.text(400, 285, '< 돌아가기', {
             fontSize: '24px',
             fontFamily: 'Arial Black',
             fill: '#ffffff',
@@ -416,8 +447,13 @@ export default class LobbyScene extends Phaser.Scene {
             this.add.rectangle(x, y, 250, 38, 0x1a1a2e, 0.9)
                 .setStrokeStyle(2, canBuy ? 0x43d8c9 : 0x555555);
 
+            // Thumbnail
+            if (this.textures.exists(`ally_${type}`)) {
+                this.add.sprite(x - 105, y, `ally_${type}`, 0).setDisplaySize(32, 32);
+            }
+
             // Name + owned count
-            this.add.text(x - 110, y, spec.name, {
+            this.add.text(x - 85, y, spec.name, {
                 fontSize: '13px', fontFamily: 'Arial Black', fill: '#ffffff'
             }).setOrigin(0, 0.5);
 
@@ -462,10 +498,14 @@ export default class LobbyScene extends Phaser.Scene {
 
             if (unitType) {
                 const spec = ALLY_TYPES[unitType];
-                this.add.text(x, y - 5, spec?.name?.charAt(0) || '?', {
-                    fontSize: '18px', fontFamily: 'Arial Black', fill: '#fff'
-                }).setOrigin(0.5);
-                this.add.text(x, y + 14, unitType.slice(0, 3), {
+                if (this.textures.exists(`ally_${unitType}`)) {
+                    this.add.sprite(x, y, `ally_${unitType}`, 0).setDisplaySize(40, 40);
+                } else {
+                    this.add.text(x, y - 5, spec?.name?.charAt(0) || '?', {
+                        fontSize: '18px', fontFamily: 'Arial Black', fill: '#fff'
+                    }).setOrigin(0.5);
+                }
+                this.add.text(x, y + 15, unitType.slice(0, 3), {
                     fontSize: '9px', fontFamily: 'Arial Black', fill: '#ddd'
                 }).setOrigin(0.5);
 
@@ -500,9 +540,14 @@ export default class LobbyScene extends Phaser.Scene {
                 .setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
 
-            this.add.text(x, y - 10, spec.name.split(' ')[0], {
-                fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
-            }).setOrigin(0.5);
+            if (this.textures.exists(`ally_${type}`)) {
+                this.add.sprite(x, y - 6, `ally_${type}`, 0).setDisplaySize(36, 36);
+            } else {
+                this.add.text(x, y - 10, spec.name.split(' ')[0], {
+                    fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
+                }).setOrigin(0.5);
+            }
+            
             this.add.text(x, y + 12, `x${count}`, {
                 fontSize: '12px', fontFamily: 'Arial Black', fill: '#fbd46d'
             }).setOrigin(0.5);

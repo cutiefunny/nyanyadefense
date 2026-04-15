@@ -248,6 +248,35 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    gainGlobalExp(amount, x = 400, y = 50) {
+        if (this.isGameOver) return;
+        
+        const currentGlobal = this.registry.get('globalGold') || 0;
+        this.registry.set('globalGold', currentGlobal + amount);
+        
+        // Visual indicator (optional but recommended for feedback)
+        this.showFloatingText(`+${Math.floor(amount)} XP`, x, y, '#fbd46d');
+    }
+
+    showFloatingText(text, x, y, color) {
+        const floatingText = this.add.text(x, y, text, {
+            fontSize: '18px',
+            fontFamily: 'Arial Black',
+            fill: color,
+            stroke: '#000',
+            strokeThickness: 3
+        }).setOrigin(0.5);
+
+        this.tweens.add({
+            targets: floatingText,
+            y: y - 50,
+            alpha: 0,
+            duration: 1000,
+            ease: 'Cubic.easeOut',
+            onComplete: () => floatingText.destroy()
+        });
+    }
+
     healBase() {
         return false; // Heals logic removed for now as bases don't have HP
     }

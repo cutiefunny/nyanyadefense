@@ -5,6 +5,8 @@ import GameScene from './game/GameScene';
 import { ALLY_TYPES } from './game/unitsConfig';
 import './App.css';
 
+const unitImages = import.meta.glob('./assets/units/*.png', { eager: true, import: 'default' });
+
 function App() {
   const [spawnedUnits, setSpawnedUnits] = createSignal({});
   const [deckUnits, setDeckUnits] = createSignal([]); // deck from squad
@@ -219,7 +221,9 @@ function App() {
                         disabled={isUsed || gameOver() !== '' || stageCleared()} 
                         onClick={() => handleSpawn(idx)}
                         style={{ "border-color": slotColors[unitType] || '#fff' }}>
-                          <div class="unit-icon" style={{ "background-color": slotColors[unitType] || '#555' }}></div>
+                          <div class={`unit-icon ${unitType}-icon`} style={{ 
+                            "background-color": "transparent"
+                          }}></div>
                           <span class="cost">{isUsed ? '배치됨' : (spec?.name?.split(' ')[0] || unitType)}</span>
                       </button>
                     );

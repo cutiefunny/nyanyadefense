@@ -213,11 +213,13 @@ export default class UnitManager {
             this.scene.sound.play('ouch' + Phaser.Math.Between(1, 2), { volume: 0.5 });
             this.effectManager.playDeathEffect(unit);
 
+            if (!isAlly && unit.reward) {
+                this.scene.gainGlobalExp(unit.reward, unit.x, unit.y);
+            }
+
             if (unit.isBoss) return isAlly ? 'defeat' : 'victory';
             
-            if (!isAlly && unit.reward) {
-                // 적 처치 보상(돈) 시스템 폐지로 인해 로직 제거
-            } else if (isAlly && !unit.isBoss) {
+            if (isAlly && !unit.isBoss) {
                 this.scene.addEnemyExp(50);
             }
         }

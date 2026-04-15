@@ -245,9 +245,9 @@ body {
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-.basic-icon { background-image: url('./assets/units/normal.png'); }
-.tank-icon { background-image: url('./assets/units/tanker.png'); background-size: 240px 40px; }
-.ranger-icon { background-image: url('./assets/units/shooter.png'); }
+.normal-icon { background-image: url('./assets/units/normal.png'); }
+.tanker-icon { background-image: url('./assets/units/tanker.png'); background-size: 240px 40px; }
+.shooter-icon { background-image: url('./assets/units/shooter.png'); }
 
 .ability-icon {
   font-size: 24px;
