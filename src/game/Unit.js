@@ -30,6 +30,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.attackDamage = specs.damage;
         this.attackRange = specs.range;
         this.attackCooldown = specs.cooldown;
+        this.defense = specs.defense || 0;
         
         this.lastAttackTime = 0;
         this.bonusKnockback = specs.bonusKnockback || 0;
@@ -258,7 +259,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     takeDamage(amount, fromAlly) {
-        this.hp -= amount;
+        const finalDamage = Math.max(1, amount - this.defense);
+        this.hp -= finalDamage;
         this.hitFlashTimer = 100; // 0.1s white flash
         this.setTint(0xffffff);
         

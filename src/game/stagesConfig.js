@@ -5,7 +5,7 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'dog',
             spriteKey: 'enemy_dog',
-            hp: 1000,
+            hp: 3000,
             damage: 15,
             w: 80,
             scale: 0.8,

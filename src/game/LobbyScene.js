@@ -61,6 +61,18 @@ export default class LobbyScene extends Phaser.Scene {
             this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0 });
         }
 
+        // Squad (deck) data: { inventory: { normal: 2, tanker: 1, ... }, deck: ['normal','tanker',null,null,null] }
+        let savedSquad = localStorage.getItem('nyanya_squad');
+        if (savedSquad) {
+            try {
+                this.registry.set('squad', JSON.parse(savedSquad));
+            } catch (e) {
+                this.registry.set('squad', { inventory: {}, deck: [null, null, null, null, null] });
+            }
+        } else {
+            this.registry.set('squad', { inventory: {}, deck: [null, null, null, null, null] });
+        }
+
         const onGoldChange = (parent, value) => {
             // 씬이 활성화된 상태일 때만 텍스트 업데이트 (렌더링 에러 방지)
             if (this.scene.isActive() && this.goldText) {
@@ -107,6 +119,8 @@ export default class LobbyScene extends Phaser.Scene {
             this.renderUpgradeTab();
         } else if (this.tab === 'BATTLE') {
             this.renderBattleTab();
+        } else if (this.tab === 'SQUAD') {
+            this.renderSquadTab();
         }
 
         this.renderHeader();
@@ -181,7 +195,7 @@ export default class LobbyScene extends Phaser.Scene {
         const btnConfigs = [
             { text: '전투개시!!', tab: 'BATTLE' },
             { text: '파워업', tab: 'UPGRADE' },
-            { text: '캐릭터 편성', tab: 'MAIN' }
+            { text: '부대 편성', tab: 'SQUAD' }
         ];
 
         btnConfigs.forEach((config, i) => {
@@ -199,7 +213,7 @@ export default class LobbyScene extends Phaser.Scene {
             btnRect.on('pointerover', () => btnRect.setFillStyle(0xffea00).setScale(1.05));
             btnRect.on('pointerout', () => btnRect.setFillStyle(0xfbd46d).setScale(1.0));
             btnRect.on('pointerdown', () => {
-                if (config.tab === 'MAIN') return;
+                // All buttons navigate to their tabs now
                 this.tab = config.tab;
                 this.scene.restart({ keepTab: true });
             });
@@ -351,6 +365,162 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
+        const backBtn = this.add.text(400, 275, '< 돌아가기', {
+            fontSize: '24px',
+            fontFamily: 'Arial Black',
+            fill: '#ffffff',
+            stroke: '#000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        backBtn.on('pointerdown', () => {
+            this.tab = 'MAIN';
+            this.scene.restart({ keepTab: true });
+        });
+    }
+
+    saveSquad(squad) {
+        this.registry.set('squad', squad);
+        localStorage.setItem('nyanya_squad', JSON.stringify(squad));
+    }
+
+    renderSquadTab() {
+        this.add.rectangle(400, 150, 800, 300, 0x000000, 0.7);
+
+        this.add.text(400, 50, '부대 편성', {
+            fontSize: '28px',
+            fontFamily: 'Arial Black',
+            fill: '#fbd46d',
+            stroke: '#000',
+            strokeThickness: 5
+        }).setOrigin(0.5);
+
+        const gold = this.registry.get('globalGold');
+        const squad = JSON.parse(JSON.stringify(this.registry.get('squad'))); // deep clone
+        const unitTypes = Object.keys(ALLY_TYPES).filter(t => t !== 'normal');
+
+        // ─── SHOP: Buy unit cards ───
+        this.add.text(150, 80, '[ 유닛 상점 ]', {
+            fontSize: '16px', fontFamily: 'Arial Black', fill: '#43d8c9'
+        }).setOrigin(0.5);
+
+        unitTypes.forEach((type, i) => {
+            const x = 150;
+            const y = 110 + i * 45;
+            const spec = ALLY_TYPES[type];
+            const owned = squad.inventory[type] || 0;
+            const buyPrice = spec.cost; // reuse cost field as buy price
+            const canBuy = gold >= buyPrice;
+
+            // Card bg
+            this.add.rectangle(x, y, 250, 38, 0x1a1a2e, 0.9)
+                .setStrokeStyle(2, canBuy ? 0x43d8c9 : 0x555555);
+
+            // Name + owned count
+            this.add.text(x - 110, y, spec.name, {
+                fontSize: '13px', fontFamily: 'Arial Black', fill: '#ffffff'
+            }).setOrigin(0, 0.5);
+
+            this.add.text(x + 30, y, `보유: ${owned}`, {
+                fontSize: '12px', fontFamily: 'Arial Black', fill: '#fbd46d'
+            }).setOrigin(0, 0.5);
+
+            // Buy button
+            const buyBtn = this.add.rectangle(x + 105, y, 50, 28, canBuy ? 0x2ecc71 : 0x555555)
+                .setStrokeStyle(1, 0x000000)
+                .setInteractive({ useHandCursor: canBuy });
+            this.add.text(x + 105, y, `${buyPrice}`, {
+                fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
+            }).setOrigin(0.5);
+
+            if (canBuy) {
+                buyBtn.on('pointerdown', () => {
+                    squad.inventory[type] = (squad.inventory[type] || 0) + 1;
+                    this.registry.set('globalGold', gold - buyPrice);
+                    this.saveSquad(squad);
+                    this.scene.restart({ keepTab: true });
+                });
+            }
+        });
+
+        // ─── DECK: 5 Slots ───
+        this.add.text(550, 80, '[ 출격 덱 (5슬롯) ]', {
+            fontSize: '16px', fontFamily: 'Arial Black', fill: '#e74c3c'
+        }).setOrigin(0.5);
+
+        const deckSlots = squad.deck || [null, null, null, null, null];
+        const slotColors = { normal: 0x43d8c9, tanker: 0x3498db, shooter: 0x9b59b6 };
+
+        for (let i = 0; i < 5; i++) {
+            const x = 430 + (i % 5) * 55;
+            const y = 120;
+            const unitType = deckSlots[i];
+
+            const slotBg = this.add.rectangle(x, y, 48, 48, unitType ? (slotColors[unitType] || 0x333333) : 0x222222, 0.9)
+                .setStrokeStyle(2, 0xffffff)
+                .setInteractive({ useHandCursor: true });
+
+            if (unitType) {
+                const spec = ALLY_TYPES[unitType];
+                this.add.text(x, y - 5, spec?.name?.charAt(0) || '?', {
+                    fontSize: '18px', fontFamily: 'Arial Black', fill: '#fff'
+                }).setOrigin(0.5);
+                this.add.text(x, y + 14, unitType.slice(0, 3), {
+                    fontSize: '9px', fontFamily: 'Arial Black', fill: '#ddd'
+                }).setOrigin(0.5);
+
+                // Click to remove from deck
+                slotBg.on('pointerdown', () => {
+                    squad.inventory[unitType] = (squad.inventory[unitType] || 0) + 1;
+                    deckSlots[i] = null;
+                    squad.deck = deckSlots;
+                    this.saveSquad(squad);
+                    this.scene.restart({ keepTab: true });
+                });
+            } else {
+                this.add.text(x, y, '＋', {
+                    fontSize: '20px', fontFamily: 'Arial Black', fill: '#555'
+                }).setOrigin(0.5);
+            }
+        }
+
+        // ─── Inventory -> Deck assign buttons ───
+        this.add.text(550, 165, '[ 배치 가능 유닛 ]', {
+            fontSize: '14px', fontFamily: 'Arial Black', fill: '#aaa'
+        }).setOrigin(0.5);
+
+        const availableTypes = unitTypes.filter(t => (squad.inventory[t] || 0) > 0);
+        availableTypes.forEach((type, i) => {
+            const x = 430 + i * 75;
+            const y = 200;
+            const spec = ALLY_TYPES[type];
+            const count = squad.inventory[type];
+
+            const assignBtn = this.add.rectangle(x, y, 65, 50, slotColors[type] || 0x333333, 0.8)
+                .setStrokeStyle(2, 0xffffff)
+                .setInteractive({ useHandCursor: true });
+
+            this.add.text(x, y - 10, spec.name.split(' ')[0], {
+                fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
+            }).setOrigin(0.5);
+            this.add.text(x, y + 12, `x${count}`, {
+                fontSize: '12px', fontFamily: 'Arial Black', fill: '#fbd46d'
+            }).setOrigin(0.5);
+
+            assignBtn.on('pointerdown', () => {
+                // Find first empty slot
+                const emptyIdx = deckSlots.findIndex(s => s === null);
+                if (emptyIdx !== -1 && count > 0) {
+                    deckSlots[emptyIdx] = type;
+                    squad.inventory[type] = count - 1;
+                    squad.deck = deckSlots;
+                    this.saveSquad(squad);
+                    this.scene.restart({ keepTab: true });
+                }
+            });
+        });
+
+        // Back button
         const backBtn = this.add.text(400, 275, '< 돌아가기', {
             fontSize: '24px',
             fontFamily: 'Arial Black',

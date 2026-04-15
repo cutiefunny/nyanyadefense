@@ -79,6 +79,12 @@ export default class GameScene extends Phaser.Scene {
         this.isAutoMode = true;
         this.isAutoBuy = true;
         
+        // Load deck from squad data
+        const squad = this.registry.get('squad') || { inventory: {}, deck: [] };
+        this.deck = (squad.deck || []).filter(d => d !== null);
+        this.spawnedDeckIndices = new Set();
+        this.deckAutoSpawnTimer = 0;
+        
         // Reset timeScale if it was changed
         this.time.timeScale = 1;
     }
@@ -146,16 +152,12 @@ export default class GameScene extends Phaser.Scene {
 
         allUnitKeys.forEach(key => this.createUnitAnimations(key));
 
-        this.totalMoneyEarned = 0;
         this.level = 1;
         this.enemyLevel = 1;
         this.totalEnemyExp = 0;
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
         this.allyAutoSpawnTimer = 0;
-
-        // Initial minion spawn
-        this.spawnAlly('normal', true);
         this.spawnEnemy();
 
         this.sys.game.events.emit('game-ready', this);
@@ -173,25 +175,26 @@ export default class GameScene extends Phaser.Scene {
         this.anims.create({ key: `${key}_hurt`, frames: this.anims.generateFrameNumbers(key, { start: frameConfig.hurt[0], end: frameConfig.hurt[1] }), frameRate: 8, repeat: 0 });
     }
 
-    spawnAlly(typeKey, isAuto = false) {
+    spawnAlly(typeKey) {
         if (this.isGameOver) return;
-        
-        // Cost check logic remains in GameScene as it controls money
-        // Hardcoded mapping removed. Look up directly from ALLY_TYPES.
-        const cost = ALLY_TYPES[typeKey]?.cost || Infinity;
+        this.unitManager.spawnAlly(typeKey);
+    }
 
-        if (isAuto || this.money >= cost) {
-            if (!isAuto) this.money -= cost;
+    spawnDeckUnit(index) {
+        if (this.isGameOver || this.spawnedDeckIndices.has(index)) return;
+        
+        const typeKey = this.deck[index];
+        if (typeKey) {
             this.unitManager.spawnAlly(typeKey);
+            this.spawnedDeckIndices.add(index);
+            this.sys.game.events.emit('deck-unit-spawned', index);
         }
     }
 
     setAutoMode(val) {
         this.isAutoMode = val;
-    }
-
-    setAutoBuy(val) {
-        this.isAutoBuy = val;
+        // Reset timer when switching to auto mode to start spawning immediately or after a fresh second
+        if (val) this.deckAutoSpawnTimer = 0;
     }
 
     setGameSpeed(val) {
@@ -232,20 +235,7 @@ export default class GameScene extends Phaser.Scene {
         this.unitManager.spawnEnemy(this.enemyLevel);
     }
 
-    addMoney(amount) {
-        if (this.isGameOver) return;
-        this.money += amount;
-        this.totalMoneyEarned += amount;
-        
-        // Automatic Level Up Logic (LoL style)
-        // For example, level 2 requires 100 total money, level 3 requires 300, etc.
-        const requiredMoneyForNextLevel = 100 + (this.level * this.level * 50);
-        
-        if (this.totalMoneyEarned >= requiredMoneyForNextLevel) {
-            this.level += 1;
-            this.sys.game.events.emit('level-up', this.level);
-        }
-    }
+    // (Money removed, level system left alone as XP but deactivated from here if unused)
 
     addEnemyExp(amount) {
         if (this.isGameOver) return;
@@ -277,15 +267,8 @@ export default class GameScene extends Phaser.Scene {
 
         this.processStageEvents();
         
-        this.sys.game.events.emit('update-money', Math.floor(this.money));
-
         const cannonProgress = this.skillManager.getCannonProgress();
         this.sys.game.events.emit('update-cannon', cannonProgress);
-
-        // Auto Buy AI
-        if (this.isAutoBuy && !this.isGameOver) {
-            this.updateAutoBuyLogic(scaledDelta);
-        }
 
         // Auto spawn enemies
         this.enemySpawnTimer += scaledDelta;
@@ -302,17 +285,29 @@ export default class GameScene extends Phaser.Scene {
             this.enemySpawnTimer = 0;
         }
 
-        // Auto spawn allies (minions)
+        // Auto spawn allies (minions) - ONLY Normal Cats
         this.allyAutoSpawnTimer += scaledDelta;
         const allySpawnDelay = 5000; // Every 5 seconds
         if (this.allyAutoSpawnTimer > allySpawnDelay) {
-            this.spawnAlly('normal', true);
+            this.spawnAlly('normal');
             this.allyAutoSpawnTimer = 0;
         }
 
-        // Auto Fire Skills in Auto Mode
+        // Squad units (deck) are deployed manually via buttons.
+
+        // Auto Fire Skills and Deploy Deck Units in Auto Mode
         if (this.isAutoMode) {
             this.fireShouting();
+
+            // Auto spawn deck units every 1 second (game time)
+            this.deckAutoSpawnTimer += scaledDelta;
+            if (this.deckAutoSpawnTimer >= 1000) {
+                const nextIdx = this.deck.findIndex((_, idx) => !this.spawnedDeckIndices.has(idx));
+                if (nextIdx !== -1) {
+                    this.spawnDeckUnit(nextIdx);
+                }
+                this.deckAutoSpawnTimer = 0;
+            }
         }
 
         // Delegate unit logic update (Pass custom battleTime for speed control)
@@ -395,44 +390,9 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    updateAutoBuyLogic(delta) {
-        // Run AI decision roughly every 0.5s to avoid spamming
-        this.autoBuyTimer = (this.autoBuyTimer || 0) + delta;
-        if (this.autoBuyTimer < 500) return;
-        this.autoBuyTimer = 0;
-
-        const tankerCount = this.unitManager.allies.filter(a => a.typeKey === 'tanker').length;
-        const shooterCount = this.unitManager.allies.filter(a => a.typeKey === 'shooter').length;
-        const normalCount = this.unitManager.allies.filter(a => a.typeKey === 'normal').length;
-        const totalCount = tankerCount + shooterCount + normalCount;
-
-        // Efficiency/Strategic Logic:
-        // 1. Tanker Check: Need at least 1 tanker per 5 units, or if enemy is close
-        const leader = this.unitManager.allies.find(a => a.isBoss);
-        let enemyNear = false;
-        if (leader) {
-            enemyNear = this.unitManager.enemies.some(e => Math.abs(e.x - leader.x) < 300);
-        }
-
-        if (this.money >= ALLY_TYPES.tanker.cost && (tankerCount < 1 || (enemyNear && tankerCount < totalCount / 3))) {
-            this.spawnAlly('tanker');
-        } 
-        // 2. Shooter Check: Maintain a good ratio for DPS
-        else if (this.money >= ALLY_TYPES.shooter.cost && (shooterCount < normalCount || shooterCount < 2)) {
-            this.spawnAlly('shooter');
-        }
-    }
-
     proceedToNextStage() {
         const currentConfig = STAGE_CONFIG[this.stage];
         if (currentConfig && currentConfig.nextStage) {
-            // 보상 지급 (전투용 캐쉬)
-            if (currentConfig.clearReward) {
-                this.addMoney(currentConfig.clearReward);
-            }
-
-
-
             const nextStageNum = currentConfig.nextStage;
             this.changeStage(nextStageNum);
             this.sys.game.events.emit('stage-up', nextStageNum);
@@ -442,8 +402,6 @@ export default class GameScene extends Phaser.Scene {
             
             this.unitManager.spawnBoss(false); // Spawn Next Stage Boss
             
-            // Initial minion spawn for the next stage
-            this.spawnAlly('normal', true);
             this.spawnEnemy();
             
             // Reset timers

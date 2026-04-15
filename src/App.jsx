@@ -6,7 +6,8 @@ import { ALLY_TYPES } from './game/unitsConfig';
 import './App.css';
 
 function App() {
-  const [money, setMoney] = createSignal(0);
+  const [spawnedUnits, setSpawnedUnits] = createSignal({});
+  const [deckUnits, setDeckUnits] = createSignal([]); // deck from squad
   const [level, setLevel] = createSignal(1);
   const [gameOver, setGameOver] = createSignal('');
   const [currentSceneKey, setCurrentSceneKey] = createSignal('LobbyScene');
@@ -15,7 +16,6 @@ function App() {
   const [stage, setStage] = createSignal(1);
   const [stageCleared, setStageCleared] = createSignal(null);
   const [isAutoMode, setIsAutoMode] = createSignal(true);
-  const [isAutoBuy, setIsAutoBuy] = createSignal(true);
   const [gameSpeed, setGameSpeed] = createSignal(1);
   let gameContainer;
   let gameInstance = null;
@@ -51,7 +51,7 @@ function App() {
       setGameOver('');
       setStageCleared(null);
       setIsAutoMode(true);
-      setIsAutoBuy(true);
+      setSpawnedUnits({normal: false, tanker: false, shooter: false});
     });
 
     gameInstance.events.on('game-ready', (scene) => {
@@ -59,11 +59,14 @@ function App() {
       setCurrentSceneKey('GameScene');
       setGameOver('');
       setStage(scene.stage);
-    });
-
-
-    gameInstance.events.on('update-money', (m) => {
-      setMoney(m);
+      // Load deck from squad data
+      const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [] };
+      const deck = (squad.deck || []).filter(d => d !== null);
+      setDeckUnits(deck);
+      // Initialize spawned status for each deck slot
+      const initSpawned = {};
+      deck.forEach((_, idx) => initSpawned[idx] = false);
+      setSpawnedUnits(initSpawned);
     });
 
     gameInstance.events.on('update-cannon', (cp) => {
@@ -76,10 +79,17 @@ function App() {
 
     gameInstance.events.on('stage-up', (s) => {
       setStage(s);
+      const initSpawned = {};
+      deckUnits().forEach((_, idx) => initSpawned[idx] = false);
+      setSpawnedUnits(initSpawned);
     });
 
     gameInstance.events.on('stage-clear', (data) => {
       setStageCleared(data);
+    });
+
+    gameInstance.events.on('deck-unit-spawned', (idx) => {
+      setSpawnedUnits(prev => ({...prev, [idx]: true}));
     });
 
     gameInstance.events.on('game-over', (result) => {
@@ -100,6 +110,9 @@ function App() {
     gameInstance.registry.events.on('changedata-stageClears', (parent, value) => {
         localStorage.setItem('nyanya_stageClears', JSON.stringify(value));
     });
+    gameInstance.registry.events.on('changedata-squad', (parent, value) => {
+        localStorage.setItem('nyanya_squad', JSON.stringify(value));
+    });
 
     onCleanup(() => {
       window.removeEventListener('keydown', handleKeyDown);
@@ -109,14 +122,14 @@ function App() {
     });
   });
 
-  const handleSpawn = (type) => {
-    if (currentScene && money() >= ALLY_TYPES[type].cost) {
-      currentScene.spawnAlly(type);
+  const handleSpawn = (deckIdx) => {
+    if (currentScene && !spawnedUnits()[deckIdx]) {
+      currentScene.spawnDeckUnit(deckIdx);
     }
   };
 
   const handleHeal = () => {
-    if (currentScene && money() >= 100) {
+    if (currentScene) {
       currentScene.healBase();
     }
   };
@@ -130,10 +143,8 @@ function App() {
   const toggleAutoMode = () => {
     const newVal = !isAutoMode();
     setIsAutoMode(newVal);
-    setIsAutoBuy(newVal); // 자동 구매도 함께 토글
     if (currentScene) {
       currentScene.setAutoMode(newVal);
-      currentScene.setAutoBuy(newVal);
     }
   };
 
@@ -149,7 +160,6 @@ function App() {
       <div class="game-wrapper">
         {currentSceneKey() === 'GameScene' && (
           <div class="stats hud-stats">
-            <div class="money">🪙 ${Math.floor(money())}</div>
             <div class="level">Level: {level()}</div>
           </div>
         )}
@@ -200,25 +210,26 @@ function App() {
         <div class="controls-panel">
           <div class="main-controls">
               <div class="button-group allies-group">
-                  <button class="btn ally-btn basic-btn" disabled={money() < ALLY_TYPES.normal.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('normal')}>
-                      <div class="unit-icon basic-icon"></div>
-                      <span class="cost">🪙 {ALLY_TYPES.normal.cost}</span>
-                  </button>
-                  <button class="btn ally-btn tank-btn" disabled={money() < ALLY_TYPES.tanker.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('tanker')}>
-                      <div class="unit-icon tank-icon"></div>
-                      <span class="cost">🪙 {ALLY_TYPES.tanker.cost}</span>
-                  </button>
-                  <button class="btn ally-btn ranger-btn" disabled={money() < ALLY_TYPES.shooter.cost || gameOver() !== '' || stageCleared()} onClick={() => handleSpawn('shooter')}>
-                      <div class="unit-icon ranger-icon"></div>
-                      <span class="cost">🪙 {ALLY_TYPES.shooter.cost}</span>
-                  </button>
+                  {deckUnits().map((unitType, idx) => {
+                    const spec = ALLY_TYPES[unitType];
+                    const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6' };
+                    const isUsed = spawnedUnits()[idx];
+                    return (
+                      <button class="btn ally-btn" 
+                        disabled={isUsed || gameOver() !== '' || stageCleared()} 
+                        onClick={() => handleSpawn(idx)}
+                        style={{ "border-color": slotColors[unitType] || '#fff' }}>
+                          <div class="unit-icon" style={{ "background-color": slotColors[unitType] || '#555' }}></div>
+                          <span class="cost">{isUsed ? '배치됨' : (spec?.name?.split(' ')[0] || unitType)}</span>
+                      </button>
+                    );
+                  })}
+                  {deckUnits().length === 0 && (
+                    <span style={{"color":"#888","font-size":"12px","padding":"10px"}}>덱이 비어있습니다. 로비에서 부대를 편성해주세요.</span>
+                  )}
               </div>
 
               <div class="button-group upgrades-group">
-                  <button class="btn ally-btn heal-btn" disabled={money() < 100 || gameOver() !== '' || stageCleared()} onClick={handleHeal}>
-                      <div class="ability-icon">💚</div>
-                      <span class="cost">🪙 100</span>
-                  </button>
                   <button class="btn ally-btn shouting-btn" disabled={cannonProgress() < 100 || gameOver() !== '' || stageCleared()} onClick={handleShouting}>
                       <div class="ability-icon">🗣️</div>
                       <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
@@ -242,7 +253,6 @@ function App() {
             Device: {localStorage.getItem('nyanya_deviceId')}
           </div>
           <div style={{ "display": "flex", "gap": "10px", "flex-wrap": "wrap" }}>
-            <button onClick={() => { setMoney(m => m + 1000); if (currentScene) currentScene.addMoney(1000); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>+1000 Money</button>
             <button onClick={() => { 
               if (gameInstance) {
                 const cur = gameInstance.registry.get('globalGold') || 0;
