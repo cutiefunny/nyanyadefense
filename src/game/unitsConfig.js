@@ -1,7 +1,7 @@
 export const ALLY_TYPES = {
-    normal: { cost: 0, hp: 80, speed: 1.2, damage: 8, range: 10, cooldown: 1000, color: 0x43d8c9, w: 30, h: 30, name: 'Normal Cat', bonusKnockback: 0, scale: 0.5 },
-    tanker: { cost: 500, hp: 1000, speed: 0.6, damage: 25, range: 15, cooldown: 1500, color: 0x3498db, w: 45, h: 45, name: 'Tanker Cat', bonusKnockback: 0.2, scale: 0.7, isKnockbackImmune: true, defense: 10 },
-    shooter: { cost: 300, hp: 120, speed: 1.0, damage: 18, range: 180, cooldown: 800, color: 0x9b59b6, w: 20, h: 40, name: 'Shooter Cat', bonusKnockback: -0.1, scale: 0.5 }
+    normal: { cost: 0, hp: 80, speed: 1.2, damage: 8, range: 10, cooldown: 1000, color: 0x43d8c9, w: 30, h: 30, name: '비실이', bonusKnockback: 0, scale: 0.5 },
+    tanker: { cost: 500, hp: 1000, speed: 0.6, damage: 25, range: 15, cooldown: 1500, color: 0x3498db, w: 45, h: 45, name: '탱크', bonusKnockback: 0.2, scale: 0.7, isKnockbackImmune: true, defense: 10 },
+    shooter: { cost: 300, hp: 120, speed: 1.0, damage: 18, range: 180, cooldown: 800, color: 0x9b59b6, w: 20, h: 40, name: '턱시도', bonusKnockback: -0.1, scale: 0.5 }
 };
 
 export const ENEMY_TYPES = [

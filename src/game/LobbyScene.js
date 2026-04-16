@@ -232,7 +232,7 @@ export default class LobbyScene extends Phaser.Scene {
     renderUpgradeTab() {
         this.add.rectangle(400, 150, 800, 300, 0x000000, 0.7);
 
-        const title = this.add.text(400, 60, '냥코 파워업', {
+        const title = this.add.text(400, 60, '파워업', {
             fontSize: '32px',
             fontFamily: 'Arial Black',
             fill: '#fbd46d',
@@ -321,7 +321,7 @@ export default class LobbyScene extends Phaser.Scene {
         stages.forEach((s, i) => {
             const x = 200 + i * 200;
             const y = 160;
-            
+
             // Unlock logic: Stage 1 is always open. Stage N is open if Stage N-1 clear count > 0.
             const isLocked = s > 1 && (stageClears[s - 1] || 0) <= 0;
             const clears = stageClears[s] || 0;
@@ -348,7 +348,7 @@ export default class LobbyScene extends Phaser.Scene {
                 }).setOrigin(0.5);
             } else {
                 card.setInteractive({ useHandCursor: true });
-                
+
                 this.add.text(x, y - 10, `STAGE ${s}`, {
                     fontSize: '24px',
                     fontFamily: 'Arial Black',
@@ -383,7 +383,7 @@ export default class LobbyScene extends Phaser.Scene {
         // ─── Current Deck Display ───
         const squad = this.registry.get('squad') || { deck: [null, null, null, null, null] };
         const deckSlots = squad.deck;
-        
+
         this.add.text(400, 225, '현재 출격 부대', {
             fontSize: '14px',
             fontFamily: 'Arial Black',
@@ -394,9 +394,9 @@ export default class LobbyScene extends Phaser.Scene {
             const x = 400 + (i - 2) * 45;
             const y = 248;
             const unitType = deckSlots[i];
-            
+
             this.add.rectangle(x, y, 40, 40, 0x000000, 0.3).setStrokeStyle(1, 0xffffff, 0.3);
-            
+
             if (unitType && this.textures.exists(`ally_${unitType}`)) {
                 this.add.sprite(x, y, `ally_${unitType}`, 0).setDisplaySize(32, 32);
             }
@@ -553,7 +553,7 @@ export default class LobbyScene extends Phaser.Scene {
                     fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
                 }).setOrigin(0.5);
             }
-            
+
             this.add.text(x, y + 12, `x${count}`, {
                 fontSize: '12px', fontFamily: 'Arial Black', fill: '#fbd46d'
             }).setOrigin(0.5);
