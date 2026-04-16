@@ -41,6 +41,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.retreatTimer = 0; // 보스 생존용 후퇴 타이머
         this.isBoss = specs.isBoss || false;
         this.reward = specs.reward || 0;
+        this.lastHitByEnemyTime = 0;
 
         // Visuals
         this.spriteKey = spriteKey;
@@ -102,7 +103,16 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.updateAnimation(actuallyMoving, target, minDist);
 
         // Handle Attack
-        if (target && minDist <= this.attackRange) {
+        let canAttack = true;
+        if (this.isBoss && this.isAlly && this.scene.isAutoMode && !this.isDragging) {
+            const tankers = this.unitManager.allies.filter(a => a.typeKey === 'tanker' && a.hp > 0);
+            const isAnyTankerHit = tankers.some(t => t.hp < t.maxHp || (this.scene.time.now - (t.lastHitByEnemyTime || 0) < 3000));
+            if (tankers.length > 0 && !isAnyTankerHit) {
+                canAttack = false;
+            }
+        }
+
+        if (canAttack && target && minDist <= this.attackRange) {
             this.handleAttack(time, target);
         }
 
@@ -155,11 +165,29 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 if (this.retreatTimer > 0) {
                     desiredMove = -1;
                 }
-                // Simplified AI: Just move forward unless an enemy is in range
-                else if (target && minDist <= this.attackRange) {
-                    desiredMove = 0;
-                } else {
-                    desiredMove = 1;
+                else {
+                    const tankers = this.unitManager.allies.filter(a => a.typeKey === 'tanker' && a.hp > 0);
+                    const frontTanker = tankers.length > 0 ? tankers.reduce((prev, curr) => (curr.x > prev.x ? curr : prev)) : null;
+                    const isAnyTankerHit = tankers.some(t => t.hp < t.maxHp || (this.scene.time.now - (t.lastHitByEnemyTime || 0) < 3000));
+
+                    if (frontTanker && !isAnyTankerHit) {
+                        // Follow behavior: stay behind the front-most tanker
+                        const followDist = 50;
+                        const targetX = frontTanker.x - followDist;
+                        const diff = targetX - this.x;
+                        
+                        if (Math.abs(diff) > 10) {
+                            desiredMove = diff > 0 ? 1 : -1;
+                        } else {
+                            desiredMove = 0;
+                        }
+                    } else if (target && minDist <= this.attackRange) {
+                        // Engaged behavior
+                        desiredMove = 0;
+                    } else {
+                        // Normal advance
+                        desiredMove = 1;
+                    }
                 }
             } else {
                 desiredMove = 0;
@@ -263,6 +291,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.hp -= finalDamage;
         this.hitFlashTimer = 100; // 0.1s white flash
         this.setTint(0xffffff);
+        
+        if (!fromAlly) {
+            this.lastHitByEnemyTime = this.scene.time.now;
+        }
         
         // 보스 생존 AI: 체력이 50% 이하일 때 집중 포화를 당하면 후퇴 결정
         if (this.isBoss && this.isAlly && this.hp < this.maxHp * 0.5 && this.retreatTimer <= 0) {

@@ -66,12 +66,11 @@ export default class GameScene extends Phaser.Scene {
     init(data) {
         this.stage = data?.stage || 1;
         this.isGameOver = false;
-        this.isPaused = false; // Start unpaused for now, or true if App handles start
-        this.money = 200; // Starting gold
+        this.isPaused = false; 
+        this.money = 200; 
         this.totalMoneyEarned = 200;
         this.level = 1;
-        this.enemyLevel = 1;
-        this.totalEnemyExp = 0;
+        this.enemyLevel = (this.stage - 1) * 3 + 1; // Stage-based initial level
         this.stageTime = 0;
         this.battleTime = 0; // 게임 배속이 적용된 누적 시간
         this.processedEvents = new Set();
@@ -153,8 +152,6 @@ export default class GameScene extends Phaser.Scene {
         allUnitKeys.forEach(key => this.createUnitAnimations(key));
 
         this.level = 1;
-        this.enemyLevel = 1;
-        this.totalEnemyExp = 0;
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
         this.allyAutoSpawnTimer = 0;
@@ -237,16 +234,7 @@ export default class GameScene extends Phaser.Scene {
 
     // (Money removed, level system left alone as XP but deactivated from here if unused)
 
-    addEnemyExp(amount) {
-        if (this.isGameOver) return;
-        this.totalEnemyExp += amount;
-        
-        const requiredExpForNextLevel = 100 + (this.enemyLevel * this.enemyLevel * 50);
-        
-        if (this.totalEnemyExp >= requiredExpForNextLevel) {
-            this.enemyLevel += 1;
-        }
-    }
+    // addEnemyExp removed to prevent enemy leveling during battle
 
     gainGlobalExp(amount, x = 400, y = 50) {
         if (this.isGameOver) return;

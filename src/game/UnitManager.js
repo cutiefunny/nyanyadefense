@@ -220,7 +220,7 @@ export default class UnitManager {
             if (unit.isBoss) return isAlly ? 'defeat' : 'victory';
             
             if (isAlly && !unit.isBoss) {
-                this.scene.addEnemyExp(50);
+                // Enemy leveling disabled during battle
             }
         }
 

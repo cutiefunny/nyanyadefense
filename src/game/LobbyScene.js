@@ -250,10 +250,16 @@ export default class LobbyScene extends Phaser.Scene {
             const level = levels[type];
             const cost = level * 100;
 
-            const bar = this.add.rectangle(x, y, 600, 40, 0xfbd46d, 0.9)
+            const bar = this.add.rectangle(x, y, 600, 44, 0xfbd46d, 0.9)
                 .setStrokeStyle(3, 0x000000);
 
-            this.add.text(x - 280, y, type.toUpperCase(), {
+            // Thumbnail
+            if (this.textures.exists(`ally_${type}`)) {
+                this.add.sprite(x - 275, y, `ally_${type}`, 0).setDisplaySize(36, 36);
+            }
+
+            const spec = ALLY_TYPES[type];
+            this.add.text(x - 245, y, spec.name, {
                 fontSize: '20px',
                 fontFamily: 'Arial Black',
                 fill: '#000000'

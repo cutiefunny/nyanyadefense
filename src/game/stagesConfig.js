@@ -5,15 +5,15 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'dog',
             spriteKey: 'enemy_dog',
-            hp: 3000,
-            damage: 15,
+            hp: 4000,
+            damage: 20,
             w: 80,
             scale: 0.8,
             reward: 500,
             isBoss: true
         },
 
-        clearReward: 500,
+        clearReward: 1000,
         scaleMultiplier: 1.0,
         nextStage: 2,
         events: [],
@@ -29,21 +29,21 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss2',
             spriteKey: 'enemy_boss2',
-            hp: 3000,
-            damage: 30,
+            hp: 15000,
+            damage: 50,
             w: 120,
             scale: 0.6,
             reward: 1000,
             isBoss: true
         },
-        clearReward: 1000,
+        clearReward: 2000,
         scaleMultiplier: 1.2,
         nextStage: 3,
         events: [],
         traits: {
-            enemySpeedMultiplier: 1.1,
-            spawnRateMultiplier: 1.2,
-            description: 'Increased enemy speed and spawn rate.'
+            enemySpeedMultiplier: 1.2,
+            spawnRateMultiplier: 1.5,
+            description: 'Increased enemy speed and spawn rate. Mercenaries and Power-ups are highly recommended.'
         }
     },
     3: {
@@ -52,14 +52,14 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss3',
             spriteKey: 'enemy_boss3',
-            hp: 6000,
-            damage: 50,
+            hp: 50000,
+            damage: 120,
             w: 120,
             scale: 0.6,
             reward: 2000,
             isBoss: true
         },
-        clearReward: 2000,
+        clearReward: 5000,
         scaleMultiplier: 1.5,
         nextStage: null,
         events: [
@@ -70,9 +70,9 @@ export const STAGE_CONFIG = {
             }
         ],
         traits: {
-            enemySpeedMultiplier: 0.9,
-            spawnRateMultiplier: 1.5,
-            description: 'Large units stage. Enemies are slower but much bigger and spawn frequently.'
+            enemySpeedMultiplier: 1.0,
+            spawnRateMultiplier: 2.0,
+            description: 'Final battle. Enemies are relentless and numerous. Maximum Power-ups required!'
         }
     }
 };
