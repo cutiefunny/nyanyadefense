@@ -8,8 +8,16 @@ export default class SkillManager {
     }
 
     useShouting() {
-        if (this.scene.battleTime - this.lastCannonTime >= this.cannonCooldown) {
+        const skillLevels = this.scene.registry.get('skillLevels') || { shout_cooldown: 1, shout_duration: 1, shout_range: 1 };
+        
+        // Stats based on level
+        const currentCooldown = Math.max(5000, 15000 - (skillLevels.shout_cooldown - 1) * 1000);
+        const currentDuration = 10000 + (skillLevels.shout_duration - 1) * 2000;
+        const currentRange = 150 + (skillLevels.shout_range - 1) * 30;
+
+        if (this.scene.battleTime - this.lastCannonTime >= currentCooldown) {
             this.lastCannonTime = this.scene.battleTime;
+            this.cannonCooldown = currentCooldown; // For getCannonProgress calculation
 
             const leader = this.unitManager.allies.find(u => u.isBoss && u.isAlly);
             if (leader) {
@@ -49,11 +57,11 @@ export default class SkillManager {
                     onComplete: () => shoutRing.destroy()
                 });
 
-                // 3. Buff Logic: 150px radius allies
+                // 3. Buff Logic: Allies within currentRange
                 this.unitManager.allies.forEach(ally => {
                     const dist = Phaser.Math.Distance.Between(leader.x, leader.y, ally.x, ally.y);
-                    if (dist <= 150) {
-                        ally.buffRemainingTime = 10000; // 10 seconds
+                    if (dist <= currentRange) {
+                        ally.buffRemainingTime = currentDuration; 
                     }
                 });
             }

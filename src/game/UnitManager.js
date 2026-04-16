@@ -60,13 +60,25 @@ export default class UnitManager {
 
         const unitLevels = this.scene.registry.get('unitLevels') || {};
         const level = unitLevels[typeKey] || 1;
-        const levelBonus = 1 + (level - 1) * 0.1; // 10% bonus per level
+        const levelBonus = 1 + (level - 1) * 0.2; // 20% HP/DMG bonus per level
+
+        let finalDefense = specs.defense || 0;
+        let finalCooldown = specs.cooldown;
+
+        if (typeKey === 'tanker') {
+            finalDefense += (level - 1) * 1; // +1 Defense per level
+        } else if (typeKey === 'shooter') {
+            // Increase attack speed by 5% per level (reduce cooldown)
+            finalCooldown /= (1 + (level - 1) * 0.05);
+        }
 
         const finalSpecs = { 
             ...specs, 
             typeKey,
             hp: specs.hp * levelBonus,
-            damage: specs.damage * levelBonus
+            damage: specs.damage * levelBonus,
+            defense: finalDefense,
+            cooldown: finalCooldown
         };
 
         const spriteKey = 'ally_' + typeKey;
@@ -127,6 +139,11 @@ export default class UnitManager {
 
         if (isAlly) {
             specs = { ...BOSS_CONFIG.leader };
+            const unitLevels = this.scene.registry.get('unitLevels') || {};
+            const level = unitLevels['leader'] || 1;
+            const levelBonus = 1 + (level - 1) * 0.2; // 20% bonus per level
+            specs.hp *= levelBonus;
+            specs.damage *= levelBonus;
             spriteKey = 'ally_leader';
         } else {
             if (stageConfig.boss.isCustom) {

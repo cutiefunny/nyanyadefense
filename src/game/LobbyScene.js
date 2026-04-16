@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { ALLY_TYPES } from './unitsConfig';
+import { ALLY_TYPES, BOSS_CONFIG } from './unitsConfig';
 import lobby_bg from '../assets/lobby_bg.png';
-import lobby_cat from '../assets/lobby_cat.png';
+import lobby_cat from '../assets/lobby_cat.jpg';
 
 const bgImages = import.meta.glob('../assets/backgrounds/stage*.jpg', { eager: true, import: 'default' });
 const unitImages = import.meta.glob('../assets/units/*.png', { eager: true, import: 'default' });
@@ -50,6 +50,20 @@ export default class LobbyScene extends Phaser.Scene {
             this.setDefaultLevels();
         }
 
+        // Skill Levels
+        let savedSkillLevels = localStorage.getItem('nyanya_skillLevels');
+        if (savedSkillLevels) {
+            try {
+                this.registry.set('skillLevels', JSON.parse(savedSkillLevels));
+            } catch (e) {
+                const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, shout_range: 1 };
+                this.registry.set('skillLevels', defaultSkillLevels);
+            }
+        } else {
+            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, shout_range: 1 };
+            this.registry.set('skillLevels', defaultSkillLevels);
+        }
+
         // Stage Clears
         let savedClears = localStorage.getItem('nyanya_stageClears');
         if (savedClears) {
@@ -90,13 +104,16 @@ export default class LobbyScene extends Phaser.Scene {
     }
 
     setDefaultLevels() {
-        const defaultLevels = {
-            normal: 1,
-            tanker: 1,
-            shooter: 1
-        };
-        this.registry.set('unitLevels', defaultLevels);
-        localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
+        if (!this.registry.get('unitLevels')) {
+            const defaultLevels = { leader: 1, normal: 1, tanker: 1, shooter: 1 };
+            this.registry.set('unitLevels', defaultLevels);
+            localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
+        }
+        if (!this.registry.get('skillLevels')) {
+            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, shout_range: 1 };
+            this.registry.set('skillLevels', defaultSkillLevels);
+            localStorage.setItem('nyanya_skillLevels', JSON.stringify(defaultSkillLevels));
+        }
     }
 
     preload() {
@@ -117,6 +134,8 @@ export default class LobbyScene extends Phaser.Scene {
                 this.load.spritesheet(`ally_${key}`, imgUrl, { frameWidth: 100, frameHeight: 100 });
             }
         });
+        const leaderUrl = unitImages['../assets/units/leader.png'];
+        if (leaderUrl) this.load.spritesheet('ally_leader', leaderUrl, { frameWidth: 100, frameHeight: 100 });
     }
 
     create() {
@@ -188,11 +207,11 @@ export default class LobbyScene extends Phaser.Scene {
         // Speech bubble
         const bubble = this.add.graphics();
         bubble.fillStyle(0x000000, 0.6);
-        bubble.fillRoundedRect(100, 50, 250, 60, 15);
+        bubble.fillRoundedRect(75, 220, 250, 60, 15);
         bubble.lineStyle(2, 0xffffff, 1);
-        bubble.strokeRoundedRect(100, 50, 250, 60, 15);
+        bubble.strokeRoundedRect(75, 220, 250, 60, 15);
 
-        this.add.text(225, 80, '김냐냐씨와 함께\n상수동을 되찾아달라냥!', {
+        this.add.text(200, 250, '김냐냐씨와 함께\n상수동을 되찾아달라냥!', {
             fontSize: '16px',
             fontFamily: 'Arial Black',
             fill: '#ffffff',
@@ -232,78 +251,152 @@ export default class LobbyScene extends Phaser.Scene {
     renderUpgradeTab() {
         this.add.rectangle(400, 150, 800, 300, 0x000000, 0.7);
 
-        const title = this.add.text(400, 60, '파워업', {
-            fontSize: '32px',
-            fontFamily: 'Arial Black',
-            fill: '#fbd46d',
-            stroke: '#000',
-            strokeThickness: 5
-        }).setOrigin(0.5);
-
-        const types = ['normal', 'tanker', 'shooter'];
-        const levels = this.registry.get('unitLevels');
         const gold = this.registry.get('globalGold');
 
-        types.forEach((type, i) => {
-            const x = 400;
-            const y = 120 + i * 50;
-            const level = levels[type];
-            const cost = level * 100;
+        // ─── Headers ───
+        this.add.text(200, 45, '유닛 업그레이드', {
+            fontSize: '24px', fontFamily: 'Arial Black', fill: '#fbd46d'
+        }).setOrigin(0.5);
 
-            const bar = this.add.rectangle(x, y, 600, 44, 0xfbd46d, 0.9)
-                .setStrokeStyle(3, 0x000000);
+        this.add.text(600, 45, '스킬 업그레이드', {
+            fontSize: '24px', fontFamily: 'Arial Black', fill: '#43d8c9'
+        }).setOrigin(0.5);
 
-            // Thumbnail
-            if (this.textures.exists(`ally_${type}`)) {
-                this.add.sprite(x - 275, y, `ally_${type}`, 0).setDisplaySize(36, 36);
-            }
+        // ─── Scrollable Setup ───
+        const listWidth = 380;
+        const visibleHeight = 160; // Enough for 3 items (approx 50px each)
+        const listY = 75;
 
-            const spec = ALLY_TYPES[type];
-            this.add.text(x - 245, y, spec.name, {
-                fontSize: '20px',
-                fontFamily: 'Arial Black',
-                fill: '#000000'
-            }).setOrigin(0, 0.5);
+        // Mask for both sides
+        const maskShape = this.make.graphics();
+        maskShape.fillStyle(0xffffff);
+        maskShape.fillRect(10, listY, 380, visibleHeight);
+        maskShape.fillRect(410, listY, 380, visibleHeight);
+        const mask = maskShape.createGeometryMask();
 
-            this.add.text(x - 20, y, `Lv. ${level}`, {
-                fontSize: '20px',
-                fontFamily: 'Arial Black',
-                fill: '#000000'
-            }).setOrigin(0, 0.5);
+        // 1. Units Column
+        const unitTypes = ['leader', 'normal', 'tanker', 'shooter'];
+        this.renderScrollableList(unitTypes, 200, listY, visibleHeight, 'unit', mask);
 
-            const canAfford = gold >= cost;
-            const upgradeBtn = this.add.rectangle(x + 230, y, 120, 30, canAfford ? 0xe74c3c : 0x95a5a6)
-                .setStrokeStyle(2, 0x000000)
-                .setInteractive({ useHandCursor: true });
-
-            this.add.text(x + 230, y, `UP ${cost}`, {
-                fontSize: '14px',
-                fontFamily: 'Arial Black',
-                fill: '#ffffff'
-            }).setOrigin(0.5);
-
-            upgradeBtn.on('pointerdown', () => {
-                if (gold >= cost) {
-                    this.registry.set('globalGold', gold - cost);
-                    levels[type]++;
-                    this.registry.set('unitLevels', levels);
-                    this.scene.restart({ keepTab: true });
-                }
-            });
-        });
+        // 2. Skills Column
+        const skillTypes = [
+            { id: 'shout_cooldown', name: '함성 쿨타임' },
+            { id: 'shout_duration', name: '함성 지속시간' },
+            { id: 'shout_range', name: '함성 범위 확대' } 
+        ];
+        this.renderScrollableList(skillTypes, 600, listY, visibleHeight, 'skill', mask);
 
         const backBtn = this.add.text(400, 275, '< 돌아가기', {
-            fontSize: '24px',
-            fontFamily: 'Arial Black',
-            fill: '#ffffff',
-            stroke: '#000',
-            strokeThickness: 3
+            fontSize: '24px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         backBtn.on('pointerdown', () => {
             this.tab = 'MAIN';
             this.scene.restart({ keepTab: true });
         });
+    }
+
+    renderScrollableList(items, centerX, startY, visibleHeight, type, mask) {
+        const container = this.add.container(centerX, startY);
+        container.setMask(mask);
+
+        const levels = type === 'unit' ? this.registry.get('unitLevels') : this.registry.get('skillLevels');
+        const gold = this.registry.get('globalGold');
+        const itemHeight = 52;
+
+        items.forEach((item, i) => {
+            const y = i * itemHeight + 26; // relative to container
+            const id = type === 'unit' ? item : item.id;
+            const name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
+            const level = levels[id] || 1;
+            
+            let cost = 0;
+            if (type === 'unit') {
+                const spec = (item === 'leader') ? BOSS_CONFIG.leader : ALLY_TYPES[item];
+                // Use cost * 5 as base, fallback for 0 cost units
+                const baseBuyPrice = (spec && spec.cost > 0) ? spec.cost : (item === 'leader' ? 500 : 200);
+                cost = (baseBuyPrice * 5) * Math.pow(2, level - 1);
+            } else {
+                cost = level * 1000;
+            }
+
+            const canAfford = gold >= cost;
+
+            const bg = this.add.rectangle(0, y, 370, 48, 0x1a1a2e, 0.8)
+                .setStrokeStyle(2, type === 'unit' ? 0xfbd46d : 0x43d8c9, 0.5);
+            container.add(bg);
+
+            // Icon/Thumb
+            if (type === 'unit') {
+                const thumb = this.add.sprite(-165, y, `ally_${id}`, 0).setDisplaySize(32, 32);
+                container.add(thumb);
+            }
+
+            const nameText = this.add.text(type === 'unit' ? -145 : -175, y, name, {
+                fontSize: '16px', fontFamily: 'Arial Black', fill: '#ffffff'
+            }).setOrigin(0, 0.5);
+            container.add(nameText);
+
+            const lvText = this.add.text(40, y, `Lv. ${level}`, {
+                fontSize: '16px', fontFamily: 'Arial Black', fill: type === 'unit' ? '#fbd46d' : '#43d8c9'
+            }).setOrigin(0, 0.5);
+            container.add(lvText);
+
+            const upgradeBtn = this.add.rectangle(135, y, 90, 30, canAfford ? 0xe74c3c : 0x95a5a6)
+                .setStrokeStyle(2, 0x000000)
+                .setInteractive({ useHandCursor: true });
+            
+            const btnText = this.add.text(135, y, `UP ${cost}`, {
+                fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
+            }).setOrigin(0.5);
+            
+            container.add(upgradeBtn);
+            container.add(btnText);
+
+            upgradeBtn.on('pointerdown', () => {
+                if (gold >= cost) {
+                    this.registry.set('globalGold', gold - cost);
+                    levels[id]++;
+                    if (type === 'unit') {
+                        this.registry.set('unitLevels', levels);
+                        localStorage.setItem('nyanya_unitLevels', JSON.stringify(levels));
+                    } else {
+                        this.registry.set('skillLevels', levels);
+                        localStorage.setItem('nyanya_skillLevels', JSON.stringify(levels));
+                    }
+                    this.scene.restart({ keepTab: true });
+                }
+            });
+        });
+
+        // Drag to scroll logic
+        const contentHeight = items.length * itemHeight;
+        if (contentHeight > visibleHeight) {
+            const trackX = centerX + 185;
+            const scrollTrack = this.add.rectangle(trackX, startY + visibleHeight / 2, 6, visibleHeight, 0xffffff, 0.2);
+            const handleHeight = (visibleHeight / contentHeight) * visibleHeight;
+            const scrollHandle = this.add.rectangle(trackX, startY + handleHeight / 2, 6, handleHeight, 0xffffff, 0.6);
+
+            const hitArea = this.add.rectangle(centerX, startY + visibleHeight / 2, 380, visibleHeight, 0x000, 0)
+                .setInteractive({ draggable: true });
+            
+            let startYPos = 0;
+            hitArea.on('dragstart', () => {
+                startYPos = container.y;
+            });
+            hitArea.on('drag', (pointer, dragX, dragY) => {
+                let newY = startYPos + (dragY - (startY + visibleHeight / 2));
+                const minY = startY - (contentHeight - visibleHeight);
+                const maxY = startY;
+                if (newY < minY) newY = minY;
+                if (newY > maxY) newY = maxY;
+                container.y = newY;
+
+                // Update scrollbar handle position
+                const scrollPercent = (startY - container.y) / (contentHeight - visibleHeight);
+                scrollHandle.y = startY + (handleHeight / 2) + scrollPercent * (visibleHeight - handleHeight);
+            });
+        }
     }
 
     renderBattleTab() {
