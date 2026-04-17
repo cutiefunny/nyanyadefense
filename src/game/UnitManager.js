@@ -50,7 +50,7 @@ export default class UnitManager {
         });
     }
 
-    spawnAlly(typeKey, yOffsetBase = 270) {
+    spawnAlly(typeKey, yOffsetBase = 270, extraSpecs = {}) {
         const specs = ALLY_TYPES[typeKey];
         if (!specs) return null;
 
@@ -74,6 +74,7 @@ export default class UnitManager {
 
         const finalSpecs = { 
             ...specs, 
+            ...extraSpecs,
             typeKey,
             hp: specs.hp * levelBonus,
             damage: specs.damage * levelBonus,
@@ -238,6 +239,19 @@ export default class UnitManager {
             
             if (isAlly && !unit.isBoss) {
                 // Enemy leveling disabled during battle
+                
+                // If the unit was a mercenary from the deck, remove it permanently
+                if (unit.deckIndex !== undefined) {
+                    const squad = this.scene.registry.get('squad');
+                    if (squad && squad.deck) {
+                        const newDeck = [...squad.deck];
+                        newDeck[unit.deckIndex] = null;
+                        
+                        const newSquad = { ...squad, deck: newDeck };
+                        this.scene.registry.set('squad', newSquad);
+                        // Registry event will trigger localStorage save in App.jsx
+                    }
+                }
             }
         }
 

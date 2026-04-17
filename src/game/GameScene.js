@@ -79,8 +79,8 @@ export default class GameScene extends Phaser.Scene {
         this.isAutoBuy = true;
         
         // Load deck from squad data
-        const squad = this.registry.get('squad') || { inventory: {}, deck: [] };
-        this.deck = (squad.deck || []).filter(d => d !== null);
+        const squad = this.registry.get('squad') || { inventory: {}, deck: [null, null, null, null, null] };
+        this.deck = squad.deck;
         this.spawnedDeckIndices = new Set();
         this.deckAutoSpawnTimer = 0;
         
@@ -182,7 +182,7 @@ export default class GameScene extends Phaser.Scene {
         
         const typeKey = this.deck[index];
         if (typeKey) {
-            this.unitManager.spawnAlly(typeKey);
+            this.unitManager.spawnAlly(typeKey, 270, { deckIndex: index });
             this.spawnedDeckIndices.add(index);
             this.sys.game.events.emit('deck-unit-spawned', index);
         }
@@ -319,7 +319,7 @@ export default class GameScene extends Phaser.Scene {
             // Auto spawn deck units every 1 second (game time)
             this.deckAutoSpawnTimer += scaledDelta;
             if (this.deckAutoSpawnTimer >= 1000) {
-                const nextIdx = this.deck.findIndex((_, idx) => !this.spawnedDeckIndices.has(idx));
+                const nextIdx = this.deck.findIndex((type, idx) => type !== null && !this.spawnedDeckIndices.has(idx));
                 if (nextIdx !== -1) {
                     this.spawnDeckUnit(nextIdx);
                 }

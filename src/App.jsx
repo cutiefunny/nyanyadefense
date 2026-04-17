@@ -62,8 +62,8 @@ function App() {
       setGameOver('');
       setStage(scene.stage);
       // Load deck from squad data
-      const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [] };
-      const deck = (squad.deck || []).filter(d => d !== null);
+      const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [null, null, null, null, null] };
+      const deck = squad.deck || [null, null, null, null, null];
       setDeckUnits(deck);
       // Initialize spawned status for each deck slot
       const initSpawned = {};
@@ -114,6 +114,9 @@ function App() {
     });
     gameInstance.registry.events.on('changedata-squad', (parent, value) => {
         localStorage.setItem('nyanya_squad', JSON.stringify(value));
+        if (currentSceneKey() === 'GameScene') {
+            setDeckUnits(value.deck || [null, null, null, null, null]);
+        }
     });
 
     onCleanup(() => {
@@ -213,6 +216,7 @@ function App() {
           <div class="main-controls">
               <div class="button-group allies-group">
                   {deckUnits().map((unitType, idx) => {
+                    if (!unitType) return null;
                     const spec = ALLY_TYPES[unitType];
                     const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6' };
                     const isUsed = spawnedUnits()[idx];
@@ -228,7 +232,7 @@ function App() {
                       </button>
                     );
                   })}
-                  {deckUnits().length === 0 && (
+                  {deckUnits().every(u => u === null) && (
                     <span style={{"color":"#888","font-size":"12px","padding":"10px"}}>덱이 비어있습니다. 로비에서 부대를 편성해주세요.</span>
                   )}
               </div>

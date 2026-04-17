@@ -42,6 +42,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.isBoss = specs.isBoss || false;
         this.reward = specs.reward || 0;
         this.lastHitByEnemyTime = 0;
+        this.deckIndex = specs.deckIndex;
 
         // Visuals
         this.spriteKey = spriteKey;

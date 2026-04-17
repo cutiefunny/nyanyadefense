@@ -251,40 +251,31 @@ export default class LobbyScene extends Phaser.Scene {
     renderUpgradeTab() {
         this.add.rectangle(400, 150, 800, 300, 0x000000, 0.7);
 
-        const gold = this.registry.get('globalGold');
-
         // ─── Headers ───
         this.add.text(200, 45, '유닛 업그레이드', {
-            fontSize: '24px', fontFamily: 'Arial Black', fill: '#fbd46d'
+            fontSize: '24px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 4
         }).setOrigin(0.5);
 
         this.add.text(600, 45, '스킬 업그레이드', {
-            fontSize: '24px', fontFamily: 'Arial Black', fill: '#43d8c9'
+            fontSize: '24px', fontFamily: 'Arial Black', fill: '#43d8c9', stroke: '#000', strokeThickness: 4
         }).setOrigin(0.5);
 
         // ─── Scrollable Setup ───
-        const listWidth = 380;
-        const visibleHeight = 160; // Enough for 3 items (approx 50px each)
+        const visibleHeight = 180;
         const listY = 75;
 
-        // Mask for both sides
-        const maskShape = this.make.graphics();
-        maskShape.fillStyle(0xffffff);
-        maskShape.fillRect(10, listY, 380, visibleHeight);
-        maskShape.fillRect(410, listY, 380, visibleHeight);
-        const mask = maskShape.createGeometryMask();
-
-        // 1. Units Column
-        const unitTypes = ['leader', 'normal', 'tanker', 'shooter'];
-        this.renderScrollableList(unitTypes, 200, listY, visibleHeight, 'unit', mask);
+        // No mask needed if items fit
+        // 1. Core Units Column
+        const unitTypes = ['leader', 'normal'];
+        this.renderScrollableList(unitTypes, 200, listY, visibleHeight, 'unit', null);
 
         // 2. Skills Column
         const skillTypes = [
-            { id: 'shout_cooldown', name: '함성 쿨타임' },
-            { id: 'shout_duration', name: '함성 지속시간' },
+            { id: 'shout_cooldown', name: '함성 쿨타임 단축' },
+            { id: 'shout_duration', name: '함성 지속시간 연장' },
             { id: 'shout_range', name: '함성 범위 확대' } 
         ];
-        this.renderScrollableList(skillTypes, 600, listY, visibleHeight, 'skill', mask);
+        this.renderScrollableList(skillTypes, 600, listY, visibleHeight, 'skill', null);
 
         const backBtn = this.add.text(400, 275, '< 돌아가기', {
             fontSize: '24px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 3
@@ -298,78 +289,14 @@ export default class LobbyScene extends Phaser.Scene {
 
     renderScrollableList(items, centerX, startY, visibleHeight, type, mask) {
         const container = this.add.container(centerX, startY);
-        container.setMask(mask);
+        if (mask) container.setMask(mask);
 
         const levels = type === 'unit' ? this.registry.get('unitLevels') : this.registry.get('skillLevels');
         const gold = this.registry.get('globalGold');
         const itemHeight = 52;
 
-        items.forEach((item, i) => {
-            const y = i * itemHeight + 26; // relative to container
-            const id = type === 'unit' ? item : item.id;
-            const name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
-            const level = levels[id] || 1;
-            
-            let cost = 0;
-            if (type === 'unit') {
-                const spec = (item === 'leader') ? BOSS_CONFIG.leader : ALLY_TYPES[item];
-                // Use cost * 5 as base, fallback for 0 cost units
-                const baseBuyPrice = (spec && spec.cost > 0) ? spec.cost : (item === 'leader' ? 500 : 200);
-                cost = (baseBuyPrice * 5) * Math.pow(2, level - 1);
-            } else {
-                cost = level * 1000;
-            }
-
-            const canAfford = gold >= cost;
-
-            const bg = this.add.rectangle(0, y, 370, 48, 0x1a1a2e, 0.8)
-                .setStrokeStyle(2, type === 'unit' ? 0xfbd46d : 0x43d8c9, 0.5);
-            container.add(bg);
-
-            // Icon/Thumb
-            if (type === 'unit') {
-                const thumb = this.add.sprite(-165, y, `ally_${id}`, 0).setDisplaySize(32, 32);
-                container.add(thumb);
-            }
-
-            const nameText = this.add.text(type === 'unit' ? -145 : -175, y, name, {
-                fontSize: '16px', fontFamily: 'Arial Black', fill: '#ffffff'
-            }).setOrigin(0, 0.5);
-            container.add(nameText);
-
-            const lvText = this.add.text(40, y, `Lv. ${level}`, {
-                fontSize: '16px', fontFamily: 'Arial Black', fill: type === 'unit' ? '#fbd46d' : '#43d8c9'
-            }).setOrigin(0, 0.5);
-            container.add(lvText);
-
-            const upgradeBtn = this.add.rectangle(135, y, 90, 30, canAfford ? 0xe74c3c : 0x95a5a6)
-                .setStrokeStyle(2, 0x000000)
-                .setInteractive({ useHandCursor: true });
-            
-            const btnText = this.add.text(135, y, `UP ${cost}`, {
-                fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
-            }).setOrigin(0.5);
-            
-            container.add(upgradeBtn);
-            container.add(btnText);
-
-            upgradeBtn.on('pointerdown', () => {
-                if (gold >= cost) {
-                    this.registry.set('globalGold', gold - cost);
-                    levels[id]++;
-                    if (type === 'unit') {
-                        this.registry.set('unitLevels', levels);
-                        localStorage.setItem('nyanya_unitLevels', JSON.stringify(levels));
-                    } else {
-                        this.registry.set('skillLevels', levels);
-                        localStorage.setItem('nyanya_skillLevels', JSON.stringify(levels));
-                    }
-                    this.scene.restart({ keepTab: true });
-                }
-            });
-        });
-
-        // Drag to scroll logic
+        // ─── Drag to scroll logic ───
+        // Calculate contentHeight early to place hitArea behind items
         const contentHeight = items.length * itemHeight;
         if (contentHeight > visibleHeight) {
             const trackX = centerX + 185;
@@ -397,6 +324,71 @@ export default class LobbyScene extends Phaser.Scene {
                 scrollHandle.y = startY + (handleHeight / 2) + scrollPercent * (visibleHeight - handleHeight);
             });
         }
+
+        items.forEach((item, i) => {
+            const y = i * itemHeight + 26; // relative to container
+            const id = type === 'unit' ? item : item.id;
+            const name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
+            const level = levels[id] || 1;
+            
+            let upgradeCost = 0;
+            if (type === 'unit') {
+                const spec = (item === 'leader') ? BOSS_CONFIG.leader : ALLY_TYPES[item];
+                const baseBuyPrice = (spec && spec.cost > 0) ? spec.cost : (item === 'leader' ? 500 : 200);
+                const currentHiringCost = baseBuyPrice * Math.pow(2, level - 1);
+                upgradeCost = currentHiringCost * 5;
+            } else {
+                upgradeCost = level * 1000;
+            }
+
+            const canAfford = gold >= upgradeCost;
+
+            const bg = this.add.rectangle(0, y, 370, 48, 0x1a1a2e, 0.8)
+                .setStrokeStyle(2, type === 'unit' ? 0xfbd46d : 0x43d8c9, 0.5);
+            container.add(bg);
+
+            // Icon/Thumb
+            if (type === 'unit') {
+                const thumb = this.add.sprite(-165, y, `ally_${id}`, 0).setDisplaySize(32, 32);
+                container.add(thumb);
+            }
+
+            const nameText = this.add.text(type === 'unit' ? -145 : -175, y, name, {
+                fontSize: '16px', fontFamily: 'Arial Black', fill: '#ffffff'
+            }).setOrigin(0, 0.5);
+            container.add(nameText);
+
+            const lvText = this.add.text(40, y, `Lv. ${level}`, {
+                fontSize: '16px', fontFamily: 'Arial Black', fill: type === 'unit' ? '#fbd46d' : '#43d8c9'
+            }).setOrigin(0, 0.5);
+            container.add(lvText);
+
+            const upgradeBtn = this.add.rectangle(135, y, 90, 30, canAfford ? 0xe74c3c : 0x95a5a6)
+                .setStrokeStyle(2, 0x000000)
+                .setInteractive({ useHandCursor: true });
+            
+            const btnText = this.add.text(135, y, `UP ${upgradeCost}`, {
+                fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
+            }).setOrigin(0.5);
+            
+            container.add(upgradeBtn);
+            container.add(btnText);
+
+            upgradeBtn.on('pointerdown', () => {
+                if (gold >= upgradeCost) {
+                    this.registry.set('globalGold', gold - upgradeCost);
+                    levels[id]++;
+                    if (type === 'unit') {
+                        this.registry.set('unitLevels', { ...levels });
+                        localStorage.setItem('nyanya_unitLevels', JSON.stringify(levels));
+                    } else {
+                        this.registry.set('skillLevels', { ...levels });
+                        localStorage.setItem('nyanya_skillLevels', JSON.stringify(levels));
+                    }
+                    this.scene.restart({ keepTab: true });
+                }
+            });
+        });
     }
 
     renderBattleTab() {
@@ -527,52 +519,75 @@ export default class LobbyScene extends Phaser.Scene {
 
         const gold = this.registry.get('globalGold');
         const squad = JSON.parse(JSON.stringify(this.registry.get('squad'))); // deep clone
-        const unitTypes = Object.keys(ALLY_TYPES).filter(t => t !== 'normal');
-
-        // ─── SHOP: Buy unit cards ───
-        this.add.text(150, 80, '[ 유닛 상점 ]', {
-            fontSize: '16px', fontFamily: 'Arial Black', fill: '#43d8c9'
-        }).setOrigin(0.5);
+        const unitTypes = ['tanker', 'shooter'];
+        const unitLevels = this.registry.get('unitLevels');
 
         unitTypes.forEach((type, i) => {
-            const x = 150;
+            const x = 165; // Card X
             const y = 110 + i * 45;
+            const level = unitLevels[type] || 1;
             const spec = ALLY_TYPES[type];
             const owned = squad.inventory[type] || 0;
-            const buyPrice = spec.cost; // reuse cost field as buy price
-            const canBuy = gold >= buyPrice;
+            
+            // Hiring/Upgrade Costs Logic
+            const baseHiringCost = spec.cost || 200;
+            const currentHiringCost = baseHiringCost * Math.pow(2, level - 1);
+            const upgradeCost = currentHiringCost * 5;
+            
+            const canBuy = gold >= currentHiringCost;
+            const canUpgrade = gold >= upgradeCost;
 
             // Card bg
-            this.add.rectangle(x, y, 250, 38, 0x1a1a2e, 0.9)
-                .setStrokeStyle(2, canBuy ? 0x43d8c9 : 0x555555);
+            this.add.rectangle(x, y, 320, 34, 0x1a1a2e, 0.9)
+                .setStrokeStyle(2, 0x555555);
 
             // Thumbnail
             if (this.textures.exists(`ally_${type}`)) {
-                this.add.sprite(x - 105, y, `ally_${type}`, 0).setDisplaySize(32, 32);
+                this.add.sprite(x - 142, y, `ally_${type}`, 0).setDisplaySize(28, 28);
             }
 
-            // Name + owned count
-            this.add.text(x - 85, y, spec.name, {
-                fontSize: '13px', fontFamily: 'Arial Black', fill: '#ffffff'
-            }).setOrigin(0, 0.5);
-
-            this.add.text(x + 30, y, `보유: ${owned}`, {
-                fontSize: '12px', fontFamily: 'Arial Black', fill: '#fbd46d'
+            // Name + Lv
+            this.add.text(x - 122, y, `${spec.name} (Lv.${level})`, {
+                fontSize: '11px', fontFamily: 'Arial Black', fill: '#ffffff'
             }).setOrigin(0, 0.5);
 
             // Buy button
-            const buyBtn = this.add.rectangle(x + 105, y, 50, 28, canBuy ? 0x2ecc71 : 0x555555)
+            if (currentHiringCost > 0) {
+                const buyBtn = this.add.rectangle(x + 55, y, 60, 24, canBuy ? 0x2ecc71 : 0x555555)
+                    .setStrokeStyle(1, 0x000000)
+                    .setInteractive({ useHandCursor: canBuy });
+                this.add.text(x + 55, y, `고용:${currentHiringCost}`, {
+                    fontSize: '10px', fontFamily: 'Arial Black', fill: '#fff'
+                }).setOrigin(0.5);
+
+                if (canBuy) {
+                    buyBtn.on('pointerdown', () => {
+                        squad.inventory[type] = (squad.inventory[type] || 0) + 1;
+                        this.registry.set('globalGold', gold - currentHiringCost);
+                        this.saveSquad(squad);
+                        this.scene.restart({ keepTab: true });
+                    });
+                }
+                
+                this.add.text(x - 10, y, `보유:${owned}`, {
+                    fontSize: '10px', fontFamily: 'Arial Black', fill: '#fbd46d'
+                }).setOrigin(0.5);
+            }
+
+            // Upgrade button
+            const upgradeBtn = this.add.rectangle(x + 120, y, 65, 24, canUpgrade ? 0xe74c3c : 0x555555)
                 .setStrokeStyle(1, 0x000000)
-                .setInteractive({ useHandCursor: canBuy });
-            this.add.text(x + 105, y, `${buyPrice}`, {
-                fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
+                .setInteractive({ useHandCursor: canUpgrade });
+            this.add.text(x + 120, y, `UP:${upgradeCost}`, {
+                fontSize: '10px', fontFamily: 'Arial Black', fill: '#fff'
             }).setOrigin(0.5);
 
-            if (canBuy) {
-                buyBtn.on('pointerdown', () => {
-                    squad.inventory[type] = (squad.inventory[type] || 0) + 1;
-                    this.registry.set('globalGold', gold - buyPrice);
-                    this.saveSquad(squad);
+            if (canUpgrade) {
+                upgradeBtn.on('pointerdown', () => {
+                    this.registry.set('globalGold', gold - upgradeCost);
+                    unitLevels[type]++;
+                    this.registry.set('unitLevels', { ...unitLevels });
+                    localStorage.setItem('nyanya_unitLevels', JSON.stringify(unitLevels));
                     this.scene.restart({ keepTab: true });
                 });
             }
@@ -628,7 +643,7 @@ export default class LobbyScene extends Phaser.Scene {
             fontSize: '14px', fontFamily: 'Arial Black', fill: '#aaa'
         }).setOrigin(0.5);
 
-        const availableTypes = unitTypes.filter(t => (squad.inventory[t] || 0) > 0);
+        const availableTypes = ['normal', 'tanker', 'shooter'].filter(t => (squad.inventory[t] || 0) > 0);
         availableTypes.forEach((type, i) => {
             const x = 430 + i * 75;
             const y = 200;
