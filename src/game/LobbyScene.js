@@ -53,7 +53,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Unit Levels
         let savedUnitLevels = localStorage.getItem('nyanya_unitLevels');
-        const defaultUnitLevels = { leader: 1, normal: 1, tanker: 1, shooter: 1 };
+        const defaultUnitLevels = { leader: 1, normal: 1, tanker: 1, shooter: 1, healer: 1 };
         if (savedUnitLevels) {
             try {
                 this.registry.set('unitLevels', { ...defaultUnitLevels, ...JSON.parse(savedUnitLevels) });
@@ -241,7 +241,6 @@ export default class LobbyScene extends Phaser.Scene {
             btnRect.on('pointerover', () => btnRect.setFillStyle(0xffea00).setScale(1.05));
             btnRect.on('pointerout', () => btnRect.setFillStyle(0xfbd46d).setScale(1.0));
             btnRect.on('pointerdown', () => {
-                // All buttons navigate to their tabs now
                 this.tab = config.tab;
                 this.scene.restart({ keepTab: true });
             });
@@ -334,11 +333,29 @@ export default class LobbyScene extends Phaser.Scene {
             let upgradeCost = 0;
             if (type === 'unit') {
                 const spec = (item === 'leader') ? BOSS_CONFIG.leader : ALLY_TYPES[item];
-                const baseBuyPrice = (spec && spec.cost > 0) ? spec.cost : (item === 'leader' ? 500 : 200);
-                const currentHiringCost = baseBuyPrice * Math.pow(2, level - 1);
-                upgradeCost = currentHiringCost * 5;
+                
+                // Weight base price by rating (1-10)
+                let basePrice = 200;
+                if (item === 'leader') basePrice = 500;
+                else if (spec && spec.cost > 0) basePrice = spec.cost;
+
+                let rating = 5; // standard
+                if (item === 'leader') rating = 7;
+                else if (item === 'tanker' || item === 'shooter') rating = 9;
+                else if (item === 'normal') rating = 5;
+
+                const ratingWeight = rating / 7; // Average at 7
+                const adjustedBase = basePrice * ratingWeight;
+                upgradeCost = Math.floor(adjustedBase * 6 * Math.pow(1.7, level - 1));
             } else {
-                upgradeCost = level * 1000;
+                // Skills
+                if (id === 'shout_cooldown' || id === 'normal_cooldown') {
+                    // Rating 10/10 - High cost, High scaling
+                    upgradeCost = Math.floor(2000 * Math.pow(1.5, level - 1));
+                } else {
+                    // Rating 6/10 - Moderate cost
+                    upgradeCost = Math.floor(800 * Math.pow(1.3, level - 1));
+                }
             }
 
             const canAfford = gold >= upgradeCost;
@@ -521,7 +538,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         const gold = this.registry.get('globalGold');
         const squad = JSON.parse(JSON.stringify(this.registry.get('squad'))); // deep clone
-        const unitTypes = ['tanker', 'shooter'];
+        const unitTypes = ['tanker', 'shooter', 'healer'];
         const unitLevels = this.registry.get('unitLevels');
 
         unitTypes.forEach((type, i) => {
@@ -601,7 +618,7 @@ export default class LobbyScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         const deckSlots = squad.deck || [null, null, null, null, null];
-        const slotColors = { normal: 0x43d8c9, tanker: 0x3498db, shooter: 0x9b59b6 };
+        const slotColors = { normal: 0x43d8c9, tanker: 0x3498db, shooter: 0x9b59b6, healer: 0xff88aa };
 
         for (let i = 0; i < 5; i++) {
             const x = 430 + (i % 5) * 55;
@@ -645,7 +662,7 @@ export default class LobbyScene extends Phaser.Scene {
             fontSize: '14px', fontFamily: 'Arial Black', fill: '#aaa'
         }).setOrigin(0.5);
 
-        const availableTypes = ['normal', 'tanker', 'shooter'].filter(t => (squad.inventory[t] || 0) > 0);
+        const availableTypes = ['normal', 'tanker', 'shooter', 'healer'].filter(t => (squad.inventory[t] || 0) > 0);
         availableTypes.forEach((type, i) => {
             const x = 430 + i * 75;
             const y = 200;
@@ -678,6 +695,40 @@ export default class LobbyScene extends Phaser.Scene {
                     this.saveSquad(squad);
                     this.scene.restart({ keepTab: true });
                 }
+            });
+
+            // Return (Sell) Button
+            const refundAmount = Math.floor((spec.cost || 200) * Math.pow(2, (unitLevels[type] || 1) - 1) / 2);
+            const sellBtn = this.add.rectangle(x + 25, y - 20, 22, 22, 0xee0000, 1.0)
+                .setStrokeStyle(1.5, 0xffffff)
+                .setInteractive({ useHandCursor: true })
+                .setDepth(10);
+            
+            const sellIcon = this.add.text(x + 25, y - 20, 'X', { 
+                fontSize: '14px', fontFamily: 'Arial Black', fill: '#ffffff' 
+            }).setOrigin(0.5).setDepth(11);
+            
+            sellBtn.on('pointerover', () => {
+                sellBtn.setFillStyle(0xff0000);
+                sellBtn.setScale(1.2);
+            });
+            sellBtn.on('pointerout', () => {
+                sellBtn.setFillStyle(0xee0000);
+                sellBtn.setScale(1.0);
+            });
+            
+            sellBtn.on('pointerdown', (pointer, localX, localY, event) => {
+                if (event) event.stopPropagation();
+                
+                // Immediate sell without confirmation as requested
+                squad.inventory[type]--;
+                const currentGold = this.registry.get('globalGold');
+                this.registry.set('globalGold', currentGold + refundAmount);
+                this.saveSquad(squad);
+                
+                // Add a little flash effect before restart
+                this.cameras.main.flash(200, 255, 251, 109, true); 
+                this.scene.restart({ keepTab: true });
             });
         });
 

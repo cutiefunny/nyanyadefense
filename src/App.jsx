@@ -1,8 +1,10 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import Phaser from 'phaser';
 import LobbyScene from './game/LobbyScene';
 import GameScene from './game/GameScene';
 import { ALLY_TYPES } from './game/unitsConfig';
+import Guide from './components/Guide';
 import './App.css';
 
 const unitImages = import.meta.glob('./assets/units/*.png', { eager: true, import: 'default' });
@@ -19,6 +21,7 @@ function App() {
   const [stageCleared, setStageCleared] = createSignal(null);
   const [isAutoMode, setIsAutoMode] = createSignal(true);
   const [gameSpeed, setGameSpeed] = createSignal(1);
+  const [showGuide, setShowGuide] = createSignal(false);
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -100,6 +103,10 @@ function App() {
 
     gameInstance.events.on('toggle-dev-menu', () => {
       setShowDevMenu((prev) => !prev);
+    });
+
+    gameInstance.events.on('show-guide', () => {
+      setShowGuide(true);
     });
 
     // Registry Persistence (Global listeners)
@@ -223,7 +230,7 @@ function App() {
                   {deckUnits().map((unitType, idx) => {
                     if (!unitType) return null;
                     const spec = ALLY_TYPES[unitType];
-                    const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6' };
+                    const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6', healer: '#ff88aa' };
                     const isUsed = spawnedUnits()[idx];
                     return (
                       <button class="btn ally-btn" 
@@ -290,8 +297,14 @@ function App() {
               <button onClick={() => changeGameSpeed(2)} style={{ "padding": "2px 8px", "background": gameSpeed() === 2 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 2 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>2x</button>
               <button onClick={() => changeGameSpeed(3)} style={{ "padding": "2px 8px", "background": gameSpeed() === 3 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 3 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>3x</button>
             </div>
+            <button onClick={() => setShowGuide(true)} style={{ "padding": "5px 15px", "background": "var(--primary)", "color": "#1a1a2e", "border": "none", "border-radius": "4px", "cursor": "pointer", "font-weight": "bold" }}>Open Growth Guide</button>
           </div>
         </div>
+      )}
+      {showGuide() && (
+        <Portal>
+          <Guide onClose={() => setShowGuide(false)} />
+        </Portal>
       )}
     </div>
   );

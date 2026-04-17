@@ -66,7 +66,7 @@ export default class UnitManager {
         let finalCooldown = specs.cooldown;
 
         if (typeKey === 'tanker') {
-            finalDefense += (level - 1) * 1; // +1 Defense per level
+            finalDefense += (level - 1) * 0.5; // +0.5 Defense per level
         } else if (typeKey === 'shooter') {
             // Increase attack speed by 5% per level (reduce cooldown)
             finalCooldown /= (1 + (level - 1) * 0.05);

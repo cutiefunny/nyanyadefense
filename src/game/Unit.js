@@ -127,6 +127,28 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     findTarget(opponents) {
+        if (this.typeKey === 'healer') {
+            // Healers target the ally with the lowest HP fraction who is NOT at full hp
+            let woundedAlly = null;
+            let lowestHpRatio = 1;
+            
+            const allies = this.unitManager.allies;
+            for (let j = 0; j < allies.length; j++) {
+                const ally = allies[j];
+                if (ally === this || ally.hp <= 0) continue;
+                
+                const dist = Math.abs(this.x - ally.x);
+                if (dist <= this.attackRange) {
+                    const ratio = ally.hp / ally.maxHp;
+                    if (ratio < 0.99 && ratio < lowestHpRatio) {
+                        lowestHpRatio = ratio;
+                        woundedAlly = ally;
+                    }
+                }
+            }
+            return woundedAlly; // Can be null if everyone is full
+        }
+
         let target = null;
         let minDist = Infinity;
         const halfW = this.logicWidth / 2;
@@ -193,6 +215,23 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             } else {
                 desiredMove = 0;
             }
+        } else if (this.typeKey === 'healer') {
+            // Healer AI: Follow the front-most combat unit
+            const combatAllies = this.unitManager.allies.filter(a => a.active && a.hp > 0 && a.typeKey !== 'healer' && !a.isBoss);
+            if (combatAllies.length > 0) {
+                const frontAlly = combatAllies.reduce((prev, curr) => (curr.x > prev.x ? curr : prev));
+                const followDist = 80;
+                const targetX = frontAlly.x - followDist;
+                const diff = targetX - this.x;
+                
+                if (Math.abs(diff) > 20) {
+                    desiredMove = diff > 0 ? 1 : -1;
+                } else {
+                    desiredMove = 0;
+                }
+            } else {
+                desiredMove = 1; // Advance if no one to follow
+            }
         } else if (target) {
             if (this.typeKey === 'shooter') {
                 if (minDist < 120) desiredMove = -1;
@@ -251,29 +290,43 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         if (time - this.lastAttackTime >= currentCooldown) {
-            target.takeDamage(currentDamage, this.isAlly);
             this.lastAttackTime = time;
-
-            this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.5 });
-
-            // Knockback Logic: Bosses are ALWAYS immune to knockback
-            const knockbackChance = 0.10 + this.bonusKnockback;
-            if (!target.isKnockbackImmune && !target.isBoss && Math.random() <= knockbackChance) {
-                target.stunRemainingTime = 400;
-                this.scene.tweens.add({
-                    targets: target,
-                    x: target.x + (this.isAlly ? 40 : -40),
-                    duration: 200,
-                    ease: 'Cubic.easeOut'
-                });
-            }
-
-            // [수정] 원거리 유닛도 투사체 없이 즉시 피격 (요청 사항)
-            // if (this.attackRange > 20 && this.typeKey !== 'shooter' && !this.isBoss) {
-            //     this.effectManager.createProjectile(this.x, this.y, target, this.isAlly);
-            // }
-
             this.effectManager.playAttackAnimation(this, this.isAlly);
+
+            if (this.typeKey === 'healer') {
+                // Healing Logic
+                target.hp = Math.min(target.maxHp, target.hp + currentDamage);
+                
+                // Show a green heal effect
+                const healText = this.scene.add.text(target.x, target.y - 40, `+${Math.floor(currentDamage)}`, {
+                    fontSize: '16px', fontFamily: 'Arial Black', fill: '#2ecc71'
+                }).setOrigin(0.5).setDepth(3000);
+                
+                this.scene.tweens.add({
+                    targets: healText,
+                    y: healText.y - 30,
+                    alpha: 0,
+                    duration: 800,
+                    onComplete: () => healText.destroy()
+                });
+
+                // Play a heal sound if available (reuse hit for now or just silent)
+            } else {
+                // Normal Damage & Knockback
+                target.takeDamage(currentDamage, this.isAlly);
+                this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.5 });
+
+                const knockbackChance = 0.10 + this.bonusKnockback;
+                if (!target.isKnockbackImmune && !target.isBoss && Math.random() <= knockbackChance) {
+                    target.stunRemainingTime = 400;
+                    this.scene.tweens.add({
+                        targets: target,
+                        x: target.x + (this.isAlly ? 40 : -40),
+                        duration: 200,
+                        ease: 'Cubic.easeOut'
+                    });
+                }
+            }
 
             if (this.typeKey === 'shooter') {
                 this.scene.tweens.add({
