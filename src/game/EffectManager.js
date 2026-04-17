@@ -15,6 +15,30 @@ export default class EffectManager {
         }).setDepth(3000);
     }
 
+    flashScreen(color = 0xffffff, duration = 100) {
+        const flash = this.scene.add.rectangle(400, 150, 800, 300, color)
+            .setAlpha(0)
+            .setDepth(10000)
+            .setScrollFactor(0);
+        
+        this.scene.tweens.add({
+            targets: flash,
+            alpha: 0.5,
+            duration: duration / 2,
+            yoyo: true,
+            onComplete: () => flash.destroy()
+        });
+    }
+
+    playVictoryCelebration() {
+        this.flashScreen(0x43d8c9, 300);
+    }
+
+    playDefeatEffect() {
+        this.flashScreen(0xe94560, 500);
+        this.scene.cameras.main.shake(500, 0.01);
+    }
+
     playHitEffect(target, damage) {
         const targetVisual = target.rect || target;
         if (!targetVisual || !targetVisual.active) return;

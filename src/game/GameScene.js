@@ -200,12 +200,10 @@ export default class GameScene extends Phaser.Scene {
         this.time.timeScale = val;
     }
 
-    instantWin() {
+    retreat() {
         if (this.isGameOver) return;
-        const enemyBoss = this.unitManager.enemies.find(e => e.isBoss);
-        if (enemyBoss) {
-            enemyBoss.takeDamage(enemyBoss.hp + 9999, true);
-        }
+        this.isGameOver = true;
+        this.sys.game.events.emit('game-over', 'defeat');
     }
 
     changeStage(stageNum) {
@@ -302,15 +300,21 @@ export default class GameScene extends Phaser.Scene {
             this.enemySpawnTimer = 0;
         }
 
-        // Auto spawn allies (minions) - ONLY Normal Cats
+        // Auto spawn allies (minions) - ONLY Normal Cats (비실이)
         this.allyAutoSpawnTimer += scaledDelta;
-        const allySpawnDelay = 5000; // Every 5 seconds
+        
+        // Skill based spawn speed: Base 5000ms, decreases with level
+        const skillLevels = this.registry.get('skillLevels') || { normal_cooldown: 1 };
+        const baseAllyDelay = 5000;
+        const allySpawnDelay = Math.max(800, baseAllyDelay - (skillLevels.normal_cooldown - 1) * 300);
+        
         if (this.allyAutoSpawnTimer > allySpawnDelay) {
             this.spawnAlly('normal');
             this.allyAutoSpawnTimer = 0;
         }
 
         // Squad units (deck) are deployed manually via buttons.
+
 
         // Auto Fire Skills and Deploy Deck Units in Auto Mode
         if (this.isAutoMode) {
@@ -329,7 +333,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Delegate unit logic update (Pass custom battleTime for speed control)
         const gameResult = this.unitManager.updateUnits(this.battleTime, scaledDelta);
-        if (gameResult) {
+        if (gameResult && !this.isGameOver) {
             if (gameResult === 'victory') {
                 const config = STAGE_CONFIG[this.stage];
                 // Add reward to global gold immediately on victory
@@ -347,17 +351,33 @@ export default class GameScene extends Phaser.Scene {
                 stageClears[this.stage] = clearCount + 1;
                 this.registry.set('stageClears', stageClears);
 
+                // Start Victory Drama
+                this.isGameOver = true;
+                this.time.timeScale = 0.4; // 덜 느리게 (0.2 -> 0.4)
+                this.effectManager.playVictoryCelebration();
+
                 if (config && config.nextStage) {
-                    this.scene.pause();
-                    this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: config.clearReward });
+                    this.time.delayedCall(1000, () => { // 더 빠르게 (2000 -> 1000)
+                        this.time.timeScale = 1;
+                        this.scene.pause();
+                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: config.clearReward });
+                    });
                 } else {
-                    this.isGameOver = true;
-                    this.sys.game.events.emit('game-over', 'victory');
+                    this.time.delayedCall(1000, () => { // 더 빠르게 (2000 -> 1000)
+                        this.time.timeScale = 1;
+                        this.sys.game.events.emit('game-over', 'victory');
+                    });
                 }
             } else {
-
+                // Defeat Drama
                 this.isGameOver = true;
-                this.sys.game.events.emit('game-over', gameResult);
+                this.time.timeScale = 0.5; // 덜 느리게 (0.3 -> 0.5)
+                this.effectManager.playDefeatEffect();
+                
+                this.time.delayedCall(800, () => { // 더 빠르게 (1500 -> 800)
+                    this.time.timeScale = 1;
+                    this.sys.game.events.emit('game-over', gameResult);
+                });
             }
         }
     }

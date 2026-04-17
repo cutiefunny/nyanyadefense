@@ -38,30 +38,30 @@ export default class LobbyScene extends Phaser.Scene {
         }
         this.registry.set('globalGold', parseInt(savedXp));
 
-        // Unit Levels
-        let savedLevels = localStorage.getItem('nyanya_unitLevels');
-        if (savedLevels) {
-            try {
-                this.registry.set('unitLevels', JSON.parse(savedLevels));
-            } catch (e) {
-                this.setDefaultLevels();
-            }
-        } else {
-            this.setDefaultLevels();
-        }
-
         // Skill Levels
         let savedSkillLevels = localStorage.getItem('nyanya_skillLevels');
+        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1 };
         if (savedSkillLevels) {
             try {
-                this.registry.set('skillLevels', JSON.parse(savedSkillLevels));
+                this.registry.set('skillLevels', { ...defaultSkillLevels, ...JSON.parse(savedSkillLevels) });
             } catch (e) {
-                const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, shout_range: 1 };
                 this.registry.set('skillLevels', defaultSkillLevels);
             }
         } else {
-            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, shout_range: 1 };
             this.registry.set('skillLevels', defaultSkillLevels);
+        }
+
+        // Unit Levels
+        let savedUnitLevels = localStorage.getItem('nyanya_unitLevels');
+        const defaultUnitLevels = { leader: 1, normal: 1, tanker: 1, shooter: 1 };
+        if (savedUnitLevels) {
+            try {
+                this.registry.set('unitLevels', { ...defaultUnitLevels, ...JSON.parse(savedUnitLevels) });
+            } catch (e) {
+                this.registry.set('unitLevels', defaultUnitLevels);
+            }
+        } else {
+            this.registry.set('unitLevels', defaultUnitLevels);
         }
 
         // Stage Clears
@@ -110,7 +110,7 @@ export default class LobbyScene extends Phaser.Scene {
             localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
         }
         if (!this.registry.get('skillLevels')) {
-            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, shout_range: 1 };
+            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1 };
             this.registry.set('skillLevels', defaultSkillLevels);
             localStorage.setItem('nyanya_skillLevels', JSON.stringify(defaultSkillLevels));
         }
@@ -273,7 +273,7 @@ export default class LobbyScene extends Phaser.Scene {
         const skillTypes = [
             { id: 'shout_cooldown', name: '함성 쿨타임 단축' },
             { id: 'shout_duration', name: '함성 지속시간 연장' },
-            { id: 'shout_range', name: '함성 범위 확대' } 
+            { id: 'normal_cooldown', name: '비실이 생산속도 증가' } 
         ];
         this.renderScrollableList(skillTypes, 600, listY, visibleHeight, 'skill', null);
 
@@ -375,16 +375,18 @@ export default class LobbyScene extends Phaser.Scene {
             container.add(btnText);
 
             upgradeBtn.on('pointerdown', () => {
-                if (gold >= upgradeCost) {
-                    this.registry.set('globalGold', gold - upgradeCost);
-                    levels[id]++;
-                    if (type === 'unit') {
-                        this.registry.set('unitLevels', { ...levels });
-                        localStorage.setItem('nyanya_unitLevels', JSON.stringify(levels));
-                    } else {
-                        this.registry.set('skillLevels', { ...levels });
-                        localStorage.setItem('nyanya_skillLevels', JSON.stringify(levels));
-                    }
+                const currentGold = this.registry.get('globalGold');
+                if (currentGold >= upgradeCost) {
+                    this.registry.set('globalGold', currentGold - upgradeCost);
+                    
+                    const registryKey = type === 'unit' ? 'unitLevels' : 'skillLevels';
+                    const currentLevels = { ...this.registry.get(registryKey) };
+                    
+                    currentLevels[id] = (currentLevels[id] || 1) + 1;
+                    
+                    this.registry.set(registryKey, currentLevels);
+                    localStorage.setItem(`nyanya_${registryKey}`, JSON.stringify(currentLevels));
+                    
                     this.scene.restart({ keepTab: true });
                 }
             });

@@ -85,25 +85,57 @@ body {
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.85);
+  background: radial-gradient(circle, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.95) 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 10;
-  backdrop-filter: blur(8px);
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  animation: overlayAppear 0.5s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .game-over-screen h2 {
-  font-size: 4rem;
+  font-size: 5rem;
   font-weight: 900;
   margin-bottom: 30px;
   text-transform: uppercase;
-  animation: pulse 2s infinite;
+  letter-spacing: 5px;
+  animation: titleBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
 }
 
-.victory-msg { color: var(--primary); text-shadow: 0 0 30px var(--primary); }
-.defeat-msg { color: var(--danger); text-shadow: 0 0 30px var(--danger); }
+.victory-msg { 
+  color: var(--primary); 
+  text-shadow: 0 0 30px var(--primary), 0 0 60px var(--primary);
+  animation: titleBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), victoryGlow 2s infinite alternate !important;
+}
+.defeat-msg { 
+  color: var(--danger); 
+  text-shadow: 0 0 30px var(--danger), 0 0 60px var(--danger);
+  animation: titleBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), defeatShake 0.5s infinite alternate !important;
+}
+
+@keyframes overlayAppear {
+  0% { opacity: 0; backdrop-filter: blur(0px); }
+  100% { opacity: 1; backdrop-filter: blur(12px); }
+}
+
+@keyframes titleBounce {
+  0% { transform: scale(0.5); opacity: 0; filter: blur(10px); }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; filter: blur(0px); }
+}
+
+@keyframes victoryGlow {
+  from { text-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary); }
+  to { text-shadow: 0 0 40px var(--primary), 0 0 80px var(--primary), 0 0 100px #fff; }
+}
+
+@keyframes defeatShake {
+  0% { transform: translateX(-2px) rotate(-1deg); }
+  100% { transform: translateX(2px) rotate(1deg); }
+}
 
 .controls-panel {
   width: 100%;
@@ -226,10 +258,31 @@ body {
   color: #1a1a2e;
   font-size: 1.5rem;
   text-transform: uppercase;
+  box-shadow: 0 0 20px rgba(67, 216, 201, 0.3);
+  animation: buttonFadeIn 0.8s 0.5s both;
 }
 .restart:hover {
   background: var(--primary-hover);
-  box-shadow: 0 0 30px rgba(67, 216, 201, 0.5);
+  box-shadow: 0 0 40px rgba(67, 216, 201, 0.6);
+  transform: translateY(-5px) scale(1.05);
+}
+
+@keyframes buttonFadeIn {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Scanline Effect */
+.game-over-screen::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 2;
+  background-size: 100% 4px, 3px 100%;
+  pointer-events: none;
 }
 
 /* Unit Icons */
@@ -330,14 +383,48 @@ body {
   }
 }
 
-/* Auto Mode Toggle */
+/* Top group for toggles and retreat */
+.top-controls-group {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.retreat-btn {
+    background: rgba(231, 76, 60, 0.8);
+    border: 2px solid #e74c3c;
+    color: white;
+    padding: 2px 12px;
+    border-radius: 15px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(5px);
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.retreat-btn:hover {
+    background: #e74c3c;
+    transform: scale(1.05);
+}
+
+.retreat-btn:active {
+    transform: scale(0.95);
+}
+
 .auto-mode-toggle {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 10;
-  cursor: pointer;
-  user-select: none;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
 }
 
 .toggle-switch {

@@ -13,7 +13,7 @@ export default class SkillManager {
         // Stats based on level
         const currentCooldown = Math.max(5000, 15000 - (skillLevels.shout_cooldown - 1) * 1000);
         const currentDuration = 10000 + (skillLevels.shout_duration - 1) * 2000;
-        const currentRange = 150 + (skillLevels.shout_range - 1) * 30;
+        const currentRange = 250; // Fixed range instead of being level-dependent
 
         if (this.scene.battleTime - this.lastCannonTime >= currentCooldown) {
             this.lastCannonTime = this.scene.battleTime;

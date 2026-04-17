@@ -200,11 +200,16 @@ function App() {
         )}
         {currentSceneKey() === 'GameScene' && (
           <>
-            <div class="auto-mode-toggle" onClick={toggleAutoMode}>
-              <div class={`toggle-switch ${isAutoMode() ? 'on' : 'off'}`}>
-                <div class={isAutoMode() ? 'toggle-label on' : 'toggle-label off'}>AUTO</div>
-                <div class="toggle-handle"></div>
-              </div>
+            <div class="top-controls-group">
+                <div class="auto-mode-toggle" onClick={toggleAutoMode}>
+                    <div class={`toggle-switch ${isAutoMode() ? 'on' : 'off'}`}>
+                        <div class={isAutoMode() ? 'toggle-label on' : 'toggle-label off'}>AUTO</div>
+                        <div class="toggle-handle"></div>
+                    </div>
+                </div>
+                <button class="retreat-btn" onClick={() => {
+                  if (currentScene) currentScene.retreat();
+                }}>후퇴</button>
             </div>
           </>
         )}
