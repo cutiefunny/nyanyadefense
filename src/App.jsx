@@ -22,6 +22,7 @@ function App() {
   const [isAutoMode, setIsAutoMode] = createSignal(true);
   const [gameSpeed, setGameSpeed] = createSignal(1);
   const [showGuide, setShowGuide] = createSignal(false);
+  const [unlockedUnit, setUnlockedUnit] = createSignal(null);
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -107,6 +108,10 @@ function App() {
 
     gameInstance.events.on('show-guide', () => {
       setShowGuide(true);
+    });
+    
+    gameInstance.events.on('unit-unlocked', (info) => {
+      setUnlockedUnit(info);
     });
 
     // Registry Persistence (Global listeners)
@@ -204,6 +209,72 @@ function App() {
               setCurrentSceneKey('LobbyScene');
             }} class="btn restart">돌아가기</button>
           </div>
+        )}
+        {unlockedUnit() && (
+          <Portal>
+            <div class="game-over-screen unlock-modal" style={{ 
+              "position": "fixed", 
+              "top": "0", 
+              "left": "0", 
+              "width": "100dvw", 
+              "height": "100dvh", 
+              "z-index": "10000",
+              "background": "rgba(0, 0, 0, 0.85)",
+              "display": "flex",
+              "justify-content": "center",
+              "align-items": "center",
+              "backdrop-filter": "blur(10px)",
+              "padding": "10px"
+            }}>
+              <div class="unlock-content" style={{ 
+                "text-align": "center", 
+                "background": "rgba(26, 26, 46, 0.98)", 
+                "padding": "20px 30px", 
+                "border-radius": "24px", 
+                "border": "4px solid #fbd46d", 
+                "max-width": "450px",
+                "max-height": "95dvh",
+                "width": "90%",
+                "box-shadow": "0 0 50px rgba(0,0,0,0.5)",
+                "position": "relative",
+                "overflow-y": "auto",
+                "display": "flex",
+                "flex-direction": "column",
+                "gap": "10px"
+              }}>
+                <h2 class="victory-msg" style={{ 
+                    "font-size": "min(2rem, 8vw)", 
+                    "margin": "0", 
+                    "line-height": "1.2" 
+                }}>NEW UNIT UNLOCKED!</h2>
+                
+                <div class="unit-preview" style={{ 
+                    "width": "80px", 
+                    "height": "80px", 
+                    "margin": "10px auto" 
+                }}>
+                  <div class={`unit-icon ${unlockedUnit().key}-icon`} style={{ "width": "80px", "height": "80px" }}></div>
+                </div>
+                
+                <h3 style={{ "color": "#fff", "font-size": "1.5rem", "margin": "0" }}>{unlockedUnit().name}</h3>
+                
+                <p style={{ 
+                    "color": "#aaa", 
+                    "margin": "0 0 10px", 
+                    "font-size": "0.95rem", 
+                    "line-height": "1.4" 
+                }}>스테이지 {unlockedUnit().stage} 클리어 보상으로<br/>새로운 용병을 고용할 수 있게 되었습니다!</p>
+                
+                <button onClick={() => setUnlockedUnit(null)} class="btn restart" style={{ 
+                    "width": "100%", 
+                    "max-width": "260px", 
+                    "margin": "0 auto",
+                    "padding": "10px",
+                    "min-height": "45px"
+                }}>확인</button>
+              </div>
+            </div>
+          </Portal>
         )}
         {currentSceneKey() === 'GameScene' && (
           <>

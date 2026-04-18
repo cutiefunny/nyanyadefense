@@ -5,8 +5,8 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'dog',
             spriteKey: 'enemy_dog',
-            hp: 4000,
-            damage: 20,
+            hp: 1500,
+            damage: 15,
             w: 80,
             scale: 0.8,
             reward: 800,
@@ -18,9 +18,9 @@ export const STAGE_CONFIG = {
         nextStage: 2,
         events: [],
         traits: {
-            enemySpeedMultiplier: 1.0,
-            spawnRateMultiplier: 1.0,
-            description: 'Standard stage with normal difficulty.'
+            enemySpeedMultiplier: 0.9,
+            spawnRateMultiplier: 0.7,
+            description: 'Easy starter stage.'
         }
     },
     2: {

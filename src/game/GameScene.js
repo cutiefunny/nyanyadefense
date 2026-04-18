@@ -156,6 +156,7 @@ export default class GameScene extends Phaser.Scene {
         this.enemySpawnTimer = 0;
         this.allyAutoSpawnTimer = 0;
         this.spawnEnemy();
+        this.spawnAlly('normal');
 
         this.sys.game.events.emit('game-ready', this);
     }
@@ -305,7 +306,7 @@ export default class GameScene extends Phaser.Scene {
         
         // Skill based spawn speed: Base 5000ms, decreases with level
         const skillLevels = this.registry.get('skillLevels') || { normal_cooldown: 1 };
-        const baseAllyDelay = 5000;
+        const baseAllyDelay = 4000;
         const allySpawnDelay = Math.max(800, baseAllyDelay - (skillLevels.normal_cooldown - 1) * 300);
         
         if (this.allyAutoSpawnTimer > allySpawnDelay) {
@@ -350,6 +351,18 @@ export default class GameScene extends Phaser.Scene {
                 const stageClears = { ...stageClearsBefore };
                 stageClears[this.stage] = clearCount + 1;
                 this.registry.set('stageClears', stageClears);
+
+                // Check for first time clear to show unlock notice
+                if (clearCount === 0) {
+                    const newlyUnlocked = Object.entries(ALLY_TYPES).find(([key, spec]) => spec.unlockStage === this.stage);
+                    if (newlyUnlocked) {
+                        this.sys.game.events.emit('unit-unlocked', {
+                            key: newlyUnlocked[0],
+                            name: newlyUnlocked[1].name,
+                            stage: this.stage
+                        });
+                    }
+                }
 
                 // Start Victory Drama
                 this.isGameOver = true;

@@ -289,17 +289,16 @@ body {
 .unit-icon {
   width: 40px;
   height: 40px;
+  background-size: 500% 100%;
   background-repeat: no-repeat;
   background-position: 0 0;
-  /* Reduced from 250px 50px to 200px 40px for the 40px frame */
-  background-size: 200px 40px;
   image-rendering: pixelated;
   margin-bottom: 8px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
 .normal-icon { background-image: url('./assets/units/normal.png'); }
-.tanker-icon { background-image: url('./assets/units/tanker.png'); background-size: 240px 40px; }
+.tanker-icon { background-image: url('./assets/units/tanker.png'); background-size: 600% 100%; } /* 6 frames */
 .shooter-icon { background-image: url('./assets/units/shooter.png'); }
 .healer-icon { background-image: url('./assets/units/healer.png'); }
 

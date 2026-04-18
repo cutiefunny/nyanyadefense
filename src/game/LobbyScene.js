@@ -540,12 +540,15 @@ export default class LobbyScene extends Phaser.Scene {
         const squad = JSON.parse(JSON.stringify(this.registry.get('squad'))); // deep clone
         const unitTypes = ['tanker', 'shooter', 'healer'];
         const unitLevels = this.registry.get('unitLevels');
+        const stageClearsDict = this.registry.get('stageClears') || {};
+        const maxClearedStage = Object.keys(stageClearsDict).reduce((max, s) => stageClearsDict[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
 
         unitTypes.forEach((type, i) => {
             const x = 165; // Card X
             const y = 110 + i * 45;
             const level = unitLevels[type] || 1;
             const spec = ALLY_TYPES[type];
+            const isUnlocked = (spec.unlockStage || 0) <= maxClearedStage;
             const owned = squad.inventory[type] || 0;
             
             // Hiring/Upgrade Costs Logic
@@ -553,62 +556,68 @@ export default class LobbyScene extends Phaser.Scene {
             const currentHiringCost = baseHiringCost * Math.pow(2, level - 1);
             const upgradeCost = currentHiringCost * 5;
             
-            const canBuy = gold >= currentHiringCost;
-            const canUpgrade = gold >= upgradeCost;
+            const canBuy = isUnlocked && gold >= currentHiringCost;
+            const canUpgrade = isUnlocked && gold >= upgradeCost;
 
             // Card bg
-            this.add.rectangle(x, y, 320, 34, 0x1a1a2e, 0.9)
-                .setStrokeStyle(2, 0x555555);
+            this.add.rectangle(x, y, 320, 34, isUnlocked ? 0x1a1a2e : 0x000000, isUnlocked ? 0.9 : 0.6)
+                .setStrokeStyle(2, isUnlocked ? 0x555555 : 0x333333);
 
             // Thumbnail
             if (this.textures.exists(`ally_${type}`)) {
-                this.add.sprite(x - 142, y, `ally_${type}`, 0).setDisplaySize(28, 28);
+                const thumb = this.add.sprite(x - 142, y, `ally_${type}`, 0).setDisplaySize(28, 28);
+                if (!isUnlocked) thumb.setTint(0x333333);
             }
 
             // Name + Lv
-            this.add.text(x - 122, y, `${spec.name} (Lv.${level})`, {
-                fontSize: '11px', fontFamily: 'Arial Black', fill: '#ffffff'
+            const nameStr = isUnlocked ? `${spec.name} (Lv.${level})` : `??? (스테이지 ${spec.unlockStage} 클리어 시 해금)`;
+            this.add.text(x - 122, y, nameStr, {
+                fontSize: isUnlocked ? '11px' : '10px', 
+                fontFamily: 'Arial Black', 
+                fill: isUnlocked ? '#ffffff' : '#666666'
             }).setOrigin(0, 0.5);
 
-            // Buy button
-            if (currentHiringCost > 0) {
-                const buyBtn = this.add.rectangle(x + 55, y, 60, 24, canBuy ? 0x2ecc71 : 0x555555)
+            if (isUnlocked) {
+                // Buy button
+                if (currentHiringCost > 0) {
+                    const buyBtn = this.add.rectangle(x + 55, y, 60, 24, canBuy ? 0x2ecc71 : 0x555555)
+                        .setStrokeStyle(1, 0x000000)
+                        .setInteractive({ useHandCursor: canBuy });
+                    this.add.text(x + 55, y, `고용:${currentHiringCost}`, {
+                        fontSize: '10px', fontFamily: 'Arial Black', fill: '#fff'
+                    }).setOrigin(0.5);
+
+                    if (canBuy) {
+                        buyBtn.on('pointerdown', () => {
+                            squad.inventory[type] = (squad.inventory[type] || 0) + 1;
+                            this.registry.set('globalGold', gold - currentHiringCost);
+                            this.saveSquad(squad);
+                            this.scene.restart({ keepTab: true });
+                        });
+                    }
+                    
+                    this.add.text(x - 10, y, `보유:${owned}`, {
+                        fontSize: '10px', fontFamily: 'Arial Black', fill: '#fbd46d'
+                    }).setOrigin(0.5);
+                }
+
+                // Upgrade button
+                const upgradeBtn = this.add.rectangle(x + 120, y, 65, 24, canUpgrade ? 0xe74c3c : 0x555555)
                     .setStrokeStyle(1, 0x000000)
-                    .setInteractive({ useHandCursor: canBuy });
-                this.add.text(x + 55, y, `고용:${currentHiringCost}`, {
+                    .setInteractive({ useHandCursor: canUpgrade });
+                this.add.text(x + 120, y, `UP:${upgradeCost}`, {
                     fontSize: '10px', fontFamily: 'Arial Black', fill: '#fff'
                 }).setOrigin(0.5);
 
-                if (canBuy) {
-                    buyBtn.on('pointerdown', () => {
-                        squad.inventory[type] = (squad.inventory[type] || 0) + 1;
-                        this.registry.set('globalGold', gold - currentHiringCost);
-                        this.saveSquad(squad);
+                if (canUpgrade) {
+                    upgradeBtn.on('pointerdown', () => {
+                        this.registry.set('globalGold', gold - upgradeCost);
+                        unitLevels[type]++;
+                        this.registry.set('unitLevels', { ...unitLevels });
+                        localStorage.setItem('nyanya_unitLevels', JSON.stringify(unitLevels));
                         this.scene.restart({ keepTab: true });
                     });
                 }
-                
-                this.add.text(x - 10, y, `보유:${owned}`, {
-                    fontSize: '10px', fontFamily: 'Arial Black', fill: '#fbd46d'
-                }).setOrigin(0.5);
-            }
-
-            // Upgrade button
-            const upgradeBtn = this.add.rectangle(x + 120, y, 65, 24, canUpgrade ? 0xe74c3c : 0x555555)
-                .setStrokeStyle(1, 0x000000)
-                .setInteractive({ useHandCursor: canUpgrade });
-            this.add.text(x + 120, y, `UP:${upgradeCost}`, {
-                fontSize: '10px', fontFamily: 'Arial Black', fill: '#fff'
-            }).setOrigin(0.5);
-
-            if (canUpgrade) {
-                upgradeBtn.on('pointerdown', () => {
-                    this.registry.set('globalGold', gold - upgradeCost);
-                    unitLevels[type]++;
-                    this.registry.set('unitLevels', { ...unitLevels });
-                    localStorage.setItem('nyanya_unitLevels', JSON.stringify(unitLevels));
-                    this.scene.restart({ keepTab: true });
-                });
             }
         });
 
