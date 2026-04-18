@@ -339,7 +339,7 @@ export default class GameScene extends Phaser.Scene {
                 // Add reward to global gold immediately on victory
                 const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
                 const clearCount = stageClearsBefore[this.stage] || 0;
-                const clearRewardMultiplier = 1 + (clearCount * 0.1);
+                const clearRewardMultiplier = 1 + (clearCount * 0.02);
                 
                 const currentGlobal = this.registry.get('globalGold') || 0;
                 const finalReward = Math.floor((config.clearReward || 0) * clearRewardMultiplier);

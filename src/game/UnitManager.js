@@ -112,7 +112,7 @@ export default class UnitManager {
         
         const stageClears = this.scene.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
         const clearCount = stageClears[this.scene.stage] || 0;
-        const clearBonus = 1 + (clearCount * 0.1);
+        const clearBonus = 1 + (clearCount * 0.02);
 
         const scale = (1 + (level * 0.1)) * clearBonus;
         specs.hp *= scale;
@@ -164,7 +164,7 @@ export default class UnitManager {
         if (!isAlly) {
             const stageClears = this.scene.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
             const clearCount = stageClears[this.scene.stage] || 0;
-            const clearBonus = 1 + (clearCount * 0.1);
+            const clearBonus = 1 + (clearCount * 0.02);
             specs.hp *= clearBonus;
             specs.damage *= clearBonus;
         }
