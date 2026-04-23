@@ -237,22 +237,6 @@ export default class UnitManager {
 
             if (unit.isBoss) return isAlly ? 'defeat' : 'victory';
             
-            if (isAlly && !unit.isBoss) {
-                // Enemy leveling disabled during battle
-                
-                // If the unit was a mercenary from the deck, remove it permanently
-                if (unit.deckIndex !== undefined) {
-                    const squad = this.scene.registry.get('squad');
-                    if (squad && squad.deck) {
-                        const newDeck = [...squad.deck];
-                        newDeck[unit.deckIndex] = null;
-                        
-                        const newSquad = { ...squad, deck: newDeck };
-                        this.scene.registry.set('squad', newSquad);
-                        // Registry event will trigger localStorage save in App.jsx
-                    }
-                }
-            }
         }
 
         return null;

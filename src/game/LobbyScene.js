@@ -538,7 +538,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         const gold = this.registry.get('globalGold');
         const squad = JSON.parse(JSON.stringify(this.registry.get('squad'))); // deep clone
-        const unitTypes = ['tanker', 'shooter', 'healer'];
+        const unitTypes = ['shooter', 'tanker', 'healer'];
         const unitLevels = this.registry.get('unitLevels');
         const stageClearsDict = this.registry.get('stageClears') || {};
         const maxClearedStage = Object.keys(stageClearsDict).reduce((max, s) => stageClearsDict[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
