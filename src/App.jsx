@@ -35,6 +35,25 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
 
+    if (!window.__phaserInputPatched && Phaser.Input && Phaser.Input.InputManager) {
+        const originalTransform = Phaser.Input.InputManager.prototype.transformPointer;
+        Phaser.Input.InputManager.prototype.transformPointer = function (pointer, pageX, pageY, wasMove) {
+            originalTransform.call(this, pointer, pageX, pageY, wasMove);
+            
+            const isPortrait = window.matchMedia("(orientation: portrait) and (max-device-width: 1024px)").matches;
+            if (isPortrait) {
+                const px = pointer.x;
+                const py = pointer.y;
+                
+                pointer.x = py * (800 / 300);
+                pointer.y = 300 - (px * (300 / 800));
+                
+                pointer.position.set(pointer.x, pointer.y);
+            }
+        };
+        window.__phaserInputPatched = true;
+    }
+
     const config = {
       type: Phaser.AUTO,
       width: 800,
