@@ -1,0 +1,128 @@
+{
+  "shouting": [
+    {
+      "id": "s1",
+      "name": "우렁찬 함성 I",
+      "desc": "함성 범위 +15%",
+      "effect": {
+        "shout_range_mult": 0.15
+      }
+    },
+    {
+      "id": "s2",
+      "name": "우렁찬 함성 II",
+      "desc": "함성 지속시간 +1초",
+      "effect": {
+        "shout_duration_add": 1000
+      }
+    },
+    {
+      "id": "s3",
+      "name": "우렁찬 함성 III",
+      "desc": "함성 쿨타임 -10%",
+      "effect": {
+        "shout_cooldown_mult": -0.1
+      }
+    },
+    {
+      "id": "s4",
+      "name": "우렁찬 함성 IV",
+      "desc": "함성 범위 +20%",
+      "effect": {
+        "shout_range_mult": 0.2
+      }
+    },
+    {
+      "id": "s5",
+      "name": "우렁찬 함성 V",
+      "desc": "함성 쿨타임 -15%",
+      "effect": {
+        "shout_cooldown_mult": -0.15
+      }
+    }
+  ],
+  "dealing": [
+    {
+      "id": "d1",
+      "name": "야성의 발톱 I",
+      "desc": "공격력 +10%",
+      "effect": {
+        "dmg_mult": 0.1
+      }
+    },
+    {
+      "id": "d2",
+      "name": "야성의 발톱 II",
+      "desc": "공격속도 +10%",
+      "effect": {
+        "attack_cooldown_mult": -0.1
+      }
+    },
+    {
+      "id": "d3",
+      "name": "야성의 발톱 III (스플래쉬)",
+      "desc": "공격 시 주변 적들에게 50%의 스플래쉬 피해를 입힙니다.",
+      "effect": {
+        "has_splash": 1
+      }
+    },
+    {
+      "id": "d4",
+      "name": "야성의 발톱 IV",
+      "desc": "공격력 +15%",
+      "effect": {
+        "dmg_mult": 0.15
+      }
+    },
+    {
+      "id": "d5",
+      "name": "야성의 발톱 V",
+      "desc": "치명타 확률 +15%",
+      "effect": {
+        "crit_chance_add": 0.15
+      }
+    }
+  ],
+  "tanking": [
+    {
+      "id": "t1",
+      "name": "강철 체력 I",
+      "desc": "최대 체력 +15%",
+      "effect": {
+        "hp_mult": 0.15
+      }
+    },
+    {
+      "id": "t2",
+      "name": "강철 체력 II",
+      "desc": "방어력 +3",
+      "effect": {
+        "defense_add": 3
+      }
+    },
+    {
+      "id": "t3",
+      "name": "강철 체력 III",
+      "desc": "최대 체력 +20%",
+      "effect": {
+        "hp_mult": 0.2
+      }
+    },
+    {
+      "id": "t4",
+      "name": "강철 체력 IV",
+      "desc": "방어력 +5",
+      "effect": {
+        "defense_add": 5
+      }
+    },
+    {
+      "id": "t5",
+      "name": "강철 체력 V",
+      "desc": "초당 체력 회복 +2 (예정)",
+      "effect": {
+        "hp_regen_add": 2
+      }
+    }
+  ]
+}

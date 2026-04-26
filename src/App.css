@@ -200,6 +200,7 @@ body {
 .button-group {
   display: flex;
   gap: 15px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -627,6 +628,21 @@ body {
 
 .build.on .toggle-label {
   color: #fbd46d;
+}
+
+/* Repeat Toggle */
+.toggle-switch.repeat.on {
+  border-color: #a29bfe;
+  box-shadow: 0 0 10px rgba(162, 155, 254, 0.3);
+}
+
+.repeat.on .toggle-handle {
+  background: #a29bfe;
+  box-shadow: 0 0 10px #a29bfe;
+}
+
+.repeat.on .toggle-label {
+  color: #a29bfe;
 }
 
 /* Guide Styles */

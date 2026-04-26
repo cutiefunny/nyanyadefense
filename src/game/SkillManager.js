@@ -1,3 +1,5 @@
+import LEADER_SKILL_TREE from './leaderSkillTree.json';
+
 export default class SkillManager {
     constructor(scene, unitManager) {
         this.scene = scene;
@@ -13,19 +15,48 @@ export default class SkillManager {
         // Stats based on level
         const currentCooldown = Math.max(5000, 15000 - (skillLevels.shout_cooldown - 1) * 1000);
         const currentDuration = 10000 + (skillLevels.shout_duration - 1) * 2000;
-        const currentRange = 250; // Fixed range instead of being level-dependent
+        const currentRange = 250; 
 
-        if (this.scene.battleTime - this.lastCannonTime >= currentCooldown) {
+        // Apply Leader Perks
+        const rawPerks = this.scene.registry.get('leaderPerks') || {};
+        const perks = {
+            shouting: typeof rawPerks.shouting === 'number' ? rawPerks.shouting : 0,
+            dealing: typeof rawPerks.dealing === 'number' ? rawPerks.dealing : 0,
+            tanking: typeof rawPerks.tanking === 'number' ? rawPerks.tanking : 0
+        };
+        
+        let perkEffects = {
+            shout_range_mult: 0,
+            shout_duration_add: 0,
+            shout_cooldown_mult: 0
+        };
+
+        Object.keys(LEADER_SKILL_TREE).forEach(branch => {
+            const level = perks[branch];
+            for (let i = 0; i < level; i++) {
+                if (LEADER_SKILL_TREE[branch][i] && LEADER_SKILL_TREE[branch][i].effect) {
+                    const eff = LEADER_SKILL_TREE[branch][i].effect;
+                    if (eff.shout_range_mult) perkEffects.shout_range_mult += eff.shout_range_mult;
+                    if (eff.shout_duration_add) perkEffects.shout_duration_add += eff.shout_duration_add;
+                    if (eff.shout_cooldown_mult) perkEffects.shout_cooldown_mult += eff.shout_cooldown_mult;
+                }
+            }
+        });
+
+        const finalCooldown = currentCooldown * (1 + perkEffects.shout_cooldown_mult);
+        const finalDuration = currentDuration + perkEffects.shout_duration_add;
+        const finalRange = currentRange * (1 + perkEffects.shout_range_mult);
+
+        if (this.scene.battleTime - this.lastCannonTime >= finalCooldown) {
             this.lastCannonTime = this.scene.battleTime;
-            this.cannonCooldown = currentCooldown; // For getCannonProgress calculation
-
+            this.cannonCooldown = finalCooldown; 
+            
             const leader = this.unitManager.allies.find(u => u.isBoss && u.isAlly);
             if (leader) {
-                // 1. Animation: Show 6th frame (index 5) for 1 second + Scale up effect
+                // ... animation logic ...
                 leader.setFrame(5);
                 leader.isShouting = true;
-
-                // Leader gets 10% bigger during shout (yoyo back to original)
+                
                 this.scene.tweens.add({
                     targets: leader,
                     scaleX: leader.baseScale * 1.1,
@@ -42,7 +73,6 @@ export default class SkillManager {
                     }
                 });
 
-                // 2. Shout Ring Effect (Single impactful Red ring)
                 const shoutRing = this.scene.add.circle(leader.x, leader.y - leader.displayHeight / 2, 10, 0xff1111, 0)
                     .setOrigin(0.5)
                     .setDepth(3000)
@@ -50,18 +80,17 @@ export default class SkillManager {
 
                 this.scene.tweens.add({
                     targets: shoutRing,
-                    radius: 160,
+                    radius: finalRange * 0.65, // Adjust visual ring to match range
                     alpha: 0,
-                    duration: 1000, // Slower expansion as requested
+                    duration: 1000, 
                     ease: 'Cubic.easeOut',
                     onComplete: () => shoutRing.destroy()
                 });
 
-                // 3. Buff Logic: Allies within currentRange
                 this.unitManager.allies.forEach(ally => {
                     const dist = Phaser.Math.Distance.Between(leader.x, leader.y, ally.x, ally.y);
-                    if (dist <= currentRange) {
-                        ally.buffRemainingTime = currentDuration; 
+                    if (dist <= finalRange) {
+                        ally.buffRemainingTime = finalDuration; 
                     }
                 });
             }

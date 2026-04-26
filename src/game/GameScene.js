@@ -74,7 +74,7 @@ export default class GameScene extends Phaser.Scene {
         this.stageTime = 0;
         this.battleTime = 0; // 게임 배속이 적용된 누적 시간
         this.processedEvents = new Set();
-        this.gameSpeed = 1;
+        this.gameSpeed = data?.speed || this.registry.get('gameSpeed') || 1;
         this.isAutoMode = true;
         this.isAutoBuy = true;
         
@@ -84,8 +84,8 @@ export default class GameScene extends Phaser.Scene {
         this.spawnedDeckIndices = new Set();
         this.deckAutoSpawnTimer = 0;
         
-        // Reset timeScale if it was changed
-        this.time.timeScale = 1;
+        // Reset timeScale or apply passed speed
+        this.time.timeScale = this.gameSpeed;
     }
 
 

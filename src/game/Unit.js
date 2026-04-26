@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import LEADER_SKILL_TREE from './leaderSkillTree.json';
 
 export default class Unit extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y, spriteKey, specs, isAlly, unitManager) {
@@ -43,6 +44,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.reward = specs.reward || 0;
         this.lastHitByEnemyTime = 0;
         this.deckIndex = specs.deckIndex;
+        this.superArmorTimer = 0; // Hidden skill timer for tanker
+
+        // Apply Leader Perks if applicable
+        if (this.isBoss && this.isAlly) {
+            this.applyLeaderPerks();
+        }
 
         // Visuals
         this.spriteKey = spriteKey;
@@ -84,6 +91,18 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         let desiredMove = this.getDesiredMove(target, minDist);
+
+        // Handle Super Armor (Hidden Skill)
+        if (this.superArmorTimer > 0) {
+            this.superArmorTimer -= delta;
+            this.stunRemainingTime = 0; // Clear stun while super armor is active
+            if (this.hitFlashTimer <= 0) {
+                this.setTint(0xf1c40f); // Golden tint for super armor
+            }
+            if (this.superArmorTimer <= 0) {
+                this.clearTint();
+            }
+        }
 
         // Handle Stun
         if (this.stunRemainingTime > 0) {
@@ -313,7 +332,37 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 // Play a heal sound if available (reuse hit for now or just silent)
             } else {
                 // Normal Damage & Knockback
-                target.takeDamage(currentDamage, this.isAlly);
+                let damageToApply = currentDamage;
+                if (this.critChance && Math.random() <= this.critChance) {
+                    damageToApply *= 2;
+                    if (this.scene.showFloatingText) {
+                        this.scene.showFloatingText('CRITICAL!', this.x, this.y - 60, '#ff1111');
+                    }
+                }
+                target.takeDamage(damageToApply, this.isAlly);
+
+                if (this.hasSplash) {
+                    const splashRange = 30;
+                    const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
+                    opponents.forEach(opp => {
+                        if (opp !== target && opp.active && opp.hp > 0) {
+                            const dist = Math.abs(target.x - opp.x);
+                            if (dist <= splashRange) {
+                                opp.takeDamage(damageToApply * 0.5, this.isAlly);
+                                // Splash visual
+                                const circle = this.scene.add.circle(opp.x, opp.y - 20, 15, 0xffaa00, 0.6).setDepth(3000);
+                                this.scene.tweens.add({
+                                    targets: circle,
+                                    alpha: 0,
+                                    scale: 1.5,
+                                    duration: 200,
+                                    onComplete: () => circle.destroy()
+                                });
+                            }
+                        }
+                    });
+                }
+
                 this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.5 });
 
                 const knockbackChance = 0.10 + this.bonusKnockback;
@@ -348,6 +397,11 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         
         if (!fromAlly) {
             this.lastHitByEnemyTime = this.scene.time.now;
+        }
+
+        // Hidden Skill: Tanker Super Armor
+        if (this.typeKey === 'tanker' && (this.scene.registry.get('unitLevels')?.tanker >= 5)) {
+            this.superArmorTimer = 500; // 0.5s Super Armor
         }
         
         // 보스 생존 AI: 체력이 50% 이하일 때 집중 포화를 당하면 후퇴 결정
@@ -402,6 +456,54 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             this.shadow.x = this.x;
             this.shadow.y = this.y;
         }
+    }
+
+    applyLeaderPerks() {
+        const rawPerks = this.scene.registry.get('leaderPerks') || {};
+        const perks = {
+            shouting: typeof rawPerks.shouting === 'number' ? rawPerks.shouting : 0,
+            dealing: typeof rawPerks.dealing === 'number' ? rawPerks.dealing : 0,
+            tanking: typeof rawPerks.tanking === 'number' ? rawPerks.tanking : 0
+        };
+        
+        // Collect all effect values
+        const effects = {
+            hp_mult: 0,
+            dmg_mult: 0,
+            speed_mult: 0,
+            defense_add: 0,
+            crit_chance_add: 0,
+            all_stat_mult: 0,
+            hp_regen_add: 0,
+            has_splash: 0,
+            attack_cooldown_mult: 0
+        };
+
+        Object.keys(LEADER_SKILL_TREE).forEach(branch => {
+            const level = perks[branch];
+            for (let i = 0; i < level; i++) {
+                if (LEADER_SKILL_TREE[branch][i]) {
+                    Object.entries(LEADER_SKILL_TREE[branch][i].effect).forEach(([key, val]) => {
+                        if (effects[key] !== undefined) effects[key] += val;
+                    });
+                }
+            }
+        });
+
+        // Apply stat bonuses
+        const totalStatMult = 1 + effects.all_stat_mult;
+        
+        this.maxHp = Math.floor(this.maxHp * (1 + effects.hp_mult) * totalStatMult);
+        this.hp = this.maxHp;
+        this.attackDamage = Math.floor(this.attackDamage * (1 + effects.dmg_mult) * totalStatMult);
+        this.speed = this.speed * (1 + effects.speed_mult) * totalStatMult;
+        this.defense += effects.defense_add;
+        this.attackCooldown = this.attackCooldown * (1 + effects.attack_cooldown_mult);
+        
+        // Crit logic (simplified: just store it for handleAttack)
+        this.critChance = effects.crit_chance_add;
+        this.hpRegen = effects.hp_regen_add;
+        this.hasSplash = effects.has_splash > 0;
     }
 
     destroy() {

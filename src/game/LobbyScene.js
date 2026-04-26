@@ -40,7 +40,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Skill Levels
         let savedSkillLevels = localStorage.getItem('nyanya_skillLevels');
-        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1 };
+        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
         if (savedSkillLevels) {
             try {
                 this.registry.set('skillLevels', { ...defaultSkillLevels, ...JSON.parse(savedSkillLevels) });
@@ -74,6 +74,18 @@ export default class LobbyScene extends Phaser.Scene {
             }
         } else {
             this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0 });
+        }
+
+        // Leader Perks: { level: perkId }
+        let savedPerks = localStorage.getItem('nyanya_leaderPerks');
+        if (savedPerks) {
+            try {
+                this.registry.set('leaderPerks', JSON.parse(savedPerks));
+            } catch (e) {
+                this.registry.set('leaderPerks', {});
+            }
+        } else {
+            this.registry.set('leaderPerks', {});
         }
 
         // Squad (deck) data: { inventory: { normal: 2, tanker: 1, ... }, deck: ['normal','tanker',null,null,null] }
@@ -110,7 +122,7 @@ export default class LobbyScene extends Phaser.Scene {
             localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
         }
         if (!this.registry.get('skillLevels')) {
-            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1 };
+            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
             this.registry.set('skillLevels', defaultSkillLevels);
             localStorage.setItem('nyanya_skillLevels', JSON.stringify(defaultSkillLevels));
         }
@@ -152,7 +164,23 @@ export default class LobbyScene extends Phaser.Scene {
         }
 
         this.renderHeader();
+        this.checkHiddenSkillNotifications();
         this.sys.game.events.emit('lobby-ready');
+    }
+
+    checkHiddenSkillNotifications() {
+        const unitLevels = this.registry.get('unitLevels') || {};
+        if (unitLevels.tanker >= 5) {
+            const seen = localStorage.getItem('nyanya_hiddenSkillSeen_tanker');
+            if (!seen) {
+                this.sys.game.events.emit('show-hidden-skill', { 
+                    unitName: '탱크', 
+                    skillName: '금강불괴 (슈퍼아머)', 
+                    desc: '데미지를 입을 때마다 0.5초간 모든 상태이상을 무시하는 슈퍼아머가 발동합니다.' 
+                });
+                localStorage.setItem('nyanya_hiddenSkillSeen_tanker', 'true');
+            }
+        }
     }
 
     renderBackground() {
@@ -270,9 +298,8 @@ export default class LobbyScene extends Phaser.Scene {
 
         // 2. Skills Column
         const skillTypes = [
-            { id: 'shout_cooldown', name: '함성 쿨타임 단축' },
-            { id: 'shout_duration', name: '함성 지속시간 연장' },
-            { id: 'normal_cooldown', name: '비실이 생산속도 증가' } 
+            { id: 'normal_cooldown', name: '비실이 생산속도 증가' },
+            { id: 'deck_slots', name: '출격 슬롯 추가' }
         ];
         this.renderScrollableList(skillTypes, 600, listY, visibleHeight, 'skill', null);
 
@@ -352,6 +379,8 @@ export default class LobbyScene extends Phaser.Scene {
                 if (id === 'shout_cooldown' || id === 'normal_cooldown') {
                     // Rating 10/10 - High cost, High scaling
                     upgradeCost = Math.floor(2000 * Math.pow(1.5, level - 1));
+                } else if (id === 'deck_slots') {
+                    upgradeCost = Math.floor(50000 * Math.pow(2, level - 1));
                 } else {
                     // Rating 6/10 - Moderate cost
                     upgradeCost = Math.floor(800 * Math.pow(1.3, level - 1));
@@ -394,12 +423,28 @@ export default class LobbyScene extends Phaser.Scene {
             upgradeBtn.on('pointerdown', () => {
                 const currentGold = this.registry.get('globalGold');
                 if (currentGold >= upgradeCost) {
+                    if (id === 'leader') {
+                        const currentLevels = this.registry.get('unitLevels');
+                        const newLevel = (currentLevels[id] || 1) + 1;
+                        this.sys.game.events.emit('show-leader-skill-tree', { 
+                            level: newLevel,
+                            cost: upgradeCost
+                        });
+                        return;
+                    }
+
                     this.registry.set('globalGold', currentGold - upgradeCost);
                     
                     const registryKey = type === 'unit' ? 'unitLevels' : 'skillLevels';
                     const currentLevels = { ...this.registry.get(registryKey) };
                     
                     currentLevels[id] = (currentLevels[id] || 1) + 1;
+                    
+                    if (id === 'deck_slots') {
+                        const squad = this.registry.get('squad');
+                        squad.deck.push(null);
+                        this.saveSquad(squad);
+                    }
                     
                     this.registry.set(registryKey, currentLevels);
                     localStorage.setItem(`nyanya_${registryKey}`, JSON.stringify(currentLevels));
@@ -494,8 +539,8 @@ export default class LobbyScene extends Phaser.Scene {
             fill: '#aaaaaa'
         }).setOrigin(0.5);
 
-        for (let i = 0; i < 5; i++) {
-            const x = 400 + (i - 2) * 45;
+        for (let i = 0; i < deckSlots.length; i++) {
+            const x = 400 + (i - (deckSlots.length - 1) / 2) * 45;
             const y = 248;
             const unitType = deckSlots[i];
 
@@ -615,23 +660,35 @@ export default class LobbyScene extends Phaser.Scene {
                         unitLevels[type]++;
                         this.registry.set('unitLevels', { ...unitLevels });
                         localStorage.setItem('nyanya_unitLevels', JSON.stringify(unitLevels));
+
+                        // Hidden Skill Trigger for Tanker
+                        if (type === 'tanker' && unitLevels[type] === 5) {
+                            this.sys.game.events.emit('show-hidden-skill', { 
+                                unitName: '탱크', 
+                                skillName: '금강불괴 (슈퍼아머)', 
+                                desc: '데미지를 입을 때마다 0.5초간 모든 상태이상을 무시하는 슈퍼아머가 발동합니다.' 
+                            });
+                            localStorage.setItem('nyanya_hiddenSkillSeen_tanker', 'true');
+                        }
+
                         this.scene.restart({ keepTab: true });
                     });
                 }
             }
         });
 
-        // ─── DECK: 5 Slots ───
-        this.add.text(550, 80, '[ 출격 덱 (5슬롯) ]', {
+        // ─── DECK Slots ───
+        const deckSlots = squad.deck || [null, null, null, null, null];
+        this.add.text(550, 80, `[ 출격 덱 (${deckSlots.length}슬롯) ]`, {
             fontSize: '16px', fontFamily: 'Arial Black', fill: '#e74c3c'
         }).setOrigin(0.5);
 
-        const deckSlots = squad.deck || [null, null, null, null, null];
         const slotColors = { normal: 0x43d8c9, tanker: 0x3498db, shooter: 0x9b59b6, healer: 0xff88aa };
 
-        for (let i = 0; i < 5; i++) {
-            const x = 430 + (i % 5) * 55;
-            const y = 120;
+        for (let i = 0; i < deckSlots.length; i++) {
+            const x = 410 + (i % 7) * 52;
+            const row = Math.floor(i / 7);
+            const y = 115 + row * 52;
             const unitType = deckSlots[i];
 
             const slotBg = this.add.rectangle(x, y, 48, 48, unitType ? (slotColors[unitType] || 0x333333) : 0x222222, 0.9)

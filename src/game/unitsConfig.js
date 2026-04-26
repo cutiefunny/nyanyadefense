@@ -1,6 +1,6 @@
 export const ALLY_TYPES = {
     normal: { cost: 0, hp: 120, speed: 1.2, damage: 12, range: 10, cooldown: 1000, color: 0x43d8c9, w: 30, h: 30, name: '비실이', bonusKnockback: 0, scale: 0.5, unlockStage: 0 },
-    tanker: { cost: 650, hp: 1000, speed: 0.6, damage: 25, range: 15, cooldown: 1500, color: 0x3498db, w: 45, h: 45, name: '탱크', bonusKnockback: 0.2, scale: 0.7, isKnockbackImmune: true, defense: 7, unlockStage: 2 },
+    tanker: { cost: 650, hp: 1000, speed: 0.6, damage: 25, range: 15, cooldown: 1500, color: 0x3498db, w: 45, h: 45, name: '탱크', bonusKnockback: 0.2, scale: 0.7, isKnockbackImmune: true, defense: 10, unlockStage: 2 },
     shooter: { cost: 400, hp: 120, speed: 1.0, damage: 18, range: 180, cooldown: 800, color: 0x9b59b6, w: 20, h: 40, name: '턱시도', bonusKnockback: -0.1, scale: 0.5, unlockStage: 1 },
     healer: { cost: 800, hp: 150, speed: 1.1, damage: 30, range: 250, cooldown: 2000, color: 0xff88aa, w: 30, h: 40, name: '냐이팅게일', bonusKnockback: 0, scale: 0.5, unlockStage: 3 }
 };
