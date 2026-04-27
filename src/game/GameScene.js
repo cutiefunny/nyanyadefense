@@ -79,7 +79,7 @@ export default class GameScene extends Phaser.Scene {
         this.isAutoBuy = true;
         
         // Load deck from squad data
-        const squad = this.registry.get('squad') || { inventory: {}, deck: [null, null, null, null, null] };
+        const squad = this.registry.get('squad') || { inventory: {}, deck: [null, null, null] };
         this.deck = squad.deck;
         this.spawnedDeckIndices = new Set();
         this.deckAutoSpawnTimer = 0;

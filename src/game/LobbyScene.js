@@ -40,7 +40,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Skill Levels
         let savedSkillLevels = localStorage.getItem('nyanya_skillLevels');
-        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
+        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 3 };
         if (savedSkillLevels) {
             try {
                 this.registry.set('skillLevels', { ...defaultSkillLevels, ...JSON.parse(savedSkillLevels) });
@@ -94,10 +94,10 @@ export default class LobbyScene extends Phaser.Scene {
             try {
                 this.registry.set('squad', JSON.parse(savedSquad));
             } catch (e) {
-                this.registry.set('squad', { inventory: {}, deck: [null, null, null, null, null] });
+                this.registry.set('squad', { inventory: {}, deck: [null, null, null] });
             }
         } else {
-            this.registry.set('squad', { inventory: {}, deck: [null, null, null, null, null] });
+            this.registry.set('squad', { inventory: {}, deck: [null, null, null] });
         }
 
         const onGoldChange = (parent, value) => {
@@ -122,7 +122,7 @@ export default class LobbyScene extends Phaser.Scene {
             localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
         }
         if (!this.registry.get('skillLevels')) {
-            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
+            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 3 };
             this.registry.set('skillLevels', defaultSkillLevels);
             localStorage.setItem('nyanya_skillLevels', JSON.stringify(defaultSkillLevels));
         }
@@ -190,6 +190,17 @@ export default class LobbyScene extends Phaser.Scene {
                     desc: '적과의 거리가 가까워지면 순식간에 거리를 좁힙니다.'
                 });
                 localStorage.setItem('nyanya_hiddenSkillSeen_normal', 'true');
+            }
+        }
+        if (unitLevels.shooter >= 5) {
+            const seen = localStorage.getItem('nyanya_hiddenSkillSeen_shooter');
+            if (!seen) {
+                this.sys.game.events.emit('show-hidden-skill', {
+                    unitName: '턱시도',
+                    skillName: '수류탄 투척',
+                    desc: '공격 10회마다 강력한 광역 데미지를 입히는 수류탄을 던집니다.'
+                });
+                localStorage.setItem('nyanya_hiddenSkillSeen_shooter', 'true');
             }
         }
     }
@@ -467,6 +478,9 @@ export default class LobbyScene extends Phaser.Scene {
                     if (id === 'tanker' && currentLevels.tanker === 5) {
                         this.checkHiddenSkillNotifications();
                     }
+                    if (id === 'shooter' && currentLevels.shooter === 5) {
+                        this.checkHiddenSkillNotifications();
+                    }
 
                     this.scene.restart({ keepTab: true });
                 }
@@ -549,7 +563,7 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         // ─── Current Deck Display ───
-        const squad = this.registry.get('squad') || { deck: [null, null, null, null, null] };
+        const squad = this.registry.get('squad') || { deck: [null, null, null] };
         const deckSlots = squad.deck;
 
         this.add.text(400, 225, '현재 출격 부대', {
@@ -690,24 +704,37 @@ export default class LobbyScene extends Phaser.Scene {
                             localStorage.setItem('nyanya_hiddenSkillSeen_tanker', 'true');
                         }
 
+                        // Hidden Skill Trigger for Shooter
+                        if (type === 'shooter' && unitLevels[type] === 5) {
+                            this.sys.game.events.emit('show-hidden-skill', {
+                                unitName: '턱시도',
+                                skillName: '수류탄 투척',
+                                desc: '공격 10회마다 강력한 광역 데미지를 입히는 수류탄을 던집니다.'
+                            });
+                            localStorage.setItem('nyanya_hiddenSkillSeen_shooter', 'true');
+                        }
+
                         this.scene.restart({ keepTab: true });
                     });
                 }
             }
         });
 
-        // ─── DECK Slots ───
-        const deckSlots = squad.deck || [null, null, null, null, null];
-        this.add.text(550, 80, `[ 출격 덱 (${deckSlots.length}슬롯) ]`, {
+        const deckSlots = squad.deck || [null, null, null];
+        const rightPanelCenterX = 570;
+        const deckSectionY = 80;
+
+        this.add.text(rightPanelCenterX, deckSectionY, `[ 출격 덱 (${deckSlots.length}슬롯) ]`, {
             fontSize: '16px', fontFamily: 'Arial Black', fill: '#e74c3c'
         }).setOrigin(0.5);
 
         const slotColors = { normal: 0x43d8c9, tanker: 0x3498db, shooter: 0x9b59b6, healer: 0xff88aa };
 
         for (let i = 0; i < deckSlots.length; i++) {
-            const x = 410 + (i % 7) * 52;
             const row = Math.floor(i / 7);
-            const y = 115 + row * 52;
+            const col = i % 7;
+            const x = rightPanelCenterX + (col - (Math.min(deckSlots.length, 7) - 1) / 2) * 52;
+            const y = deckSectionY + 40 + row * 52;
             const unitType = deckSlots[i];
 
             const slotBg = this.add.rectangle(x, y, 48, 48, unitType ? (slotColors[unitType] || 0x333333) : 0x222222, 0.9)
@@ -743,14 +770,15 @@ export default class LobbyScene extends Phaser.Scene {
         }
 
         // ─── Inventory -> Deck assign buttons ───
-        this.add.text(550, 165, '[ 배치 가능 유닛 ]', {
+        const inventorySectionY = 175;
+        this.add.text(rightPanelCenterX, inventorySectionY, '[ 배치 가능 유닛 ]', {
             fontSize: '14px', fontFamily: 'Arial Black', fill: '#aaa'
         }).setOrigin(0.5);
 
         const availableTypes = ['normal', 'tanker', 'shooter', 'healer'].filter(t => (squad.inventory[t] || 0) > 0);
         availableTypes.forEach((type, i) => {
-            const x = 430 + i * 75;
-            const y = 200;
+            const x = rightPanelCenterX + (i - (availableTypes.length - 1) / 2) * 80;
+            const y = inventorySectionY + 35;
             const spec = ALLY_TYPES[type];
             const count = squad.inventory[type];
 

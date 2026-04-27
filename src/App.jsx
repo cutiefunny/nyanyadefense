@@ -90,8 +90,8 @@ function App() {
       setGameOver('');
       setStage(scene.stage);
       // Load deck from squad data
-      const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [null, null, null, null, null] };
-      const deck = squad.deck || [null, null, null, null, null];
+      const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [null, null, null] };
+      const deck = squad.deck || [null, null, null];
       setDeckUnits(deck);
       // Initialize spawned status for each deck slot
       const initSpawned = {};
@@ -197,7 +197,7 @@ function App() {
     gameInstance.registry.events.on('changedata-squad', (parent, value) => {
         localStorage.setItem('nyanya_squad', JSON.stringify(value));
         if (currentSceneKey() === 'GameScene') {
-            setDeckUnits(value.deck || [null, null, null, null, null]);
+            setDeckUnits(value.deck || [null, null, null]);
         }
     });
     gameInstance.registry.events.on('changedata-leaderPerks', (parent, value) => {
@@ -485,6 +485,33 @@ function App() {
           </>
         )}
 
+        {showDevMenu() && (
+          <div class="dev-menu">
+            <h4>Dev Menu</h4>
+            <div class="dev-btn-group">
+              <button class="dev-btn" onClick={() => { if (currentScene) currentScene.instantWin(); }}>
+                Instant Win
+              </button>
+              
+              <button class={`dev-btn ${gameSpeed() === 1 ? 'active' : ''}`} onClick={() => changeGameSpeed(1)}>
+                1x Speed
+              </button>
+              
+              <button class={`dev-btn ${gameSpeed() === 3 ? 'active' : ''}`} onClick={() => changeGameSpeed(3)}>
+                3x Speed
+              </button>
+              
+              <button class="dev-btn danger" onClick={() => { 
+                if (confirm('모든 게임 피전체 초기화하시겠습니까? (로컬 스토리지 삭제)')) {
+                  localStorage.clear();
+                  window.location.reload();
+                }
+              }}>
+                Reset All
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {currentSceneKey() === 'GameScene' && (
@@ -526,45 +553,7 @@ function App() {
       )}
 
       
-      {showDevMenu() && (
-        <div class="dev-menu" style={{ "margin-top": "15px", "background": "rgba(0,0,0,0.8)", "padding": "15px", "border-radius": "12px", "width": "100%", "max-width": "800px", "color": "#43d8c9", "font-family": "monospace", "border": "1px solid #43d8c9" }}>
-          <h4 style={{ "margin-top": "0", "margin-bottom": "10px", "text-transform": "uppercase" }}>Developer Menu</h4>
-          
-          <div class="storage-info" style={{ "margin-bottom": "15px", "font-size": "12px", "color": "#fbd46d", "border-bottom": "1px solid #43d8c9", "padding-bottom": "10px" }}>
-            <strong>[Local Storage]</strong><br/>
-            XP: {localStorage.getItem('nyanya_xp') || 0} | 
-            Clears: {localStorage.getItem('nyanya_stageClears') || 'N/A'} | 
-            Device: {localStorage.getItem('nyanya_deviceId')}
-          </div>
-          <div style={{ "display": "flex", "gap": "10px", "flex-wrap": "wrap" }}>
-            <button onClick={() => { 
-              if (gameInstance) {
-                const cur = gameInstance.registry.get('globalGold') || 0;
-                gameInstance.registry.set('globalGold', cur + 1000);
-              }
-            }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fbd46d", "border": "1px solid #fbd46d", "border-radius": "4px", "cursor": "pointer" }}>+1000 XP</button>
-            <button onClick={() => { 
-              if (gameInstance) gameInstance.registry.set('globalGold', 0);
-            }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "border-radius": "4px", "cursor": "pointer" }}>Reset XP</button>
-            <button onClick={() => { setLevel(l => l + 1); if (currentScene) currentScene.level++; }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>+1 Level</button>
-            <button onClick={() => { setCannonProgress(100); if (currentScene) currentScene.skillManager.shoutingCooldown = 100; }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fff", "border": "1px solid #fff", "border-radius": "4px", "cursor": "pointer" }}>Max Cannon</button>
-            <button onClick={() => { if (currentScene) currentScene.instantWin(); }} style={{ "padding": "5px 10px", "background": "#1a1a2e", "color": "#fbd46d", "border": "1px solid #fbd46d", "border-radius": "4px", "cursor": "pointer" }}>Instant Win</button>
-            <div style={{ "display": "flex", "align-items": "center", "gap": "5px", "border": "1px solid #e74c3c", "padding": "5px", "border-radius": "4px" }}>
-              <span style={{ "color": "#e74c3c", "font-weight": "bold" }}>Stage (Current: {stage()}):</span>
-              <button onClick={() => { setStage(1); if (currentScene) currentScene.changeStage(1); }} style={{ "padding": "2px 8px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "cursor": "pointer" }}>1</button>
-              <button onClick={() => { setStage(2); if (currentScene) currentScene.changeStage(2); }} style={{ "padding": "2px 8px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "cursor": "pointer" }}>2</button>
-              <button onClick={() => { setStage(3); if (currentScene) currentScene.changeStage(3); }} style={{ "padding": "2px 8px", "background": "#1a1a2e", "color": "#e74c3c", "border": "1px solid #e74c3c", "cursor": "pointer" }}>3</button>
-            </div>
-            <div style={{ "display": "flex", "align-items": "center", "gap": "5px", "border": "1px solid #a29bfe", "padding": "5px", "border-radius": "4px" }}>
-              <span style={{ "color": "#a29bfe", "font-weight": "bold" }}>Speed:</span>
-              <button onClick={() => changeGameSpeed(1)} style={{ "padding": "2px 8px", "background": gameSpeed() === 1 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 1 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>1x</button>
-              <button onClick={() => changeGameSpeed(2)} style={{ "padding": "2px 8px", "background": gameSpeed() === 2 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 2 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>2x</button>
-              <button onClick={() => changeGameSpeed(3)} style={{ "padding": "2px 8px", "background": gameSpeed() === 3 ? "#a29bfe" : "#1a1a2e", "color": gameSpeed() === 3 ? "#1a1a2e" : "#a29bfe", "border": "1px solid #a29bfe", "cursor": "pointer" }}>3x</button>
-            </div>
-            <button onClick={() => setShowGuide(true)} style={{ "padding": "5px 15px", "background": "var(--primary)", "color": "#1a1a2e", "border": "none", "border-radius": "4px", "cursor": "pointer", "font-weight": "bold" }}>Open Growth Guide</button>
-          </div>
-        </div>
-      )}
+
       {showGuide() && (
         <Portal>
           <Guide onClose={() => setShowGuide(false)} />

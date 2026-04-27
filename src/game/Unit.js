@@ -34,6 +34,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.defense = specs.defense || 0;
 
         this.lastAttackTime = 0;
+        this.attackCount = 0;
         this.bonusKnockback = specs.bonusKnockback || 0;
         this.isKnockbackImmune = specs.isKnockbackImmune || false;
         this.stunRemainingTime = 0;
@@ -406,6 +407,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             }
 
             if (this.typeKey === 'shooter') {
+                this.attackCount++;
+                const unitLevels = this.scene.registry.get('unitLevels') || {};
+                if (unitLevels.shooter >= 5 && this.attackCount % 10 === 0) {
+                    this.throwGrenade(target, currentDamage);
+                }
+
                 this.scene.tweens.add({
                     targets: this,
                     x: this.x - (this.isAlly ? 8 : -8),
@@ -415,6 +422,73 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 });
             }
         }
+    }
+
+    throwGrenade(target, damage) {
+        const grenade = this.scene.add.circle(this.x, this.y - 40, 6, 0x333333).setDepth(2001);
+        const targetX = target.x;
+        const targetY = target.y - 20;
+
+        // Parabolic trajectory
+        this.scene.tweens.add({
+            targets: grenade,
+            x: targetX,
+            duration: 600,
+            ease: 'Linear'
+        });
+
+        this.scene.tweens.add({
+            targets: grenade,
+            y: targetY - 120,
+            duration: 300,
+            yoyo: true,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                if (grenade.active) grenade.destroy();
+                this.explodeGrenade(targetX, targetY, damage);
+            }
+        });
+    }
+
+    explodeGrenade(x, y, baseDamage) {
+        if (!this.scene || !this.active) return;
+        
+        // Visual effect
+        const explosion = this.scene.add.circle(x, y, 10, 0xff6600, 1).setDepth(3000);
+        this.scene.tweens.add({
+            targets: explosion,
+            radius: 70,
+            alpha: 0,
+            duration: 300,
+            ease: 'Cubic.easeOut',
+            onComplete: () => { if (explosion.active) explosion.destroy(); }
+        });
+
+        // Flash and shake
+        this.scene.cameras.main.shake(100, 0.005);
+        this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.8, rate: 0.5 });
+
+        // Damage logic
+        const damage = baseDamage * 3;
+        const splashRange = 80;
+        const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
+        
+        opponents.forEach(opp => {
+            if (opp.active && opp.hp > 0) {
+                const dist = Math.abs(x - opp.x);
+                if (dist <= splashRange) {
+                    opp.takeDamage(damage, this.isAlly);
+                    if (!opp.isKnockbackImmune && !opp.isBoss) {
+                         this.scene.tweens.add({
+                            targets: opp,
+                            x: opp.x + (this.isAlly ? 30 : -30),
+                            duration: 150,
+                            ease: 'Cubic.easeOut'
+                        });
+                    }
+                }
+            }
+        });
     }
 
     takeDamage(amount, fromAlly) {
