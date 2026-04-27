@@ -502,7 +502,7 @@ function App() {
               </button>
               
               <button class="dev-btn danger" onClick={() => { 
-                if (confirm('모든 게임 피전체 초기화하시겠습니까? (로컬 스토리지 삭제)')) {
+                if (confirm('모든 게임 데이터를 초기화하시겠습니까? (로컬 스토리지 삭제)')) {
                   localStorage.clear();
                   window.location.reload();
                 }

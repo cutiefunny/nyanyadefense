@@ -409,7 +409,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             if (this.typeKey === 'shooter') {
                 this.attackCount++;
                 const unitLevels = this.scene.registry.get('unitLevels') || {};
-                if (unitLevels.shooter >= 5 && this.attackCount % 10 === 0) {
+                if (unitLevels.shooter >= 5 && this.attackCount % 20 === 0) {
                     this.throwGrenade(target, currentDamage);
                 }
 
