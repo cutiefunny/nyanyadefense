@@ -140,14 +140,33 @@ export default class EffectManager {
         // isAlly faces right: falls left (-90 deg)
         // !isAlly faces left: falls right (90 deg)
         const fallAngle = unit.isAlly ? -90 : 90; 
+        const duration = unit.isBoss ? 1500 : 600;
+
+        if (unit.isBoss && !unit.isAlly) {
+            this.scene.cameras.main.shake(500, 0.01);
+            this.flashScreen(0xffffff, 300);
+            
+            // Explosion particles
+            for (let i = 0; i < 5; i++) {
+                this.scene.time.delayedCall(i * 100, () => {
+                    if (unit.active) {
+                        this.hitEmitter.emitParticleAt(
+                            unit.x + Phaser.Math.Between(-40, 40),
+                            unit.y - 50 + Phaser.Math.Between(-40, 40),
+                            8
+                        );
+                    }
+                });
+            }
+        }
 
         this.scene.tweens.add({
             targets: unit,
             alpha: 0,
             angle: fallAngle,
-            y: unit.y + 20, // Feel like falling into the ground
-            duration: 600,
-            ease: 'Cubic.easeIn',
+            y: unit.y + (unit.isBoss ? 40 : 20), // Feel like falling into the ground
+            duration: duration,
+            ease: unit.isBoss ? 'Cubic.easeOut' : 'Cubic.easeIn',
             onComplete: () => {
                 if (unit.active) unit.destroy();
             }

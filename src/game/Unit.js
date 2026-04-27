@@ -11,19 +11,19 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.isAlly = isAlly;
         this.specs = specs;
         this.typeKey = specs.type || specs.typeKey;
-        
+
         // Basic properties
         this.setOrigin(0.5, 1);
         if (isAlly) this.setFlipX(true);
-        
+
         const multiplier = unitManager.getStageScaleMultiplier();
         this.baseScale = specs.scale || (isAlly ? 0.5 : 0.6);
         this.setScale(this.baseScale * multiplier);
         this.setDepth(y);
-        
+
         this.baseWidth = specs.w;
         this.logicWidth = this.baseWidth * multiplier;
-        
+
         // Stats
         this.hp = specs.hp;
         this.maxHp = specs.hp;
@@ -32,7 +32,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.attackRange = specs.range;
         this.attackCooldown = specs.cooldown;
         this.defense = specs.defense || 0;
-        
+
         this.lastAttackTime = 0;
         this.bonusKnockback = specs.bonusKnockback || 0;
         this.isKnockbackImmune = specs.isKnockbackImmune || false;
@@ -45,6 +45,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.lastHitByEnemyTime = 0;
         this.deckIndex = specs.deckIndex;
         this.superArmorTimer = 0; // Hidden skill timer for tanker
+        this.dashCooldown = 0; // Hidden skill for normal unit
+        this.isDashing = false;
 
         // Apply Leader Perks if applicable
         if (this.isBoss && this.isAlly) {
@@ -54,7 +56,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         // Visuals
         this.spriteKey = spriteKey;
         this.isSprite = true; // For compatibility with older checks
-        
+
         this.shadow = scene.add.ellipse(x, y, isAlly ? 40 : 40, 12, 0x000000, 0.25).setDepth(this.depth - 0.1);
         if (this.isBoss) {
             this.shadow.setSize(isAlly ? 80 : 120, 16);
@@ -103,12 +105,38 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 this.clearTint();
             }
         }
+        
+        // Handle Dash logic (Normal unit level 5)
+        if (this.dashCooldown > 0) {
+            this.dashCooldown -= delta;
+        }
+        if (this.typeKey === 'normal' && !this.isBoss && !this.isDashing && this.dashCooldown <= 0 && target && minDist <= 100 && minDist > this.attackRange + 10) {
+            const unitLevels = this.scene.registry.get('unitLevels') || {};
+            if (unitLevels.normal >= 5) {
+                this.isDashing = true;
+                this.dashCooldown = 3000; // 3s cooldown
+                const dashDist = minDist - this.attackRange / 2;
+                const dashTargetX = this.x + (this.isAlly ? dashDist : -dashDist);
+                this.scene.tweens.add({
+                    targets: this,
+                    x: dashTargetX,
+                    duration: 150,
+                    ease: 'Cubic.easeOut',
+                    onComplete: () => { this.isDashing = false; }
+                });
+                this.scene.sound.play('hit1', { volume: 0.3, rate: 2 }); // Whoosh sound
+            }
+        }
 
         // Handle Stun
         if (this.stunRemainingTime > 0) {
             this.stunRemainingTime -= delta;
             desiredMove = 0;
             target = null;
+        }
+
+        if (this.isDashing) {
+            desiredMove = 0;
         }
 
         // Handle Movement
@@ -150,12 +178,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             // Healers target the ally with the lowest HP fraction who is NOT at full hp
             let woundedAlly = null;
             let lowestHpRatio = 1;
-            
+
             const allies = this.unitManager.allies;
             for (let j = 0; j < allies.length; j++) {
                 const ally = allies[j];
                 if (ally === this || ally.hp <= 0) continue;
-                
+
                 const dist = Math.abs(this.x - ally.x);
                 if (dist <= this.attackRange) {
                     const ratio = ally.hp / ally.maxHp;
@@ -217,7 +245,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                         const followDist = 50;
                         const targetX = frontTanker.x - followDist;
                         const diff = targetX - this.x;
-                        
+
                         if (Math.abs(diff) > 10) {
                             desiredMove = diff > 0 ? 1 : -1;
                         } else {
@@ -242,7 +270,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 const followDist = 80;
                 const targetX = frontAlly.x - followDist;
                 const diff = targetX - this.x;
-                
+
                 if (Math.abs(diff) > 20) {
                     desiredMove = diff > 0 ? 1 : -1;
                 } else {
@@ -265,7 +293,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
     handleMovement(delta, desiredMove, target, minDist) {
         let moveAmount = this.speed * (delta / 16) * desiredMove;
-        
+
         // Map bounds
         if (desiredMove === -1) {
             // 수정: 경계를 100에서 20으로 변경하여 보스(초기 x=50)가 정상 이동 가능하게 함
@@ -315,12 +343,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             if (this.typeKey === 'healer') {
                 // Healing Logic
                 target.hp = Math.min(target.maxHp, target.hp + currentDamage);
-                
+
                 // Show a green heal effect
                 const healText = this.scene.add.text(target.x, target.y - 40, `+${Math.floor(currentDamage)}`, {
                     fontSize: '16px', fontFamily: 'Arial Black', fill: '#2ecc71'
                 }).setOrigin(0.5).setDepth(3000);
-                
+
                 this.scene.tweens.add({
                     targets: healText,
                     y: healText.y - 30,
@@ -390,20 +418,23 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     takeDamage(amount, fromAlly) {
+        // 슈퍼아머 발동 중에는 데미지 무시
+        if (this.superArmorTimer > 0) return;
+
         const finalDamage = Math.max(1, amount - this.defense);
         this.hp -= finalDamage;
         this.hitFlashTimer = 100; // 0.1s white flash
         this.setTint(0xffffff);
-        
+
         if (!fromAlly) {
             this.lastHitByEnemyTime = this.scene.time.now;
         }
 
         // Hidden Skill: Tanker Super Armor
         if (this.typeKey === 'tanker' && (this.scene.registry.get('unitLevels')?.tanker >= 5)) {
-            this.superArmorTimer = 500; // 0.5s Super Armor
+            this.superArmorTimer = 100; // 0.5s -> 0.1s Super Armor
         }
-        
+
         // 보스 생존 AI: 체력이 50% 이하일 때 집중 포화를 당하면 후퇴 결정
         if (this.isBoss && this.isAlly && this.hp < this.maxHp * 0.5 && this.retreatTimer <= 0) {
             // 다른 아군이 전장에 있을 때만 후퇴 (어그로 넘기기)
@@ -444,7 +475,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         if (this.isBoss && this.hpBarBg && this.hpBarFill) {
             const barY = this.y - this.displayHeight - 15;
             const barW = this.isAlly ? 80 : 120;
-            
+
             this.hpBarBg.x = this.x;
             this.hpBarBg.y = barY;
             this.hpBarFill.x = this.x - barW / 2;
@@ -465,7 +496,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             dealing: typeof rawPerks.dealing === 'number' ? rawPerks.dealing : 0,
             tanking: typeof rawPerks.tanking === 'number' ? rawPerks.tanking : 0
         };
-        
+
         // Collect all effect values
         const effects = {
             hp_mult: 0,
@@ -492,14 +523,14 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         // Apply stat bonuses
         const totalStatMult = 1 + effects.all_stat_mult;
-        
+
         this.maxHp = Math.floor(this.maxHp * (1 + effects.hp_mult) * totalStatMult);
         this.hp = this.maxHp;
         this.attackDamage = Math.floor(this.attackDamage * (1 + effects.dmg_mult) * totalStatMult);
         this.speed = this.speed * (1 + effects.speed_mult) * totalStatMult;
         this.defense += effects.defense_add;
         this.attackCooldown = this.attackCooldown * (1 + effects.attack_cooldown_mult);
-        
+
         // Crit logic (simplified: just store it for handleAttack)
         this.critChance = effects.crit_chance_add;
         this.hpRegen = effects.hp_regen_add;

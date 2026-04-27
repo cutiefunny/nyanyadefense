@@ -373,12 +373,12 @@ export default class GameScene extends Phaser.Scene {
                     this.time.delayedCall(200, () => { // 빠르게 모달 발생 (1000 -> 200)
                         this.time.timeScale = 1;
                         this.scene.pause();
-                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: config.clearReward });
+                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: finalReward });
                     });
                 } else {
                     this.time.delayedCall(200, () => { // 빠르게 모달 발생 (1000 -> 200)
                         this.time.timeScale = 1;
-                        this.sys.game.events.emit('game-over', 'victory');
+                        this.sys.game.events.emit('game-over', 'victory', finalReward);
                     });
                 }
             } else {

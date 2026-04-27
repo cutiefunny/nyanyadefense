@@ -173,12 +173,23 @@ export default class LobbyScene extends Phaser.Scene {
         if (unitLevels.tanker >= 5) {
             const seen = localStorage.getItem('nyanya_hiddenSkillSeen_tanker');
             if (!seen) {
-                this.sys.game.events.emit('show-hidden-skill', { 
-                    unitName: '탱크', 
-                    skillName: '금강불괴 (슈퍼아머)', 
-                    desc: '데미지를 입을 때마다 0.5초간 모든 상태이상을 무시하는 슈퍼아머가 발동합니다.' 
+                this.sys.game.events.emit('show-hidden-skill', {
+                    unitName: '탱크',
+                    skillName: '슈퍼아머',
+                    desc: '데미지를 입을 때마다 0.1초간 슈퍼아머가 발동합니다.'
                 });
                 localStorage.setItem('nyanya_hiddenSkillSeen_tanker', 'true');
+            }
+        }
+        if (unitLevels.normal >= 5) {
+            const seen = localStorage.getItem('nyanya_hiddenSkillSeen_normal');
+            if (!seen) {
+                this.sys.game.events.emit('show-hidden-skill', {
+                    unitName: '비실이',
+                    skillName: '기습 대시',
+                    desc: '적과의 거리가 가까워지면 순식간에 거리를 좁힙니다.'
+                });
+                localStorage.setItem('nyanya_hiddenSkillSeen_normal', 'true');
             }
         }
     }
@@ -332,7 +343,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             const hitArea = this.add.rectangle(centerX, startY + visibleHeight / 2, 380, visibleHeight, 0x000, 0)
                 .setInteractive({ draggable: true });
-            
+
             let startYPos = 0;
             hitArea.on('dragstart', () => {
                 startYPos = container.y;
@@ -356,11 +367,11 @@ export default class LobbyScene extends Phaser.Scene {
             const id = type === 'unit' ? item : item.id;
             const name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
             const level = levels[id] || 1;
-            
+
             let upgradeCost = 0;
             if (type === 'unit') {
                 const spec = (item === 'leader') ? BOSS_CONFIG.leader : ALLY_TYPES[item];
-                
+
                 // Weight base price by rating (1-10)
                 let basePrice = 200;
                 if (item === 'leader') basePrice = 500;
@@ -412,11 +423,11 @@ export default class LobbyScene extends Phaser.Scene {
             const upgradeBtn = this.add.rectangle(135, y, 90, 30, canAfford ? 0xe74c3c : 0x95a5a6)
                 .setStrokeStyle(2, 0x000000)
                 .setInteractive({ useHandCursor: true });
-            
+
             const btnText = this.add.text(135, y, `UP ${upgradeCost}`, {
                 fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
             }).setOrigin(0.5);
-            
+
             container.add(upgradeBtn);
             container.add(btnText);
 
@@ -426,7 +437,7 @@ export default class LobbyScene extends Phaser.Scene {
                     if (id === 'leader') {
                         const currentLevels = this.registry.get('unitLevels');
                         const newLevel = (currentLevels[id] || 1) + 1;
-                        this.sys.game.events.emit('show-leader-skill-tree', { 
+                        this.sys.game.events.emit('show-leader-skill-tree', {
                             level: newLevel,
                             cost: upgradeCost
                         });
@@ -434,21 +445,29 @@ export default class LobbyScene extends Phaser.Scene {
                     }
 
                     this.registry.set('globalGold', currentGold - upgradeCost);
-                    
+
                     const registryKey = type === 'unit' ? 'unitLevels' : 'skillLevels';
                     const currentLevels = { ...this.registry.get(registryKey) };
-                    
+
                     currentLevels[id] = (currentLevels[id] || 1) + 1;
-                    
+
                     if (id === 'deck_slots') {
                         const squad = this.registry.get('squad');
                         squad.deck.push(null);
                         this.saveSquad(squad);
                     }
-                    
+
                     this.registry.set(registryKey, currentLevels);
                     localStorage.setItem(`nyanya_${registryKey}`, JSON.stringify(currentLevels));
-                    
+
+                    // Trigger notification check immediately if reaching level 5
+                    if (id === 'normal' && currentLevels.normal === 5) {
+                        this.checkHiddenSkillNotifications();
+                    }
+                    if (id === 'tanker' && currentLevels.tanker === 5) {
+                        this.checkHiddenSkillNotifications();
+                    }
+
                     this.scene.restart({ keepTab: true });
                 }
             });
@@ -595,12 +614,12 @@ export default class LobbyScene extends Phaser.Scene {
             const spec = ALLY_TYPES[type];
             const isUnlocked = (spec.unlockStage || 0) <= maxClearedStage;
             const owned = squad.inventory[type] || 0;
-            
+
             // Hiring/Upgrade Costs Logic
             const baseHiringCost = spec.cost || 200;
             const currentHiringCost = baseHiringCost * Math.pow(2, level - 1);
             const upgradeCost = currentHiringCost * 5;
-            
+
             const canBuy = isUnlocked && gold >= currentHiringCost;
             const canUpgrade = isUnlocked && gold >= upgradeCost;
 
@@ -617,8 +636,8 @@ export default class LobbyScene extends Phaser.Scene {
             // Name + Lv
             const nameStr = isUnlocked ? `${spec.name} (Lv.${level})` : `??? (스테이지 ${spec.unlockStage} 클리어 시 해금)`;
             this.add.text(x - 122, y, nameStr, {
-                fontSize: isUnlocked ? '11px' : '10px', 
-                fontFamily: 'Arial Black', 
+                fontSize: isUnlocked ? '11px' : '10px',
+                fontFamily: 'Arial Black',
                 fill: isUnlocked ? '#ffffff' : '#666666'
             }).setOrigin(0, 0.5);
 
@@ -640,7 +659,7 @@ export default class LobbyScene extends Phaser.Scene {
                             this.scene.restart({ keepTab: true });
                         });
                     }
-                    
+
                     this.add.text(x - 10, y, `보유:${owned}`, {
                         fontSize: '10px', fontFamily: 'Arial Black', fill: '#fbd46d'
                     }).setOrigin(0.5);
@@ -663,10 +682,10 @@ export default class LobbyScene extends Phaser.Scene {
 
                         // Hidden Skill Trigger for Tanker
                         if (type === 'tanker' && unitLevels[type] === 5) {
-                            this.sys.game.events.emit('show-hidden-skill', { 
-                                unitName: '탱크', 
-                                skillName: '금강불괴 (슈퍼아머)', 
-                                desc: '데미지를 입을 때마다 0.5초간 모든 상태이상을 무시하는 슈퍼아머가 발동합니다.' 
+                            this.sys.game.events.emit('show-hidden-skill', {
+                                unitName: '탱크',
+                                skillName: '금강불괴 (슈퍼아머)',
+                                desc: '데미지를 입을 때마다 0.2초간 모든 데미지와 상태이상을 무시하는 슈퍼아머가 발동합니다.'
                             });
                             localStorage.setItem('nyanya_hiddenSkillSeen_tanker', 'true');
                         }
@@ -769,11 +788,11 @@ export default class LobbyScene extends Phaser.Scene {
                 .setStrokeStyle(1.5, 0xffffff)
                 .setInteractive({ useHandCursor: true })
                 .setDepth(10);
-            
-            const sellIcon = this.add.text(x + 25, y - 20, 'X', { 
-                fontSize: '14px', fontFamily: 'Arial Black', fill: '#ffffff' 
+
+            const sellIcon = this.add.text(x + 25, y - 20, 'X', {
+                fontSize: '14px', fontFamily: 'Arial Black', fill: '#ffffff'
             }).setOrigin(0.5).setDepth(11);
-            
+
             sellBtn.on('pointerover', () => {
                 sellBtn.setFillStyle(0xff0000);
                 sellBtn.setScale(1.2);
@@ -782,18 +801,18 @@ export default class LobbyScene extends Phaser.Scene {
                 sellBtn.setFillStyle(0xee0000);
                 sellBtn.setScale(1.0);
             });
-            
+
             sellBtn.on('pointerdown', (pointer, localX, localY, event) => {
                 if (event) event.stopPropagation();
-                
+
                 // Immediate sell without confirmation as requested
                 squad.inventory[type]--;
                 const currentGold = this.registry.get('globalGold');
                 this.registry.set('globalGold', currentGold + refundAmount);
                 this.saveSquad(squad);
-                
+
                 // Add a little flash effect before restart
-                this.cameras.main.flash(200, 255, 251, 109, true); 
+                this.cameras.main.flash(200, 255, 251, 109, true);
                 this.scene.restart({ keepTab: true });
             });
         });

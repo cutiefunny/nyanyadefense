@@ -25,6 +25,7 @@ function App() {
   const [showGuide, setShowGuide] = createSignal(false);
   const [unlockedUnit, setUnlockedUnit] = createSignal(null);
   const [isRepeatMode, setIsRepeatMode] = createSignal(false);
+  const [victoryReward, setVictoryReward] = createSignal(0);
   const [skillTreeData, setSkillTreeData] = createSignal(null);
   const [hiddenSkillData, setHiddenSkillData] = createSignal(null); // { level, cost }
   let gameContainer;
@@ -133,8 +134,9 @@ function App() {
       setSpawnedUnits(prev => ({...prev, [idx]: true}));
     });
 
-    gameInstance.events.on('game-over', (result) => {
+    gameInstance.events.on('game-over', (result, reward = 0) => {
       setGameOver(result);
+      setVictoryReward(reward);
       if (result === 'victory' && isRepeatMode()) {
         setTimeout(() => {
           if (gameOver() === 'victory') {
@@ -256,6 +258,9 @@ function App() {
             <h2 class={gameOver() === 'victory' ? 'victory-msg' : 'defeat-msg'}>
               {gameOver() === 'victory' ? 'Victory!' : 'Defeat...'}
             </h2>
+            {gameOver() === 'victory' && victoryReward() > 0 && (
+              <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin-bottom": "20px" }}>획득 보상: {victoryReward()} 골드</p>
+            )}
             <button onClick={() => { 
                 if (gameInstance) {
                     gameInstance.scene.stop('GameScene');
@@ -263,6 +268,7 @@ function App() {
                 }
                 setCurrentSceneKey('LobbyScene');
                 setGameOver('');
+                setVictoryReward(0);
             }} class="btn restart">돌아가기</button>
           </div>
         )}
