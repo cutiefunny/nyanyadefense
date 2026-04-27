@@ -40,7 +40,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Skill Levels
         let savedSkillLevels = localStorage.getItem('nyanya_skillLevels');
-        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 3 };
+        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
         if (savedSkillLevels) {
             try {
                 this.registry.set('skillLevels', { ...defaultSkillLevels, ...JSON.parse(savedSkillLevels) });
@@ -122,7 +122,7 @@ export default class LobbyScene extends Phaser.Scene {
             localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
         }
         if (!this.registry.get('skillLevels')) {
-            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 3 };
+            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
             this.registry.set('skillLevels', defaultSkillLevels);
             localStorage.setItem('nyanya_skillLevels', JSON.stringify(defaultSkillLevels));
         }
