@@ -364,30 +364,30 @@ export default class GameScene extends Phaser.Scene {
                     }
                 }
 
-                // Start Victory Drama
+                // Start Victory UI (Minimized Production for Performance)
                 this.isGameOver = true;
-                this.time.timeScale = 0.4; // 덜 느리게 (0.2 -> 0.4)
-                this.effectManager.playVictoryCelebration();
+                // this.time.timeScale = 0.4; // 슬로우 모션 제거
+                // this.effectManager.playVictoryCelebration(); // 연출 제거
 
                 if (config && config.nextStage) {
-                    this.time.delayedCall(1000, () => { // 더 빠르게 (2000 -> 1000)
+                    this.time.delayedCall(200, () => { // 빠르게 모달 발생 (1000 -> 200)
                         this.time.timeScale = 1;
                         this.scene.pause();
                         this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: config.clearReward });
                     });
                 } else {
-                    this.time.delayedCall(1000, () => { // 더 빠르게 (2000 -> 1000)
+                    this.time.delayedCall(200, () => { // 빠르게 모달 발생 (1000 -> 200)
                         this.time.timeScale = 1;
                         this.sys.game.events.emit('game-over', 'victory');
                     });
                 }
             } else {
-                // Defeat Drama
+                // Defeat UI (Minimized Production for Performance)
                 this.isGameOver = true;
-                this.time.timeScale = 0.5; // 덜 느리게 (0.3 -> 0.5)
+                // this.time.timeScale = 0.5; // 슬로우 모션 제거
                 this.effectManager.playDefeatEffect();
                 
-                this.time.delayedCall(800, () => { // 더 빠르게 (1500 -> 800)
+                this.time.delayedCall(200, () => { // 빠르게 모달 발생 (800 -> 200)
                     this.time.timeScale = 1;
                     this.sys.game.events.emit('game-over', gameResult);
                 });

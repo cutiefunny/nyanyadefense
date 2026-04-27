@@ -35,8 +35,8 @@ export default class EffectManager {
     }
 
     playDefeatEffect() {
-        this.flashScreen(0xe94560, 500);
-        this.scene.cameras.main.shake(500, 0.01);
+        this.flashScreen(0xe94560, 200); // 500 -> 200
+        this.scene.cameras.main.shake(200, 0.005); // 500, 0.01 -> 200, 0.005
     }
 
     playHitEffect(target, damage) {

@@ -104,30 +104,30 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 100;
-  backdrop-filter: blur(12px);
-  animation: overlayAppear 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  backdrop-filter: blur(4px);
+  animation: overlayAppear 0.2s ease-out;
 }
 
 .game-over-screen h2 {
-  font-size: 5rem;
+  font-size: clamp(2rem, 10vw, 5rem);
   font-weight: 900;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   text-transform: uppercase;
-  letter-spacing: 5px;
-  animation: titleBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  letter-spacing: 2px;
+  animation: titleBounce 0.3s ease-out both;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 .victory-msg {
   color: var(--primary);
-  text-shadow: 0 0 30px var(--primary), 0 0 60px var(--primary);
-  animation: titleBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), victoryGlow 2s infinite alternate !important;
+  text-shadow: 0 0 20px var(--primary);
+  animation: titleBounce 0.3s ease-out !important;
 }
 
 .defeat-msg {
   color: var(--danger);
-  text-shadow: 0 0 30px var(--danger), 0 0 60px var(--danger);
-  animation: titleBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), defeatShake 0.5s infinite alternate !important;
+  text-shadow: 0 0 20px var(--danger);
+  animation: titleBounce 0.3s ease-out !important;
 }
 
 @keyframes overlayAppear {
