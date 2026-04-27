@@ -70,10 +70,10 @@ export default class LobbyScene extends Phaser.Scene {
             try {
                 this.registry.set('stageClears', JSON.parse(savedClears));
             } catch (e) {
-                this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0 });
+                this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0, 4: 0 });
             }
         } else {
-            this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0 });
+            this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0, 4: 0 });
         }
 
         // Leader Perks: { level: perkId }
@@ -498,10 +498,10 @@ export default class LobbyScene extends Phaser.Scene {
             strokeThickness: 5
         }).setOrigin(0.5);
 
-        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
-        const stages = [1, 2, 3];
+        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const stages = [1, 2, 3, 4];
         stages.forEach((s, i) => {
-            const x = 200 + i * 200;
+            const x = 125 + i * 184;
             const y = 160;
 
             // Unlock logic: Stage 1 is always open. Stage N is open if Stage N-1 clear count > 0.
