@@ -91,7 +91,7 @@ export const STAGE_CONFIG = {
         },
         clearReward: 30000,
         scaleMultiplier: 1.0,
-        nextStage: null,
+        nextStage: 5,
         events: [
             {
                 type: 'warning',
@@ -103,6 +103,41 @@ export const STAGE_CONFIG = {
             enemySpeedMultiplier: 1.3,
             spawnRateMultiplier: 3.0,
             description: 'The final, extreme challenge. The ultimate boss has arrived. You need maxed out power-ups and a solid strategy!'
+        }
+    },
+    5: {
+        background: 'bg_stage5',
+        boss: {
+            isCustom: true,
+            type: 'boss5',
+            spriteKey: 'enemy_boss5',
+            hp: 1200000,
+            damage: 800,
+            w: 200,
+            scale: 0.8,
+            reward: 50000,
+            isBoss: true,
+            cooldown: 1200
+        },
+        clearReward: 100000,
+        scaleMultiplier: 1.0,
+        nextStage: null,
+        events: [
+            {
+                type: 'warning',
+                time: 5000,
+                message: 'ABSOLUTE PERIL: THE CORE OF SHADOWS'
+            },
+            {
+                type: 'warning',
+                time: 30000,
+                message: 'THE EARTH SHUDDERS...'
+            }
+        ],
+        traits: {
+            enemySpeedMultiplier: 1.4,
+            spawnRateMultiplier: 4.5,
+            description: 'The ultimate nightmare. The boss is nearly immortal and the enemies are endless. Only the strongest will survive.'
         }
     }
 };

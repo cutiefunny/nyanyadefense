@@ -87,6 +87,7 @@ export default class GameScene extends Phaser.Scene {
         this.spawnedDeckIndices = new Set();
         this.deckAutoSpawnTimer = 0;
         this.mouseSpawnTimer = 0;
+        this.currentMouse = null;
 
         // Reset timeScale or apply passed speed
         this.time.timeScale = this.gameSpeed;
@@ -136,7 +137,12 @@ export default class GameScene extends Phaser.Scene {
             leader.isDragging = true;
         });
         leader.on('drag', (pointer, dragX, dragY) => {
-            leader.targetX = dragX;
+            const enemyBoss = this.unitManager.getEnemyBoss();
+            if (enemyBoss) {
+                leader.targetX = Math.min(dragX, enemyBoss.x);
+            } else {
+                leader.targetX = dragX;
+            }
         });
         leader.on('dragend', () => {
             leader.isDragging = false;
@@ -189,12 +195,16 @@ export default class GameScene extends Phaser.Scene {
     spawnMouse() {
         if (this.isGameOver) return;
 
+        // Ensure only one mouse at a time (Limit: 2마리 이상 동시에 돌아다니지 않게)
+        if (this.currentMouse && this.currentMouse.active) return;
+
         // Ground Area: y is roughly 250 to 290 based on unit spawn logic.
         const startX = Phaser.Math.Between(50, 750);
         const startY = Phaser.Math.Between(250, 290);
 
         const stageMultiplier = this.unitManager.getStageScaleMultiplier();
         const mouse = this.add.sprite(startX, startY, 'bg_mouse').setOrigin(0.3, 1).setScale(0.3 * stageMultiplier);
+        this.currentMouse = mouse;
         const shadow = this.add.ellipse(startX, startY, 30 * stageMultiplier, 8 * stageMultiplier, 0x000000, 0.2).setDepth(mouse.depth - 0.1);
 
         if (this.anims.exists('bg_mouse_walk')) {
@@ -441,10 +451,12 @@ export default class GameScene extends Phaser.Scene {
 
         // Auto spawn mouse (Active Play Benefit)
         this.mouseSpawnTimer += scaledDelta;
-        if (this.mouseSpawnTimer > 15000) {
-            this.spawnMouse();
-            // Wait between 15 to 30 seconds for the next mouse
-            this.mouseSpawnTimer = -Phaser.Math.Between(0, 15000);
+        if (this.mouseSpawnTimer >= 10000) {
+            this.mouseSpawnTimer -= 10000;
+            // 50% chance to attempt spawn
+            if (Math.random() < 0.5) {
+                this.spawnMouse();
+            }
         }
 
         // Skill based spawn speed: Base 5000ms, decreases with level
@@ -481,7 +493,7 @@ export default class GameScene extends Phaser.Scene {
             if (gameResult === 'victory') {
                 const config = STAGE_CONFIG[this.stage];
                 // Add reward to global gold immediately on victory
-                const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0 };
+                const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
                 const clearCount = stageClearsBefore[this.stage] || 0;
                 const clearRewardMultiplier = 1 + (clearCount * 0.02);
 

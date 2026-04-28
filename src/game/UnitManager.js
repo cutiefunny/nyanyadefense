@@ -206,6 +206,10 @@ export default class UnitManager {
         }
     }
 
+    getEnemyBoss() {
+        return this.enemies.find(e => e.isBoss);
+    }
+
     updateUnits(time, delta) {
         let gameOverResult = null;
         

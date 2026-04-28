@@ -117,7 +117,14 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 this.isDashing = true;
                 this.dashCooldown = 3000; // 3s cooldown
                 const dashDist = minDist - this.attackRange / 2;
-                const dashTargetX = this.x + (this.isAlly ? dashDist : -dashDist);
+                let dashTargetX = this.x + (this.isAlly ? dashDist : -dashDist);
+                
+                // Limit dash target for allies
+                if (this.isAlly) {
+                    const enemyBoss = this.unitManager.getEnemyBoss();
+                    if (enemyBoss) dashTargetX = Math.min(dashTargetX, enemyBoss.x);
+                }
+
                 this.scene.tweens.add({
                     targets: this,
                     x: dashTargetX,
@@ -167,6 +174,14 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         // Handle Buffs
         this.updateBuffs(delta);
+
+        // Limit ally position to be no further than enemy boss (적 보스보다 더 오른쪽에 위치 금지)
+        if (this.isAlly && this.hp > 0) {
+            const enemyBoss = this.unitManager.getEnemyBoss();
+            if (enemyBoss && this.x > enemyBoss.x) {
+                this.x = enemyBoss.x;
+            }
+        }
 
         // Update UI
         this.updateUI();
@@ -295,11 +310,17 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     handleMovement(delta, desiredMove, target, minDist) {
         let moveAmount = this.speed * (delta / 16) * desiredMove;
 
-        // Map bounds
+        // Map bounds & Boss-relative constraints
         if (desiredMove === -1) {
             // 수정: 경계를 100에서 20으로 변경하여 보스(초기 x=50)가 정상 이동 가능하게 함
             if (this.isAlly && this.x + moveAmount < 20) moveAmount = 0;
             if (!this.isAlly && this.x + moveAmount > 780) moveAmount = 0;
+        } else if (desiredMove === 1 && this.isAlly) {
+            // 아군은 적 보스보다 더 오른쪽에 위치하면 안 됨
+            const enemyBoss = this.unitManager.getEnemyBoss();
+            if (enemyBoss && this.x + moveAmount > enemyBoss.x) {
+                moveAmount = Math.max(0, enemyBoss.x - this.x);
+            }
         }
 
         if (moveAmount !== 0) {
