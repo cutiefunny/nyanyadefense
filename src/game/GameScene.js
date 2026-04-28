@@ -143,11 +143,16 @@ export default class GameScene extends Phaser.Scene {
         const allUnitKeys = [
             ...Object.keys(ALLY_TYPES).map(k => `ally_${k}`),
             ...ENEMY_TYPES.map(e => `enemy_${e.type}`),
-            'ally_leader',
-            'enemy_boss',
-            'enemy_boss2',
-            'enemy_boss3'
+            'ally_leader'
         ];
+
+        // Add stage-specific bosses to animation keys
+        Object.keys(STAGE_CONFIG).forEach(stageId => {
+            const boss = STAGE_CONFIG[stageId].boss;
+            if (boss && boss.spriteKey) {
+                allUnitKeys.push(boss.spriteKey);
+            }
+        });
 
         allUnitKeys.forEach(key => this.createUnitAnimations(key));
 

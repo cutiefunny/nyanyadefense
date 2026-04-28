@@ -79,12 +79,12 @@ export const STAGE_CONFIG = {
         background: 'bg_stage4',
         boss: {
             isCustom: true,
-            type: 'wawa',
-            spriteKey: 'enemy_wawa',
+            type: 'boss4',
+            spriteKey: 'enemy_boss4',
             hp: 250000,
             damage: 350,
-            w: 80,
-            scale: 1.0, // wawa normal scale is 0.5, so 1.0 is 2x.
+            w: 150,
+            scale: 0.5,
             reward: 15000,
             isBoss: true,
             cooldown: 800 // fast attack
@@ -96,13 +96,13 @@ export const STAGE_CONFIG = {
             {
                 type: 'warning',
                 time: 5000,
-                message: 'EXTREME STAGE: WAWA REVENGE'
+                message: 'EXTREME STAGE: BOSS REVENGE'
             }
         ],
         traits: {
             enemySpeedMultiplier: 1.3,
             spawnRateMultiplier: 3.0,
-            description: 'The final, extreme challenge. Wawa has returned and it is massive. You need maxed out power-ups and a solid strategy!'
+            description: 'The final, extreme challenge. The ultimate boss has arrived. You need maxed out power-ups and a solid strategy!'
         }
     }
 };
