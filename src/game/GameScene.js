@@ -58,16 +58,19 @@ export default class GameScene extends Phaser.Scene {
                 this.load.spritesheet(key, unitImages[path], { frameWidth: 200, frameHeight: 200 });
             }
         });
-        
+
         const leaderUrl = unitImages['../assets/units/leader.png'];
         if (leaderUrl) this.load.spritesheet('ally_leader', leaderUrl, { frameWidth: 100, frameHeight: 100 });
+
+        const mouseUrl = unitImages['../assets/units/mouse.png'];
+        if (mouseUrl) this.load.spritesheet('bg_mouse', mouseUrl, { frameWidth: 100, frameHeight: 65 });
     }
 
     init(data) {
         this.stage = data?.stage || 1;
         this.isGameOver = false;
-        this.isPaused = false; 
-        this.money = 200; 
+        this.isPaused = false;
+        this.money = 200;
         this.totalMoneyEarned = 200;
         this.level = 1;
         this.enemyLevel = (this.stage - 1) * 3 + 1; // Stage-based initial level
@@ -77,13 +80,14 @@ export default class GameScene extends Phaser.Scene {
         this.gameSpeed = data?.speed || this.registry.get('gameSpeed') || 1;
         this.isAutoMode = true;
         this.isAutoBuy = true;
-        
+
         // Load deck from squad data
-        const squad = this.registry.get('squad') || { inventory: {}, deck: [null, null, null] };
+        const squad = this.registry.get('squad') || { inventory: {}, deck: [null] };
         this.deck = squad.deck;
         this.spawnedDeckIndices = new Set();
         this.deckAutoSpawnTimer = 0;
-        
+        this.mouseSpawnTimer = 0;
+
         // Reset timeScale or apply passed speed
         this.time.timeScale = this.gameSpeed;
     }
@@ -156,6 +160,10 @@ export default class GameScene extends Phaser.Scene {
 
         allUnitKeys.forEach(key => this.createUnitAnimations(key));
 
+        if (this.textures.exists('bg_mouse') && !this.anims.exists('bg_mouse_walk')) {
+            this.anims.create({ key: 'bg_mouse_walk', frames: this.anims.generateFrameNumbers('bg_mouse', { start: 0, end: 1 }), frameRate: 8, repeat: -1 });
+        }
+
         this.level = 1;
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
@@ -178,6 +186,128 @@ export default class GameScene extends Phaser.Scene {
         this.anims.create({ key: `${key}_hurt`, frames: this.anims.generateFrameNumbers(key, { start: frameConfig.hurt[0], end: frameConfig.hurt[1] }), frameRate: 8, repeat: 0 });
     }
 
+    spawnMouse() {
+        if (this.isGameOver) return;
+
+        // Ground Area: y is roughly 250 to 290 based on unit spawn logic.
+        const startX = Phaser.Math.Between(50, 750);
+        const startY = Phaser.Math.Between(250, 290);
+
+        const stageMultiplier = this.unitManager.getStageScaleMultiplier();
+        const mouse = this.add.sprite(startX, startY, 'bg_mouse').setOrigin(0.3, 1).setScale(0.3 * stageMultiplier);
+        const shadow = this.add.ellipse(startX, startY, 30 * stageMultiplier, 8 * stageMultiplier, 0x000000, 0.2).setDepth(mouse.depth - 0.1);
+
+        if (this.anims.exists('bg_mouse_walk')) {
+            mouse.play({ key: 'bg_mouse_walk', frameRate: 12, repeat: -1 });
+        }
+
+        mouse.setDepth(startY - 5);
+        mouse.setInteractive({ useHandCursor: true });
+
+        // Wandering logic
+        let moveCount = 0;
+        const maxMoves = Phaser.Math.Between(4, 7);
+
+        const moveRandomly = () => {
+            if (!mouse.active || this.isGameOver) return;
+
+            if (moveCount >= maxMoves) {
+                // Run away off screen
+                const exitLeft = mouse.x < 400;
+                const exitX = exitLeft ? -50 : 850;
+                mouse.setFlipX(!exitLeft);
+                if (mouse.anims.currentAnim && !mouse.anims.isPlaying) {
+                    mouse.play({ key: 'bg_mouse_walk', frameRate: 16, repeat: -1 });
+                }
+
+                this.tweens.add({
+                    targets: [mouse, shadow],
+                    x: exitX,
+                    duration: 2000,
+                    onComplete: () => {
+                        if (mouse.active) mouse.destroy();
+                        if (shadow.active) shadow.destroy();
+                    }
+                });
+                return;
+            }
+
+            // Pick a new random point (X only now)
+            const targetX = Phaser.Math.Between(50, 750);
+            const dist = Math.abs(targetX - mouse.x);
+
+            // Adjust facing
+            mouse.setFlipX(targetX > mouse.x);
+
+            if (mouse.anims.currentAnim && !mouse.anims.isPlaying) {
+                mouse.play({ key: 'bg_mouse_walk', frameRate: 12, repeat: -1 });
+            }
+
+            const speed = 100; // pixels per second
+            const duration = (dist / speed) * 1000;
+
+            this.tweens.add({
+                targets: [mouse, shadow],
+                x: targetX,
+                duration: duration,
+                ease: 'Linear',
+                onComplete: () => {
+                    if (!mouse.active) return;
+                    moveCount++;
+                    // Pause for a bit
+                    mouse.stop();
+                    // Optional: set to idle frame if there's one, or just freeze at frame 0
+                    mouse.setFrame(0);
+
+                    this.time.delayedCall(Phaser.Math.Between(500, 1500), moveRandomly);
+                }
+            });
+        };
+
+        // Start wandering
+        moveRandomly();
+
+        mouse.once('pointerdown', () => {
+            if (!mouse.active) return;
+
+            const leader = this.unitManager.allies.find(u => u.isBoss && u.isAlly && u.hp > 0);
+            if (leader) {
+                const healAmount = leader.maxHp * 0.25;
+                leader.hp = Math.min(leader.maxHp, leader.hp + healAmount);
+
+                const healText = this.add.text(leader.x, leader.y - leader.displayHeight - 10, `+25% HP`, {
+                    fontSize: '20px', fontFamily: 'Arial Black', fill: '#2ecc71', stroke: '#000', strokeThickness: 3
+                }).setOrigin(0.5).setDepth(3000);
+
+                this.tweens.add({
+                    targets: healText,
+                    y: healText.y - 30,
+                    alpha: 0,
+                    duration: 1200,
+                    ease: 'Sine.easeOut',
+                    onComplete: () => healText.destroy()
+                });
+            }
+
+            // Mouse clicked effect
+            this.effectManager.hitEmitter.emitParticleAt(mouse.x, mouse.y - 32, 6);
+            this.sound.play('hit1', { volume: 0.3 });
+
+            mouse.disableInteractive();
+            this.tweens.killTweensOf([mouse, shadow]); // Stop movement immediately
+            this.tweens.add({
+                targets: [mouse, shadow],
+                scaleX: 0,
+                scaleY: 0,
+                duration: 100,
+                onComplete: () => {
+                    if (mouse.active) mouse.destroy();
+                    if (shadow.active) shadow.destroy();
+                }
+            });
+        });
+    }
+
     spawnAlly(typeKey) {
         if (this.isGameOver) return;
         this.unitManager.spawnAlly(typeKey);
@@ -185,7 +315,7 @@ export default class GameScene extends Phaser.Scene {
 
     spawnDeckUnit(index) {
         if (this.isGameOver || this.spawnedDeckIndices.has(index)) return;
-        
+
         const typeKey = this.deck[index];
         if (typeKey) {
             this.unitManager.spawnAlly(typeKey, 270, { deckIndex: index });
@@ -225,7 +355,7 @@ export default class GameScene extends Phaser.Scene {
         }
         // Update all existing units to match the new stage's scale multiplier
         this.unitManager.updateAllUnitScales();
-        
+
         // Reset stage timer and processed events
         this.stageTime = 0;
         this.processedEvents.clear();
@@ -242,10 +372,10 @@ export default class GameScene extends Phaser.Scene {
 
     gainGlobalExp(amount, x = 400, y = 50) {
         if (this.isGameOver) return;
-        
+
         const currentGlobal = this.registry.get('globalGold') || 0;
         this.registry.set('globalGold', currentGlobal + amount);
-        
+
         // Visual indicator (optional but recommended for feedback)
         this.showFloatingText(`+${Math.floor(amount)} XP`, x, y, '#fbd46d');
     }
@@ -287,20 +417,20 @@ export default class GameScene extends Phaser.Scene {
         this.battleTime += scaledDelta;
 
         this.processStageEvents();
-        
+
         const cannonProgress = this.skillManager.getCannonProgress();
         this.sys.game.events.emit('update-cannon', cannonProgress);
 
         // Auto spawn enemies
         this.enemySpawnTimer += scaledDelta;
-        
+
         const config = STAGE_CONFIG[this.stage];
         const spawnRateMultiplier = config?.traits?.spawnRateMultiplier || 1.0;
-        
+
         // 수정: 적의 스폰 속도는 플레이어의 level이 아닌 enemyLevel(난이도)에 비례하도록 변경하며, 스테이지 특성을 반영합니다.
         const baseSpawnDelay = Math.max(800, 4000 - this.enemyLevel * 350);
         const spawnDelay = baseSpawnDelay / spawnRateMultiplier;
-        
+
         if (this.enemySpawnTimer > spawnDelay) {
             this.spawnEnemy();
             this.enemySpawnTimer = 0;
@@ -308,12 +438,20 @@ export default class GameScene extends Phaser.Scene {
 
         // Auto spawn allies (minions) - ONLY Normal Cats (비실이)
         this.allyAutoSpawnTimer += scaledDelta;
-        
+
+        // Auto spawn mouse (Active Play Benefit)
+        this.mouseSpawnTimer += scaledDelta;
+        if (this.mouseSpawnTimer > 15000) {
+            this.spawnMouse();
+            // Wait between 15 to 30 seconds for the next mouse
+            this.mouseSpawnTimer = -Phaser.Math.Between(0, 15000);
+        }
+
         // Skill based spawn speed: Base 5000ms, decreases with level
         const skillLevels = this.registry.get('skillLevels') || { normal_cooldown: 1 };
         const baseAllyDelay = 4000;
         const allySpawnDelay = Math.max(800, baseAllyDelay - (skillLevels.normal_cooldown - 1) * 300);
-        
+
         if (this.allyAutoSpawnTimer > allySpawnDelay) {
             this.spawnAlly('normal');
             this.allyAutoSpawnTimer = 0;
@@ -346,10 +484,10 @@ export default class GameScene extends Phaser.Scene {
                 const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0 };
                 const clearCount = stageClearsBefore[this.stage] || 0;
                 const clearRewardMultiplier = 1 + (clearCount * 0.02);
-                
+
                 const currentGlobal = this.registry.get('globalGold') || 0;
                 const finalReward = Math.floor((config.clearReward || 0) * clearRewardMultiplier);
-                
+
                 this.registry.set('globalGold', currentGlobal + finalReward);
 
                 // Update clear counts (Clone object to trigger registry change event)
@@ -391,7 +529,7 @@ export default class GameScene extends Phaser.Scene {
                 this.isGameOver = true;
                 // this.time.timeScale = 0.5; // 슬로우 모션 제거
                 this.effectManager.playDefeatEffect();
-                
+
                 this.time.delayedCall(200, () => { // 빠르게 모달 발생 (800 -> 200)
                     this.time.timeScale = 1;
                     this.sys.game.events.emit('game-over', gameResult);
@@ -427,7 +565,7 @@ export default class GameScene extends Phaser.Scene {
                     stroke: '#000',
                     strokeThickness: 6
                 }).setOrigin(0.5);
-                
+
                 this.tweens.add({
                     targets: text,
                     alpha: 0,
@@ -451,36 +589,36 @@ export default class GameScene extends Phaser.Scene {
             const nextStageNum = currentConfig.nextStage;
             this.changeStage(nextStageNum);
             this.sys.game.events.emit('stage-up', nextStageNum);
-            
+
             // Clear existing units
             this.unitManager.clearField();
-            
+
             this.unitManager.spawnBoss(false); // Spawn Next Stage Boss
-            
+
             this.spawnEnemy();
-            
+
             // Reset timers
             this.enemySpawnTimer = 0;
             this.allyAutoSpawnTimer = 0;
-            
+
             // Heal the ally leader and reset position
             const leader = this.unitManager.allies.find(a => a.isBoss);
             if (leader) {
                 leader.hp = leader.maxHp;
-                leader.x = 50; 
-                
+                leader.x = 50;
+
                 // Ensure states are reset when moving to next stage
                 leader.isDragging = false;
                 delete leader.targetX;
                 leader.stunRemainingTime = 0;
                 leader.buffRemainingTime = 0;
-                
+
                 if (leader.isSprite) {
                     leader.clearTint();
                     leader.setScale(leader.baseScale * this.unitManager.getStageScaleMultiplier());
                 }
             }
-            
+
             this.scene.resume();
         }
     }

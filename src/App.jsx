@@ -28,6 +28,7 @@ function App() {
   const [victoryReward, setVictoryReward] = createSignal(0);
   const [skillTreeData, setSkillTreeData] = createSignal(null);
   const [hiddenSkillData, setHiddenSkillData] = createSignal(null); // { level, cost }
+  const [confirmReset, setConfirmReset] = createSignal(false);
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -501,14 +502,23 @@ function App() {
                 3x Speed
               </button>
               
-              <button class="dev-btn danger" onClick={() => { 
-                if (confirm('모든 게임 데이터를 초기화하시겠습니까? (로컬 스토리지 삭제)')) {
-                  localStorage.clear();
-                  window.location.reload();
-                }
-              }}>
-                Reset All
-              </button>
+              {!confirmReset() ? (
+                <button class="dev-btn danger" onPointerDown={() => setConfirmReset(true)}>
+                  Reset All
+                </button>
+              ) : (
+                <>
+                  <button class="dev-btn danger" style={{ background: '#ff0000', color: '#fff' }} onPointerDown={() => {
+                    window.localStorage.clear();
+                    window.location.reload();
+                  }}>
+                    CONFIRM RESET!
+                  </button>
+                  <button class="dev-btn" onPointerDown={() => setConfirmReset(false)}>
+                    Cancel
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

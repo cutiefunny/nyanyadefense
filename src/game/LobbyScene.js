@@ -94,10 +94,10 @@ export default class LobbyScene extends Phaser.Scene {
             try {
                 this.registry.set('squad', JSON.parse(savedSquad));
             } catch (e) {
-                this.registry.set('squad', { inventory: {}, deck: [null, null, null] });
+                this.registry.set('squad', { inventory: {}, deck: [null] });
             }
         } else {
-            this.registry.set('squad', { inventory: {}, deck: [null, null, null] });
+            this.registry.set('squad', { inventory: {}, deck: [null] });
         }
 
         const onGoldChange = (parent, value) => {
@@ -402,7 +402,7 @@ export default class LobbyScene extends Phaser.Scene {
                     // Rating 10/10 - High cost, High scaling
                     upgradeCost = Math.floor(2000 * Math.pow(1.5, level - 1));
                 } else if (id === 'deck_slots') {
-                    upgradeCost = Math.floor(50000 * Math.pow(2, level - 1));
+                    upgradeCost = Math.floor(10000 * Math.pow(2, level - 1));
                 } else {
                     // Rating 6/10 - Moderate cost
                     upgradeCost = Math.floor(800 * Math.pow(1.3, level - 1));
@@ -563,7 +563,7 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         // ─── Current Deck Display ───
-        const squad = this.registry.get('squad') || { deck: [null, null, null] };
+        const squad = this.registry.get('squad') || { deck: [null] };
         const deckSlots = squad.deck;
 
         this.add.text(400, 225, '현재 출격 부대', {
@@ -720,7 +720,7 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
-        const deckSlots = squad.deck || [null, null, null];
+        const deckSlots = squad.deck || [null];
         const rightPanelCenterX = 570;
         const deckSectionY = 80;
 
