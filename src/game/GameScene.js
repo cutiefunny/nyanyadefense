@@ -82,7 +82,11 @@ export default class GameScene extends Phaser.Scene {
         this.isAutoBuy = true;
 
         // Load deck from squad data
-        const squad = this.registry.get('squad') || { inventory: {}, deck: [null] };
+        let squad = this.registry.get('squad') || { inventory: [], deck: [null] };
+        if (!Array.isArray(squad.inventory)) squad.inventory = [];
+        if (squad.deck && squad.deck.length > 0 && typeof squad.deck[0] === 'string') {
+            squad.deck = squad.deck.map(t => t ? { type: t, level: 1 } : null);
+        }
         this.deck = squad.deck;
         this.spawnedDeckIndices = new Set();
         this.deckAutoSpawnTimer = 0;
@@ -326,9 +330,9 @@ export default class GameScene extends Phaser.Scene {
     spawnDeckUnit(index) {
         if (this.isGameOver || this.spawnedDeckIndices.has(index)) return;
 
-        const typeKey = this.deck[index];
-        if (typeKey) {
-            this.unitManager.spawnAlly(typeKey, 270, { deckIndex: index });
+        const cardObj = this.deck[index];
+        if (cardObj && cardObj.type) {
+            this.unitManager.spawnAlly(cardObj.type, 270, { deckIndex: index, level: cardObj.level || 1 });
             this.spawnedDeckIndices.add(index);
             this.sys.game.events.emit('deck-unit-spawned', index);
         }
@@ -479,7 +483,7 @@ export default class GameScene extends Phaser.Scene {
             // Auto spawn deck units every 1 second (game time)
             this.deckAutoSpawnTimer += scaledDelta;
             if (this.deckAutoSpawnTimer >= 1000) {
-                const nextIdx = this.deck.findIndex((type, idx) => type !== null && !this.spawnedDeckIndices.has(idx));
+                const nextIdx = this.deck.findIndex((card, idx) => card !== null && card.type !== undefined && !this.spawnedDeckIndices.has(idx));
                 if (nextIdx !== -1) {
                     this.spawnDeckUnit(nextIdx);
                 }
@@ -507,6 +511,20 @@ export default class GameScene extends Phaser.Scene {
                 stageClears[this.stage] = clearCount + 1;
                 this.registry.set('stageClears', stageClears);
 
+                // Draw 1 random unlocked unit card
+                const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
+                const unlockedTypes = ['shooter', 'tanker', 'healer'].filter(t => (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage);
+                let drawnCardKey = '';
+                if (unlockedTypes.length > 0) {
+                    const randomType = Phaser.Utils.Array.GetRandom(unlockedTypes);
+                    let squad = this.registry.get('squad') || { inventory: [], deck: [] };
+                    if (!Array.isArray(squad.inventory)) squad.inventory = [];
+                    squad.inventory.push({ type: randomType, level: 1 });
+                    this.registry.set('squad', squad);
+                    localStorage.setItem('nyanya_squad', JSON.stringify(squad));
+                    drawnCardKey = randomType;
+                }
+
                 // Check for first time clear to show unlock notice
                 if (clearCount === 0) {
                     const newlyUnlocked = Object.entries(ALLY_TYPES).find(([key, spec]) => spec.unlockStage === this.stage);
@@ -521,19 +539,17 @@ export default class GameScene extends Phaser.Scene {
 
                 // Start Victory UI (Minimized Production for Performance)
                 this.isGameOver = true;
-                // this.time.timeScale = 0.4; // 슬로우 모션 제거
-                // this.effectManager.playVictoryCelebration(); // 연출 제거
 
                 if (config && config.nextStage) {
-                    this.time.delayedCall(200, () => { // 빠르게 모달 발생 (1000 -> 200)
+                    this.time.delayedCall(200, () => { 
                         this.time.timeScale = 1;
                         this.scene.pause();
-                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: finalReward });
+                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: finalReward, drawnCard: drawnCardKey });
                     });
                 } else {
-                    this.time.delayedCall(200, () => { // 빠르게 모달 발생 (1000 -> 200)
+                    this.time.delayedCall(200, () => { 
                         this.time.timeScale = 1;
-                        this.sys.game.events.emit('game-over', 'victory', finalReward);
+                        this.sys.game.events.emit('game-over', 'victory', finalReward, drawnCardKey);
                     });
                 }
             } else {

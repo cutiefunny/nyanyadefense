@@ -29,6 +29,7 @@ function App() {
   const [skillTreeData, setSkillTreeData] = createSignal(null);
   const [hiddenSkillData, setHiddenSkillData] = createSignal(null); // { level, cost }
   const [confirmReset, setConfirmReset] = createSignal(false);
+  const [victoryDrawnCard, setVictoryDrawnCard] = createSignal('');
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -135,9 +136,10 @@ function App() {
       setSpawnedUnits(prev => ({...prev, [idx]: true}));
     });
 
-    gameInstance.events.on('game-over', (result, reward = 0) => {
+    gameInstance.events.on('game-over', (result, reward = 0, drawnCard = '') => {
       setGameOver(result);
       setVictoryReward(reward);
+      setVictoryDrawnCard(drawnCard);
       if (result === 'victory' && isRepeatMode()) {
         setTimeout(() => {
           if (gameOver() === 'victory') {
@@ -256,35 +258,119 @@ function App() {
         <div ref={gameContainer} class="phaser-container"></div>
         {gameOver() !== '' && (
           <div class="game-over-screen">
-            <h2 class={gameOver() === 'victory' ? 'victory-msg' : 'defeat-msg'}>
-              {gameOver() === 'victory' ? 'Victory!' : 'Defeat...'}
-            </h2>
-            {gameOver() === 'victory' && victoryReward() > 0 && (
-              <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin-bottom": "20px" }}>획득 보상: {victoryReward()} 골드</p>
-            )}
-            <button onClick={() => { 
-                if (gameInstance) {
-                    gameInstance.scene.stop('GameScene');
-                    gameInstance.scene.start('LobbyScene');
-                }
-                setCurrentSceneKey('LobbyScene');
-                setGameOver('');
-                setVictoryReward(0);
-            }} class="btn restart">돌아가기</button>
+            <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center", "justify-content": "center", "width": "100%", "height": "100%", "position": "relative" }}>
+              <div style={{ "display": "flex", "align-items": "center", "justify-content": "center", "gap": "40px" }}>
+                <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center" }}>
+                  <h2 class="victory-msg" style={{ "margin": "0 0 10px 0", "font-size": "3rem" }}>승리!</h2>
+                  {gameOver() === 'victory' && victoryReward() > 0 && (
+                    <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin": "0" }}>획득 보상: {victoryReward()} 골드</p>
+                  )}
+                </div>
+
+                {gameOver() === 'victory' && victoryDrawnCard() && (
+                  <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center", "position": "relative" }}>
+                    <div class="reward-card" style={{
+                      "background": "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+                      "border": "3px solid #fbd46d",
+                      "border-radius": "16px",
+                      "width": "120px",
+                      "height": "170px",
+                      "display": "flex",
+                      "flex-direction": "column",
+                      "align-items": "center",
+                      "justify-content": "space-around",
+                      "box-shadow": "0 0 25px rgba(251, 212, 109, 0.5)",
+                      "padding": "10px",
+                      "animation": "titleBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+                    }}>
+                      <div style={{ "color": "#fbd46d", "font-weight": "900", "font-size": "1.1rem", "letter-spacing": "1px" }}>뽑기 보상</div>
+                      <div style={{
+                        "width": "64px",
+                        "height": "64px",
+                        "background": "rgba(255, 255, 255, 0.05)",
+                        "border": "1px solid rgba(255, 255, 255, 0.2)",
+                        "border-radius": "12px",
+                        "display": "flex",
+                        "align-items": "center",
+                        "justify-content": "center"
+                      }}>
+                        <div class={`unit-icon ${victoryDrawnCard()}-icon`} style={{ "width": "40px", "height": "40px", "margin": "0" }}></div>
+                      </div>
+                      <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{ALLY_TYPES[victoryDrawnCard()]?.name}</div>
+                    </div>
+                    <p style={{ "color": "#a8ffb2", "font-size": "1.1rem", "font-weight": "700", "position": "absolute", "bottom": "-35px", "white-space": "nowrap", "margin": "0" }}>
+                      {ALLY_TYPES[victoryDrawnCard()]?.name} 카드 x 1
+                    </p>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => { 
+                  if (gameInstance) {
+                      gameInstance.scene.stop('GameScene');
+                      gameInstance.scene.start('LobbyScene');
+                  }
+                  setCurrentSceneKey('LobbyScene');
+                  setGameOver('');
+                  setVictoryReward(0);
+              }} class="btn restart" style={{ "position": "absolute", "bottom": "30px", "margin": "0" }}>돌아가기</button>
+            </div>
           </div>
         )}
-        {stageCleared() && (
-          <div class="game-over-screen">
-            <h2 class="victory-msg">Stage {stageCleared().stage} Clear!</h2>
-            <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin-bottom": "20px" }}>Bonus: {stageCleared().reward} 골드 지급!</p>
-            <button onClick={() => {
-              setStageCleared(null);
-              if (gameInstance) {
-                  gameInstance.scene.stop('GameScene');
-                  gameInstance.scene.start('LobbyScene');
-              }
-              setCurrentSceneKey('LobbyScene');
-            }} class="btn restart">돌아가기</button>
+            {stageCleared() && (
+              <div class="game-over-screen">
+                <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center", "justify-content": "center", "width": "100%", "height": "100%", "position": "relative" }}>
+                  <div style={{ "display": "flex", "align-items": "center", "justify-content": "center", "gap": "40px" }}>
+                    <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center" }}>
+                      <h2 class="victory-msg" style={{ "margin": "0 0 10px 0", "font-size": "3rem" }}>승리!</h2>
+                      <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin": "0" }}>Bonus: {stageCleared().reward} 골드 지급!</p>
+                    </div>
+
+                    {stageCleared().drawnCard && (
+                      <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center", "position": "relative" }}>
+                        <div class="reward-card" style={{
+                          "background": "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+                          "border": "3px solid #fbd46d",
+                          "border-radius": "16px",
+                          "width": "120px",
+                          "height": "170px",
+                          "display": "flex",
+                          "flex-direction": "column",
+                          "align-items": "center",
+                          "justify-content": "space-around",
+                          "box-shadow": "0 0 25px rgba(251, 212, 109, 0.5)",
+                          "padding": "10px",
+                          "animation": "titleBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+                        }}>
+                          <div style={{ "color": "#fbd46d", "font-weight": "900", "font-size": "1.1rem", "letter-spacing": "1px" }}>뽑기 보상</div>
+                          <div style={{
+                            "width": "64px",
+                            "height": "64px",
+                            "background": "rgba(255, 255, 255, 0.05)",
+                            "border": "1px solid rgba(255, 255, 255, 0.2)",
+                            "border-radius": "12px",
+                            "display": "flex",
+                            "align-items": "center",
+                            "justify-content": "center"
+                          }}>
+                            <div class={`unit-icon ${stageCleared().drawnCard}-icon`} style={{ "width": "40px", "height": "40px", "margin": "0" }}></div>
+                          </div>
+                          <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{ALLY_TYPES[stageCleared().drawnCard]?.name}</div>
+                        </div>
+                        <p style={{ "color": "#a8ffb2", "font-size": "1.1rem", "font-weight": "700", "position": "absolute", "bottom": "-35px", "white-space": "nowrap", "margin": "0" }}>
+                          {ALLY_TYPES[stageCleared().drawnCard]?.name} 카드 x 1
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={() => {
+                    setStageCleared(null);
+                    if (gameInstance) {
+                        gameInstance.scene.stop('GameScene');
+                        gameInstance.scene.start('LobbyScene');
+                    }
+                    setCurrentSceneKey('LobbyScene');
+                  }} class="btn restart" style={{ "position": "absolute", "bottom": "30px", "margin": "0" }}>돌아가기</button>
+                </div>
           </div>
         )}
         {unlockedUnit() && (
@@ -528,8 +614,9 @@ function App() {
         <div class="controls-panel">
           <div class="main-controls">
               <div class="button-group allies-group">
-                  {deckUnits().map((unitType, idx) => {
-                    if (!unitType) return null;
+                  {deckUnits().map((cardObj, idx) => {
+                    if (!cardObj || !cardObj.type) return null;
+                    const unitType = cardObj.type;
                     const spec = ALLY_TYPES[unitType];
                     const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6', healer: '#ff88aa' };
                     const isUsed = spawnedUnits()[idx];
@@ -541,7 +628,7 @@ function App() {
                           <div class={`unit-icon ${unitType}-icon`} style={{ 
                             "background-color": "transparent"
                           }}></div>
-                          <span class="cost">{isUsed ? '배치됨' : (spec?.name?.split(' ')[0] || unitType)}</span>
+                          <span class="cost">{isUsed ? '배치됨' : `Lv.${cardObj.level} ${spec?.name?.split(' ')[0]}`}</span>
                       </button>
                     );
                   })}

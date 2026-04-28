@@ -112,8 +112,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             this.dashCooldown -= delta;
         }
         if (this.typeKey === 'normal' && !this.isBoss && !this.isDashing && this.dashCooldown <= 0 && target && minDist <= 100 && minDist > this.attackRange + 10) {
-            const unitLevels = this.scene.registry.get('unitLevels') || {};
-            if (unitLevels.normal >= 5) {
+            if (this.specs.level >= 5) {
                 this.isDashing = true;
                 this.dashCooldown = 3000; // 3s cooldown
                 const dashDist = minDist - this.attackRange / 2;
@@ -429,8 +428,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
             if (this.typeKey === 'shooter') {
                 this.attackCount++;
-                const unitLevels = this.scene.registry.get('unitLevels') || {};
-                if (unitLevels.shooter >= 5 && this.attackCount % 20 === 0) {
+                if (this.specs.level >= 5 && this.attackCount % 20 === 0) {
                     this.throwGrenade(target, currentDamage);
                 }
 
@@ -526,7 +524,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         // Hidden Skill: Tanker Super Armor
-        if (this.typeKey === 'tanker' && (this.scene.registry.get('unitLevels')?.tanker >= 5)) {
+        if (this.typeKey === 'tanker' && this.specs.level >= 5) {
             this.superArmorTimer = 100; // 0.5s -> 0.1s Super Armor
         }
 

@@ -59,7 +59,7 @@ export default class UnitManager {
         const yOffset = zOffset * Math.sin(angleRad);
 
         const unitLevels = this.scene.registry.get('unitLevels') || {};
-        const level = unitLevels[typeKey] || 1;
+        const level = extraSpecs.level || unitLevels[typeKey] || 1;
         const levelBonus = 1 + (level - 1) * 0.2; // 20% HP/DMG bonus per level
 
         let finalDefense = specs.defense || 0;
