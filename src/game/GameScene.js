@@ -513,7 +513,7 @@ export default class GameScene extends Phaser.Scene {
 
                 // Draw 1 random unlocked unit card
                 const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
-                const unlockedTypes = ['shooter', 'tanker', 'healer'].filter(t => (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage);
+                const unlockedTypes = ['leader', 'normal', 'shooter', 'tanker', 'healer'].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
                 let drawnCardKey = '';
                 if (unlockedTypes.length > 0) {
                     const randomType = Phaser.Utils.Array.GetRandom(unlockedTypes);

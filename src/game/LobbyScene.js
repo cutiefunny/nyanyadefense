@@ -174,6 +174,8 @@ export default class LobbyScene extends Phaser.Scene {
             this.renderBattleTab();
         } else if (this.tab === 'SQUAD') {
             this.renderSquadTab();
+        } else if (this.tab === 'GACHA') {
+            this.renderGachaTab();
         }
 
         this.renderHeader();
@@ -286,17 +288,18 @@ export default class LobbyScene extends Phaser.Scene {
         const btnConfigs = [
             { text: '전투개시!!', tab: 'BATTLE' },
             { text: '파워업', tab: 'UPGRADE' },
-            { text: '부대 편성', tab: 'SQUAD' }
+            { text: '부대 편성', tab: 'SQUAD' },
+            { text: '뽑기 상점', tab: 'GACHA' }
         ];
 
         btnConfigs.forEach((config, i) => {
-            const y = 90 + i * 70;
-            const btnRect = this.add.rectangle(btnX, y, 280, 55, 0xfbd46d)
+            const y = 65 + i * 60;
+            const btnRect = this.add.rectangle(btnX, y, 280, 50, 0xfbd46d)
                 .setStrokeStyle(4, 0x000000)
                 .setInteractive({ useHandCursor: true });
 
             const btnText = this.add.text(btnX, y, config.text, {
-                fontSize: '28px',
+                fontSize: '24px',
                 fontFamily: 'Arial Black',
                 fill: '#000000'
             }).setOrigin(0.5);
@@ -330,6 +333,106 @@ export default class LobbyScene extends Phaser.Scene {
         // 1. Core Units Column
         const unitTypes = ['leader', 'normal'];
         this.renderScrollableList(unitTypes, 200, listY, visibleHeight, 'unit', null);
+
+        const squad = this.registry.get('squad') || { inventory: [] };
+        const invCards = squad.inventory || [];
+        const leaderCards = invCards.filter(c => c.type === 'leader').length;
+        const normalCards = invCards.filter(c => c.type === 'normal').length;
+        const slotColors = { normal: 0x43d8c9, leader: 0xfbd46d };
+
+        // Draw Leader card below list
+        const lX = 160;
+        const lY = 210;
+        const leaderCardBg = this.add.rectangle(lX, lY, 56, 48, slotColors.leader, 0.85)
+            .setStrokeStyle(this.selectedUpgradeCard === 'leader' ? 3 : 1, this.selectedUpgradeCard === 'leader' ? 0xf1c40f : 0xffffff)
+            .setInteractive({ useHandCursor: true });
+        this.add.sprite(lX, lY - 8, 'ally_leader', 0).setDisplaySize(32, 32);
+        this.add.text(lX, lY + 14, `x${leaderCards}`, { fontSize: '11px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0.5);
+
+        leaderCardBg.on('pointerdown', () => {
+            this.selectedUpgradeCard = this.selectedUpgradeCard === 'leader' ? null : 'leader';
+            this.scene.restart({ keepTab: true });
+        });
+
+        if (this.selectedUpgradeCard === 'leader' && leaderCards > 0) {
+            const lSellBtn = this.add.rectangle(lX, lY + 38, 56, 18, 0xe74c3c)
+                .setStrokeStyle(1, 0xffffff).setInteractive({ useHandCursor: true });
+            this.add.text(lX, lY + 38, '판매', { fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
+
+            lSellBtn.on('pointerdown', () => {
+                const input = window.prompt(`판매할 장수를 입력하세요 (최대 ${leaderCards}장)`, "1");
+                if (input !== null) {
+                    const sellCount = parseInt(input);
+                    if (!isNaN(sellCount) && sellCount > 0 && sellCount <= leaderCards) {
+                        const pricePerCard = (BOSS_CONFIG.leader.cost || 1000);
+                        const totalRefund = pricePerCard * sellCount;
+                        const currentGold = this.registry.get('globalGold') || 0;
+                        this.registry.set('globalGold', currentGold + totalRefund);
+
+                        let removed = 0;
+                        for (let j = invCards.length - 1; j >= 0; j--) {
+                            if (invCards[j].type === 'leader' && removed < sellCount) {
+                                invCards.splice(j, 1);
+                                removed++;
+                            }
+                        }
+                        this.saveSquad(squad);
+                        this.selectedUpgradeCard = null;
+                        this.cameras.main.flash(300, 255, 251, 109);
+                        this.scene.restart({ keepTab: true });
+                    } else {
+                        alert("잘못된 수량입니다.");
+                    }
+                }
+            });
+        }
+
+        // Draw Normal card below list
+        const nX = 240;
+        const nY = 210;
+        const normalCardBg = this.add.rectangle(nX, nY, 56, 48, slotColors.normal, 0.85)
+            .setStrokeStyle(this.selectedUpgradeCard === 'normal' ? 3 : 1, this.selectedUpgradeCard === 'normal' ? 0xf1c40f : 0xffffff)
+            .setInteractive({ useHandCursor: true });
+        this.add.sprite(nX, nY - 8, 'ally_normal', 0).setDisplaySize(32, 32);
+        this.add.text(nX, nY + 14, `x${normalCards}`, { fontSize: '11px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0.5);
+
+        normalCardBg.on('pointerdown', () => {
+            this.selectedUpgradeCard = this.selectedUpgradeCard === 'normal' ? null : 'normal';
+            this.scene.restart({ keepTab: true });
+        });
+
+        if (this.selectedUpgradeCard === 'normal' && normalCards > 0) {
+            const nSellBtn = this.add.rectangle(nX, nY + 38, 56, 18, 0xe74c3c)
+                .setStrokeStyle(1, 0xffffff).setInteractive({ useHandCursor: true });
+            this.add.text(nX, nY + 38, '판매', { fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
+
+            nSellBtn.on('pointerdown', () => {
+                const input = window.prompt(`판매할 장수를 입력하세요 (최대 ${normalCards}장)`, "1");
+                if (input !== null) {
+                    const sellCount = parseInt(input);
+                    if (!isNaN(sellCount) && sellCount > 0 && sellCount <= normalCards) {
+                        const pricePerCard = (ALLY_TYPES.normal.cost || 200);
+                        const totalRefund = pricePerCard * sellCount;
+                        const currentGold = this.registry.get('globalGold') || 0;
+                        this.registry.set('globalGold', currentGold + totalRefund);
+
+                        let removed = 0;
+                        for (let j = invCards.length - 1; j >= 0; j--) {
+                            if (invCards[j].type === 'normal' && removed < sellCount) {
+                                invCards.splice(j, 1);
+                                removed++;
+                            }
+                        }
+                        this.saveSquad(squad);
+                        this.selectedUpgradeCard = null;
+                        this.cameras.main.flash(300, 255, 251, 109);
+                        this.scene.restart({ keepTab: true });
+                    } else {
+                        alert("잘못된 수량입니다.");
+                    }
+                }
+            });
+        }
 
         // 2. Skills Column
         const skillTypes = [
@@ -386,49 +489,56 @@ export default class LobbyScene extends Phaser.Scene {
             });
         }
 
+        const squad = this.registry.get('squad') || { inventory: [] };
+        const invCards = squad.inventory || [];
+
         items.forEach((item, i) => {
             const y = i * itemHeight + 26; // relative to container
             const id = type === 'unit' ? item : item.id;
-            const name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
+            
+            let cardCount = 0;
+            if (id === 'leader' || id === 'normal') {
+                cardCount = invCards.filter(c => c.type === id).length;
+            }
+
+            let name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
             const level = levels[id] || 1;
 
             let upgradeCost = 0;
+            let neededCards = 0;
             if (type === 'unit') {
-                const spec = (item === 'leader') ? BOSS_CONFIG.leader : ALLY_TYPES[item];
+                if (id === 'leader' || id === 'normal') {
+                    neededCards = Math.pow(2, level - 1);
+                } else {
+                    const spec = ALLY_TYPES[item];
+                    let basePrice = 200;
+                    if (spec && spec.cost > 0) basePrice = spec.cost;
 
-                // Weight base price by rating (1-10)
-                let basePrice = 200;
-                if (item === 'leader') basePrice = 500;
-                else if (spec && spec.cost > 0) basePrice = spec.cost;
+                    let rating = 5;
+                    if (item === 'tanker' || item === 'shooter') rating = 9;
 
-                let rating = 5; // standard
-                if (item === 'leader') rating = 7;
-                else if (item === 'tanker' || item === 'shooter') rating = 9;
-                else if (item === 'normal') rating = 5;
-
-                const ratingWeight = rating / 7; // Average at 7
-                const adjustedBase = basePrice * ratingWeight;
-                upgradeCost = Math.floor(adjustedBase * 6 * Math.pow(1.7, level - 1));
+                    const ratingWeight = rating / 7;
+                    const adjustedBase = basePrice * ratingWeight;
+                    upgradeCost = Math.floor(adjustedBase * 6 * Math.pow(1.7, level - 1));
+                }
             } else {
-                // Skills
                 if (id === 'shout_cooldown' || id === 'normal_cooldown') {
-                    // Rating 10/10 - High cost, High scaling
                     upgradeCost = Math.floor(2000 * Math.pow(1.5, level - 1));
                 } else if (id === 'deck_slots') {
                     upgradeCost = Math.floor(10000 * Math.pow(2, level - 1));
                 } else {
-                    // Rating 6/10 - Moderate cost
                     upgradeCost = Math.floor(800 * Math.pow(1.3, level - 1));
                 }
             }
 
-            const canAfford = gold >= upgradeCost;
+            const canAfford = (id === 'leader' || id === 'normal') && type === 'unit' 
+                ? cardCount >= neededCards 
+                : gold >= upgradeCost;
 
             const bg = this.add.rectangle(0, y, 370, 48, 0x1a1a2e, 0.8)
                 .setStrokeStyle(2, type === 'unit' ? 0xfbd46d : 0x43d8c9, 0.5);
             container.add(bg);
 
-            // Icon/Thumb
             if (type === 'unit') {
                 const thumb = this.add.sprite(-165, y, `ally_${id}`, 0).setDisplaySize(32, 32);
                 container.add(thumb);
@@ -448,7 +558,7 @@ export default class LobbyScene extends Phaser.Scene {
                 .setStrokeStyle(2, 0x000000)
                 .setInteractive({ useHandCursor: true });
 
-            const btnText = this.add.text(135, y, `UP ${upgradeCost}`, {
+            const btnText = this.add.text(135, y, (id === 'leader' || id === 'normal') && type === 'unit' ? `UP ${neededCards}장` : `UP ${upgradeCost}`, {
                 fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
             }).setOrigin(0.5);
 
@@ -457,16 +567,40 @@ export default class LobbyScene extends Phaser.Scene {
 
             upgradeBtn.on('pointerdown', () => {
                 const currentGold = this.registry.get('globalGold');
-                if (currentGold >= upgradeCost) {
-                    if (id === 'leader') {
-                        const currentLevels = this.registry.get('unitLevels');
-                        const newLevel = (currentLevels[id] || 1) + 1;
-                        this.sys.game.events.emit('show-leader-skill-tree', {
-                            level: newLevel,
-                            cost: upgradeCost
-                        });
-                        return;
+                if ((id === 'leader' || id === 'normal') && type === 'unit') {
+                    if (cardCount >= neededCards) {
+                        let removed = 0;
+                        for (let j = invCards.length - 1; j >= 0; j--) {
+                            if (invCards[j].type === id && removed < neededCards) {
+                                invCards.splice(j, 1);
+                                removed++;
+                            }
+                        }
+                        this.saveSquad(squad);
+
+                        if (id === 'leader') {
+                            const currentLevels = this.registry.get('unitLevels');
+                            const newLevel = (currentLevels[id] || 1) + 1;
+                            this.sys.game.events.emit('show-leader-skill-tree', {
+                                level: newLevel,
+                                cost: 0
+                            });
+                            return;
+                        }
+
+                        const registryKey = 'unitLevels';
+                        const currentLevels = { ...this.registry.get(registryKey) };
+                        currentLevels[id] = (currentLevels[id] || 1) + 1;
+                        this.registry.set(registryKey, currentLevels);
+                        localStorage.setItem(`nyanya_${registryKey}`, JSON.stringify(currentLevels));
+
+                        if (id === 'normal' && currentLevels.normal === 5) {
+                            this.checkHiddenSkillNotifications();
+                        }
+
+                        this.scene.restart({ keepTab: true });
                     }
+                } else if (currentGold >= upgradeCost) {
 
                     this.registry.set('globalGold', currentGold - upgradeCost);
 
@@ -639,20 +773,58 @@ export default class LobbyScene extends Phaser.Scene {
         // ─── Left Side: Inventory Cards ───
         const invLeftX = 50;
         const invSectionY = 85;
-        this.add.text(200, invSectionY, '[ 보유 유닛 카드 (클릭:선택 / 같은 종류 클릭:합치기) ]', {
+        this.add.text(150, invSectionY, '[ 보유 유닛 카드 (동일 🌟 클릭:합치기) ]', {
             fontSize: '12px', fontFamily: 'Arial Black', fill: '#aaa'
         }).setOrigin(0.5);
+
+        // Auto Merge Button
+        const autoMergeBtn = this.add.rectangle(340, invSectionY, 70, 24, 0x2980b9)
+            .setStrokeStyle(1, 0xffffff).setInteractive({ useHandCursor: true });
+        this.add.text(340, invSectionY, '자동합성', {
+            fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
+        }).setOrigin(0.5);
+
+        autoMergeBtn.on('pointerdown', () => {
+            let merged = false;
+            let hasPairs = true;
+            while(hasPairs) {
+                hasPairs = false;
+                for(let i=0; i<invCards.length; i++) {
+                    if (invCards[i].type === 'leader' || invCards[i].type === 'normal') continue;
+                    for(let j=i+1; j<invCards.length; j++) {
+                        if (invCards[j].type === 'leader' || invCards[j].type === 'normal') continue;
+                        if(invCards[i].type === invCards[j].type && invCards[i].level === invCards[j].level) {
+                            invCards[i].level += 1;
+                            invCards.splice(j, 1);
+                            hasPairs = true;
+                            merged = true;
+                            break;
+                        }
+                    }
+                    if(hasPairs) break;
+                }
+            }
+            if (merged) {
+                squad.inventory = invCards;
+                this.saveSquad(squad);
+                this.scene.restart({ keepTab: true });
+            }
+        });
 
         const maxCols = 5;
         const gridSpacingX = 64;
         const gridSpacingY = 55;
 
+        let displayIndex = 0;
         for (let i = 0; i < invCards.length; i++) {
             const card = invCards[i];
-            const row = Math.floor(i / maxCols);
-            const col = i % maxCols;
+            if (card.type === 'leader' || card.type === 'normal') continue;
+            
+            const row = Math.floor(displayIndex / maxCols);
+            const col = displayIndex % maxCols;
             const x = invLeftX + 32 + col * gridSpacingX;
             const y = invSectionY + 40 + row * gridSpacingY;
+            displayIndex++;
 
             const isSelected = (this.selectedCardIndex === i);
 
@@ -664,7 +836,7 @@ export default class LobbyScene extends Phaser.Scene {
             if (this.textures.exists(`ally_${card.type}`)) {
                 this.add.sprite(x, y - 8, `ally_${card.type}`, 0).setDisplaySize(32, 32);
             }
-            this.add.text(x, y + 14, `Lv.${card.level}`, {
+            this.add.text(x, y + 14, `${card.level}★`, {
                 fontSize: '11px', fontFamily: 'Arial Black', fill: isSelected ? '#f1c40f' : '#ffffff'
             }).setOrigin(0.5);
 
@@ -679,8 +851,15 @@ export default class LobbyScene extends Phaser.Scene {
                 } else {
                     const selectedCard = invCards[this.selectedCardIndex];
                     if (selectedCard && selectedCard.type === card.type) {
+                        if (selectedCard.level !== card.level) {
+                            // Can only merge same level cards
+                            this.cameras.main.shake(100, 0.01);
+                            this.selectedCardIndex = i;
+                            this.scene.restart({ keepTab: true });
+                            return;
+                        }
                         // Merge!
-                        card.level += selectedCard.level;
+                        card.level += 1;
                         
                         // Emit hidden skills triggers
                         if (card.level >= 5) {
@@ -728,33 +907,7 @@ export default class LobbyScene extends Phaser.Scene {
                 }
             });
 
-            // Sell (X) Button for inventory cards
-            const sellBtn = this.add.rectangle(x + 20, y - 18, 16, 16, 0xee0000, 1.0)
-                .setStrokeStyle(1, 0xffffff)
-                .setInteractive({ useHandCursor: true })
-                .setDepth(10);
-            
-            this.add.text(x + 20, y - 18, 'X', {
-                fontSize: '11px', fontFamily: 'Arial Black', fill: '#ffffff'
-            }).setOrigin(0.5).setDepth(11);
 
-            sellBtn.on('pointerdown', (pointer, localX, localY, event) => {
-                if (event) event.stopPropagation();
-                
-                const spec = ALLY_TYPES[card.type] || { cost: 200 };
-                const refundAmount = Math.floor((spec.cost || 200) * Math.pow(2, card.level - 1) / 2);
-                const currentGold = this.registry.get('globalGold') || 0;
-                
-                this.registry.set('globalGold', currentGold + refundAmount);
-                invCards.splice(i, 1);
-                if (this.selectedCardIndex === i) this.selectedCardIndex = undefined;
-                else if (this.selectedCardIndex > i) this.selectedCardIndex--;
-
-                squad.inventory = invCards;
-                this.saveSquad(squad);
-                this.cameras.main.flash(200, 255, 251, 109, true);
-                this.scene.restart({ keepTab: true });
-            });
         }
 
         // ─── Right Side: Current Deck ───
@@ -781,7 +934,7 @@ export default class LobbyScene extends Phaser.Scene {
                 if (this.textures.exists(`ally_${unitType}`)) {
                     this.add.sprite(x, y - 5, `ally_${unitType}`, 0).setDisplaySize(32, 32);
                 }
-                this.add.text(x, y + 14, `Lv.${cardObj.level}`, {
+                this.add.text(x, y + 14, `${cardObj.level}★`, {
                     fontSize: '11px', fontFamily: 'Arial Black', fill: '#fbd46d'
                 }).setOrigin(0.5);
 
@@ -830,7 +983,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             // Sell Button (Right)
             const spec = ALLY_TYPES[selectedCard.type] || { cost: 200 };
-            const refundAmount = (spec.cost || 200) * selectedCard.level;
+            const refundAmount = (spec.cost || 200) * Math.pow(2, selectedCard.level - 1);
 
             const bigSellBtn = this.add.rectangle(270, deployY, 130, 30, 0xc0392b)
                 .setStrokeStyle(2, 0xffffff)
@@ -860,6 +1013,63 @@ export default class LobbyScene extends Phaser.Scene {
             fill: '#ffffff',
             stroke: '#000',
             strokeThickness: 3
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        backBtn.on('pointerdown', () => {
+            this.tab = 'MAIN';
+            this.scene.restart({ keepTab: true });
+        });
+    }
+
+    renderGachaTab() {
+        this.add.rectangle(400, 150, 800, 300, 0x000000, 0.7);
+
+        this.add.text(400, 45, '뽑기 상점 (GACHA)', {
+            fontSize: '28px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
+        }).setOrigin(0.5);
+
+        const currentGold = this.registry.get('globalGold') || 0;
+        
+        // 1 Pull Button
+        const pull1Cost = 1000;
+        const btn1 = this.add.rectangle(250, 160, 200, 80, currentGold >= pull1Cost ? 0x3498db : 0x7f8c8d)
+            .setStrokeStyle(3, 0xffffff).setInteractive({ useHandCursor: currentGold >= pull1Cost });
+        this.add.text(250, 145, '1회 뽑기', { fontSize: '24px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
+        this.add.text(250, 175, `${pull1Cost} XP`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
+
+        // 10 Pull Button
+        const pull10Cost = 10000;
+        const btn10 = this.add.rectangle(550, 160, 200, 80, currentGold >= pull10Cost ? 0xe74c3c : 0x7f8c8d)
+            .setStrokeStyle(3, 0xffffff).setInteractive({ useHandCursor: currentGold >= pull10Cost });
+        this.add.text(550, 145, '10연속 뽑기', { fontSize: '24px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
+        this.add.text(550, 175, `${pull10Cost} XP`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
+
+        const performGacha = (count, cost) => {
+            if (currentGold < cost) return;
+            this.registry.set('globalGold', currentGold - cost);
+            
+            const stageClears = this.registry.get('stageClears') || {};
+            const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
+            const unlockedTypes = ['leader', 'normal', 'shooter', 'tanker', 'healer'].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
+            
+            let squad = this.registry.get('squad') || { inventory: [], deck: [] };
+            if (!Array.isArray(squad.inventory)) squad.inventory = [];
+            
+            for(let i=0; i<count; i++) {
+                const randomType = Phaser.Utils.Array.GetRandom(unlockedTypes);
+                squad.inventory.push({ type: randomType, level: 1 });
+            }
+            this.saveSquad(squad);
+            
+            this.cameras.main.flash(500, 255, 255, 255);
+            this.scene.restart({ keepTab: true });
+        };
+
+        btn1.on('pointerdown', () => performGacha(1, pull1Cost));
+        btn10.on('pointerdown', () => performGacha(10, pull10Cost));
+
+        const backBtn = this.add.text(400, 275, '< 돌아가기', {
+            fontSize: '24px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         backBtn.on('pointerdown', () => {

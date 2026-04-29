@@ -299,7 +299,7 @@ function App() {
                       <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{ALLY_TYPES[victoryDrawnCard()]?.name}</div>
                     </div>
                     <p style={{ "color": "#a8ffb2", "font-size": "1.1rem", "font-weight": "700", "position": "absolute", "bottom": "-35px", "white-space": "nowrap", "margin": "0" }}>
-                      {ALLY_TYPES[victoryDrawnCard()]?.name} 카드 x 1
+                      1★ {ALLY_TYPES[victoryDrawnCard()]?.name} 카드 x 1
                     </p>
                   </div>
                 )}
@@ -357,7 +357,7 @@ function App() {
                           <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{ALLY_TYPES[stageCleared().drawnCard]?.name}</div>
                         </div>
                         <p style={{ "color": "#a8ffb2", "font-size": "1.1rem", "font-weight": "700", "position": "absolute", "bottom": "-35px", "white-space": "nowrap", "margin": "0" }}>
-                          {ALLY_TYPES[stageCleared().drawnCard]?.name} 카드 x 1
+                          1★ {ALLY_TYPES[stageCleared().drawnCard]?.name} 카드 x 1
                         </p>
                       </div>
                     )}
@@ -628,7 +628,7 @@ function App() {
                           <div class={`unit-icon ${unitType}-icon`} style={{ 
                             "background-color": "transparent"
                           }}></div>
-                          <span class="cost">{isUsed ? '배치됨' : `Lv.${cardObj.level} ${spec?.name?.split(' ')[0]}`}</span>
+                          <span class="cost">{isUsed ? '배치됨' : `${cardObj.level}★ ${spec?.name?.split(' ')[0]}`}</span>
                       </button>
                     );
                   })}
