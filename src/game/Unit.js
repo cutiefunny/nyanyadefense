@@ -106,7 +106,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 this.clearTint();
             }
         }
-        
+
         // Handle Dash logic (Normal unit level 5)
         if (this.dashCooldown > 0) {
             this.dashCooldown -= delta;
@@ -117,7 +117,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 this.dashCooldown = 3000; // 3s cooldown
                 const dashDist = minDist - this.attackRange / 2;
                 let dashTargetX = this.x + (this.isAlly ? dashDist : -dashDist);
-                
+
                 // Limit dash target for allies
                 if (this.isAlly) {
                     const enemyBoss = this.unitManager.getEnemyBoss();
@@ -448,10 +448,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     fireLaserPattern() {
         const eyeX = this.x - 20; // Slightly to the left of center for left-facing boss
         const eyeY = this.y - (335 * this.scaleY * 0.82); // Eye level
-        
+
         const laser = this.scene.add.graphics().setDepth(3000);
         const sweep = { currentX: 800 };
-        const sweepDuration = 1000;
+        const sweepDuration = 500;
 
         // Deal damage to everyone
         const allies = this.unitManager.allies;
@@ -471,7 +471,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             ease: 'Linear',
             onUpdate: () => {
                 laser.clear();
-                
+
                 // Laser beam (Outer glow)
                 laser.lineStyle(20, 0xff0055, 0.5);
                 laser.lineBetween(eyeX, eyeY, sweep.currentX, 270);
@@ -519,7 +519,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
     explodeGrenade(x, y, baseDamage) {
         if (!this.scene || !this.active) return;
-        
+
         // Visual effect
         const explosion = this.scene.add.circle(x, y, 10, 0xff6600, 1).setDepth(3000);
         this.scene.tweens.add({
@@ -539,14 +539,14 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         const damage = baseDamage * 3;
         const splashRange = 80;
         const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
-        
+
         opponents.forEach(opp => {
             if (opp.active && opp.hp > 0) {
                 const dist = Math.abs(x - opp.x);
                 if (dist <= splashRange) {
                     opp.takeDamage(damage, this.isAlly);
                     if (!opp.isKnockbackImmune && !opp.isBoss) {
-                         this.scene.tweens.add({
+                        this.scene.tweens.add({
                             targets: opp,
                             x: opp.x + (this.isAlly ? 30 : -30),
                             duration: 150,

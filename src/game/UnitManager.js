@@ -81,6 +81,7 @@ export default class UnitManager {
             ...specs,
             ...extraSpecs,
             typeKey,
+            level: level,
             hp: specs.hp * healerLevelBonus,
             damage: specs.damage * healerLevelBonus,
             defense: finalDefense,
@@ -150,6 +151,7 @@ export default class UnitManager {
             const levelBonus = 1 + (level - 1) * 0.2; // 20% bonus per level
             specs.hp *= levelBonus;
             specs.damage *= levelBonus;
+            specs.level = level;
             spriteKey = 'ally_leader';
         } else {
             if (stageConfig.boss.isCustom) {

@@ -158,7 +158,7 @@ export const STAGE_CONFIG = {
             yOffset: 290
         },
         clearReward: 300000,
-        scaleMultiplier: 1.0,
+        scaleMultiplier: 0.8,
         nextStage: null,
         events: [
             {
