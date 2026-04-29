@@ -30,6 +30,8 @@ function App() {
   const [hiddenSkillData, setHiddenSkillData] = createSignal(null); // { level, cost }
   const [confirmReset, setConfirmReset] = createSignal(false);
   const [victoryDrawnCard, setVictoryDrawnCard] = createSignal('');
+  const [victoryDrawnCardLevel, setVictoryDrawnCardLevel] = createSignal(1);
+  const [victoryDrawnCardCount, setVictoryDrawnCardCount] = createSignal(1);
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -136,10 +138,12 @@ function App() {
       setSpawnedUnits(prev => ({...prev, [idx]: true}));
     });
 
-    gameInstance.events.on('game-over', (result, reward = 0, drawnCard = '') => {
+    gameInstance.events.on('game-over', (result, reward = 0, drawnCard = '', drawnCardLevel = 1, drawnCardCount = 1) => {
       setGameOver(result);
       setVictoryReward(reward);
       setVictoryDrawnCard(drawnCard);
+      setVictoryDrawnCardLevel(drawnCardLevel);
+      setVictoryDrawnCardCount(drawnCardCount);
       if (result === 'victory' && isRepeatMode()) {
         setTimeout(() => {
           if (gameOver() === 'victory') {
@@ -261,9 +265,13 @@ function App() {
             <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center", "justify-content": "center", "width": "100%", "height": "100%", "position": "relative" }}>
               <div style={{ "display": "flex", "align-items": "center", "justify-content": "center", "gap": "40px" }}>
                 <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center" }}>
-                  <h2 class="victory-msg" style={{ "margin": "0 0 10px 0", "font-size": "3rem" }}>승리!</h2>
-                  {gameOver() === 'victory' && victoryReward() > 0 && (
-                    <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin": "0" }}>획득 보상: {victoryReward()} 골드</p>
+                  <h2 class="victory-msg" style={{ "margin": "0 0 10px 0", "font-size": "3rem" }}>
+                    {gameOver() === 'victory' ? '승리!' : (gameOver() === 'retreat' ? '후퇴' : '패배...')}
+                  </h2>
+                  {victoryReward() > 0 && (
+                    <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin": "0" }}>
+                      {gameOver() === 'victory' ? '획득 보상: ' : '전투 수당: '}{victoryReward()} 냥
+                    </p>
                   )}
                 </div>
 
@@ -296,10 +304,10 @@ function App() {
                       }}>
                         <div class={`unit-icon ${victoryDrawnCard()}-icon`} style={{ "width": "40px", "height": "40px", "margin": "0" }}></div>
                       </div>
-                      <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{ALLY_TYPES[victoryDrawnCard()]?.name}</div>
+                      <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{victoryDrawnCard() === 'leader' ? '김냐냐' : ALLY_TYPES[victoryDrawnCard()]?.name}</div>
                     </div>
                     <p style={{ "color": "#a8ffb2", "font-size": "1.1rem", "font-weight": "700", "position": "absolute", "bottom": "-35px", "white-space": "nowrap", "margin": "0" }}>
-                      1★ {ALLY_TYPES[victoryDrawnCard()]?.name} 카드 x 1
+                      {victoryDrawnCardLevel()}★ {victoryDrawnCard() === 'leader' ? '김냐냐' : ALLY_TYPES[victoryDrawnCard()]?.name} 카드 x {victoryDrawnCardCount()}
                     </p>
                   </div>
                 )}
@@ -322,7 +330,7 @@ function App() {
                   <div style={{ "display": "flex", "align-items": "center", "justify-content": "center", "gap": "40px" }}>
                     <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center" }}>
                       <h2 class="victory-msg" style={{ "margin": "0 0 10px 0", "font-size": "3rem" }}>승리!</h2>
-                      <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin": "0" }}>Bonus: {stageCleared().reward} 골드 지급!</p>
+                      <p style={{ "font-size": "1.5rem", "color": "#fbd46d", "margin": "0" }}>Bonus: {stageCleared().reward} 냥 지급!</p>
                     </div>
 
                     {stageCleared().drawnCard && (
@@ -354,10 +362,10 @@ function App() {
                           }}>
                             <div class={`unit-icon ${stageCleared().drawnCard}-icon`} style={{ "width": "40px", "height": "40px", "margin": "0" }}></div>
                           </div>
-                          <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{ALLY_TYPES[stageCleared().drawnCard]?.name}</div>
+                          <div style={{ "color": "#fff", "font-weight": "700", "font-size": "1rem" }}>{stageCleared().drawnCard === 'leader' ? '김냐냐' : ALLY_TYPES[stageCleared().drawnCard]?.name}</div>
                         </div>
                         <p style={{ "color": "#a8ffb2", "font-size": "1.1rem", "font-weight": "700", "position": "absolute", "bottom": "-35px", "white-space": "nowrap", "margin": "0" }}>
-                          1★ {ALLY_TYPES[stageCleared().drawnCard]?.name} 카드 x 1
+                          {stageCleared().drawnCardLevel || 1}★ {stageCleared().drawnCard === 'leader' ? '김냐냐' : ALLY_TYPES[stageCleared().drawnCard]?.name} 카드 x {stageCleared().drawnCardCount || 1}
                         </p>
                       </div>
                     )}

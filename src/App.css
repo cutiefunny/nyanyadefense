@@ -391,6 +391,11 @@ body {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
+.leader-icon {
+  background-image: url('./assets/units/leader.png');
+  background-size: 600% 100%;
+}
+
 .normal-icon {
   background-image: url('./assets/units/normal.png');
 }

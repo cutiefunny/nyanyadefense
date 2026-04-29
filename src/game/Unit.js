@@ -379,6 +379,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 });
 
                 // Play a heal sound if available (reuse hit for now or just silent)
+            } else if (this.specs.type === 'boss6') {
+                this.fireLaserPattern();
             } else {
                 // Normal Damage & Knockback
                 let damageToApply = currentDamage;
@@ -441,6 +443,52 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 });
             }
         }
+    }
+
+    fireLaserPattern() {
+        const eyeX = this.x - 20; // Slightly to the left of center for left-facing boss
+        const eyeY = this.y - (335 * this.scaleY * 0.82); // Eye level
+        
+        const laser = this.scene.add.graphics().setDepth(3000);
+        const sweep = { currentX: 800 };
+        const sweepDuration = 1000;
+
+        // Deal damage to everyone
+        const allies = this.unitManager.allies;
+        allies.forEach(ally => {
+            if (ally.active && ally.hp > 0) {
+                ally.takeDamage(this.attackDamage, this.isAlly);
+            }
+        });
+
+        // Laser sweep sound (optional hit)
+        this.scene.sound.play('hit1', { volume: 0.8 });
+
+        this.scene.tweens.add({
+            targets: sweep,
+            currentX: 160,
+            duration: sweepDuration,
+            ease: 'Linear',
+            onUpdate: () => {
+                laser.clear();
+                
+                // Laser beam (Outer glow)
+                laser.lineStyle(20, 0xff0055, 0.5);
+                laser.lineBetween(eyeX, eyeY, sweep.currentX, 270);
+                laser.lineBetween(eyeX, eyeY, sweep.currentX, 290);
+
+                // Laser beam (Inner core)
+                laser.lineStyle(6, 0xffffff, 1.0);
+                laser.lineBetween(eyeX, eyeY, sweep.currentX, 280);
+
+                // Ground impact spark
+                laser.fillStyle(0xffaa00, 0.8);
+                laser.fillCircle(sweep.currentX, 280, 15);
+            },
+            onComplete: () => {
+                laser.destroy();
+            }
+        });
     }
 
     throwGrenade(target, damage) {

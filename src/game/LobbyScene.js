@@ -116,7 +116,7 @@ export default class LobbyScene extends Phaser.Scene {
         const onGoldChange = (parent, value) => {
             // 씬이 활성화된 상태일 때만 텍스트 업데이트 (렌더링 에러 방지)
             if (this.scene.isActive() && this.goldText) {
-                this.goldText.setText(`XP: ${Math.floor(value)}`);
+                this.goldText.setText(`${Math.floor(value)} 냥`);
             }
         };
 
@@ -232,7 +232,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // XP/Gold display at top right
         this.add.rectangle(650, headerY, 250, 30, 0x000000, 0.5).setOrigin(0.5);
-        this.goldText = this.add.text(760, headerY, `XP: ${Math.floor(gold)}`, {
+        this.goldText = this.add.text(760, headerY, `${Math.floor(gold)} 냥`, {
             fontSize: '20px',
             fontFamily: 'Arial Black',
             fill: '#fbd46d'
@@ -645,9 +645,35 @@ export default class LobbyScene extends Phaser.Scene {
             strokeThickness: 5
         }).setOrigin(0.5);
 
-        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        const stages = [1, 2, 3, 4, 5];
-        stages.forEach((s, i) => {
+        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+        if (this.stagePage === undefined) this.stagePage = 0;
+        const totalStages = [1, 2, 3, 4, 5, 6];
+        
+        // Pagination arrows
+        if (this.stagePage > 0) {
+            const leftArrow = this.add.text(30, 220, '◀', {
+                fontSize: '32px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
+            }).setOrigin(0.5).setDepth(5000).setInteractive({ useHandCursor: true });
+            leftArrow.on('pointerdown', (pointer, localX, localY, event) => {
+                if (event) event.stopPropagation();
+                this.stagePage--;
+                this.scene.restart({ keepTab: true });
+            });
+        }
+
+        if ((this.stagePage + 1) * 5 < totalStages.length) {
+            const rightArrow = this.add.text(770, 220, '▶', {
+                fontSize: '32px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
+            }).setOrigin(0.5).setDepth(5000).setInteractive({ useHandCursor: true });
+            rightArrow.on('pointerdown', (pointer, localX, localY, event) => {
+                if (event) event.stopPropagation();
+                this.stagePage++;
+                this.scene.restart({ keepTab: true });
+            });
+        }
+
+        const visibleStages = totalStages.slice(this.stagePage * 5, (this.stagePage + 1) * 5);
+        visibleStages.forEach((s, i) => {
             const x = 80 + i * 160;
             const y = 160;
 
@@ -658,10 +684,10 @@ export default class LobbyScene extends Phaser.Scene {
             // Background image preview
             const bgKey = `bg_stage${s}`;
             if (this.textures.exists(bgKey)) {
-                this.add.image(x, y, bgKey).setDisplaySize(160, 100).setAlpha(isLocked ? 0.2 : 0.6);
+                this.add.image(x, y, bgKey).setDisplaySize(150, 100).setAlpha(isLocked ? 0.2 : 0.6);
             }
 
-            const card = this.add.rectangle(x, y, 160, 100, 0xffffff, isLocked ? 0.1 : 0.2)
+            const card = this.add.rectangle(x, y, 150, 100, 0xffffff, isLocked ? 0.1 : 0.2)
                 .setStrokeStyle(4, isLocked ? 0x444444 : 0x000000);
 
             if (isLocked) {
@@ -989,7 +1015,7 @@ export default class LobbyScene extends Phaser.Scene {
                 .setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
             
-            this.add.text(270, deployY, `판매 (${refundAmount} XP)`, {
+            this.add.text(270, deployY, `판매 (${refundAmount} 냥)`, {
                 fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
             }).setOrigin(0.5);
 
@@ -1035,14 +1061,14 @@ export default class LobbyScene extends Phaser.Scene {
         const btn1 = this.add.rectangle(250, 160, 200, 80, currentGold >= pull1Cost ? 0x3498db : 0x7f8c8d)
             .setStrokeStyle(3, 0xffffff).setInteractive({ useHandCursor: currentGold >= pull1Cost });
         this.add.text(250, 145, '1회 뽑기', { fontSize: '24px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
-        this.add.text(250, 175, `${pull1Cost} XP`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
+        this.add.text(250, 175, `${pull1Cost} 냥`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
 
         // 10 Pull Button
         const pull10Cost = 10000;
         const btn10 = this.add.rectangle(550, 160, 200, 80, currentGold >= pull10Cost ? 0xe74c3c : 0x7f8c8d)
             .setStrokeStyle(3, 0xffffff).setInteractive({ useHandCursor: currentGold >= pull10Cost });
         this.add.text(550, 145, '10연속 뽑기', { fontSize: '24px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
-        this.add.text(550, 175, `${pull10Cost} XP`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
+        this.add.text(550, 175, `${pull10Cost} 냥`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
 
         const performGacha = (count, cost) => {
             if (currentGold < cost) return;
@@ -1055,14 +1081,89 @@ export default class LobbyScene extends Phaser.Scene {
             let squad = this.registry.get('squad') || { inventory: [], deck: [] };
             if (!Array.isArray(squad.inventory)) squad.inventory = [];
             
+            const drawnCards = [];
             for(let i=0; i<count; i++) {
                 const randomType = Phaser.Utils.Array.GetRandom(unlockedTypes);
                 squad.inventory.push({ type: randomType, level: 1 });
+                drawnCards.push(randomType);
             }
             this.saveSquad(squad);
             
-            this.cameras.main.flash(500, 255, 255, 255);
-            this.scene.restart({ keepTab: true });
+            btn1.disableInteractive();
+            btn10.disableInteractive();
+
+            const overlay = this.add.rectangle(400, 150, 800, 300, 0x000000, 0.85).setDepth(4000);
+            
+            const startX = count === 1 ? 400 : 160;
+            const startY = count === 1 ? 150 : 100;
+            const spaceX = count === 1 ? 0 : 120;
+            const spaceY = count === 1 ? 0 : 110;
+
+            drawnCards.forEach((type, index) => {
+                const col = index % 5;
+                const row = Math.floor(index / 5);
+                const targetX = startX + col * spaceX;
+                const targetY = startY + row * spaceY;
+
+                const card = this.add.container(400, 150).setDepth(4001);
+                card.setScale(0);
+
+                const cardBg = this.add.rectangle(0, 0, 90, 100, 0x2c3e50).setStrokeStyle(3, 0xfbd46d);
+                const spriteName = type === 'leader' ? 'ally_leader' : `ally_${type}`;
+                const cardSprite = this.add.sprite(0, -15, spriteName, 0).setDisplaySize(48, 48);
+                
+                const nameStr = type === 'leader' ? '김냐냐' : (ALLY_TYPES[type] ? ALLY_TYPES[type].name : type);
+                const nameText = this.add.text(0, 30, nameStr, { fontSize: '14px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0.5);
+
+                card.add([cardBg, cardSprite, nameText]);
+
+                this.tweens.add({
+                    targets: card,
+                    x: targetX,
+                    y: targetY,
+                    scaleX: 1,
+                    scaleY: 1,
+                    angle: 720,
+                    duration: 600,
+                    delay: index * 150,
+                    ease: 'Back.easeOut',
+                    onStart: () => {
+                        try { this.sound.play('hit1', { volume: 0.2, rate: 2 }); } catch(e){}
+                    }
+                });
+
+                const glow = this.add.circle(targetX, targetY, 60, 0xfbd46d, 0.6).setDepth(4000).setScale(0);
+                this.tweens.add({
+                    targets: glow,
+                    scale: 1.5,
+                    alpha: 0,
+                    duration: 800,
+                    delay: index * 150 + 500,
+                    onStart: () => {
+                        this.cameras.main.shake(100, 0.005);
+                        try { this.sound.play('hit3', { volume: 0.3 }); } catch(e){}
+                    }
+                });
+            });
+
+            this.time.delayedCall(count * 150 + 1000, () => {
+                const continueText = this.add.text(400, 270, '화면을 터치하여 계속...', {
+                    fontSize: '18px', fontFamily: 'Arial Black', fill: '#fbd46d'
+                }).setOrigin(0.5).setDepth(4001);
+
+                this.tweens.add({
+                    targets: continueText,
+                    alpha: 0.2,
+                    yoyo: true,
+                    repeat: -1,
+                    duration: 800
+                });
+
+                const closeZone = this.add.zone(400, 150, 800, 300).setInteractive().setDepth(5000);
+                closeZone.once('pointerdown', () => {
+                    this.scene.restart({ keepTab: true });
+                });
+            });
         };
 
         btn1.on('pointerdown', () => performGacha(1, pull1Cost));

@@ -55,7 +55,9 @@ export default class GameScene extends Phaser.Scene {
             if (match) {
                 const suffix = match[1];
                 const key = `enemy_boss${suffix}`;
-                this.load.spritesheet(key, unitImages[path], { frameWidth: 200, frameHeight: 200 });
+                const fWidth = suffix === '6' ? 183 : 200;
+                const fHeight = suffix === '6' ? 335 : 200;
+                this.load.spritesheet(key, unitImages[path], { frameWidth: fWidth, frameHeight: fHeight });
             }
         });
 
@@ -353,7 +355,7 @@ export default class GameScene extends Phaser.Scene {
     retreat() {
         if (this.isGameOver) return;
         this.isGameOver = true;
-        this.sys.game.events.emit('game-over', 'defeat');
+        this.sys.game.events.emit('game-over', 'retreat', this.runGold || 0);
     }
 
     changeStage(stageNum) {
@@ -387,11 +389,13 @@ export default class GameScene extends Phaser.Scene {
     gainGlobalExp(amount, x = 400, y = 50) {
         if (this.isGameOver) return;
 
+        this.runGold = (this.runGold || 0) + amount;
+        
         const currentGlobal = this.registry.get('globalGold') || 0;
         this.registry.set('globalGold', currentGlobal + amount);
 
         // Visual indicator (optional but recommended for feedback)
-        this.showFloatingText(`+${Math.floor(amount)} XP`, x, y, '#fbd46d');
+        this.showFloatingText(`+${Math.floor(amount)} 냥`, x, y, '#fbd46d');
     }
 
     showFloatingText(text, x, y, color) {
@@ -446,7 +450,9 @@ export default class GameScene extends Phaser.Scene {
         const spawnDelay = baseSpawnDelay / spawnRateMultiplier;
 
         if (this.enemySpawnTimer > spawnDelay) {
-            this.spawnEnemy();
+            if (this.stage !== 6) {
+                this.spawnEnemy();
+            }
             this.enemySpawnTimer = 0;
         }
 
@@ -512,14 +518,32 @@ export default class GameScene extends Phaser.Scene {
                 this.registry.set('stageClears', stageClears);
 
                 // Draw 1 random unlocked unit card
+                let rewardLevel = 1;
+                let rewardCount = 1;
                 const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
-                const unlockedTypes = ['leader', 'normal', 'shooter', 'tanker', 'healer'].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
+                const unlockedTypes = ['leader', ...Object.keys(ALLY_TYPES)].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
                 let drawnCardKey = '';
                 if (unlockedTypes.length > 0) {
                     const randomType = Phaser.Utils.Array.GetRandom(unlockedTypes);
                     let squad = this.registry.get('squad') || { inventory: [], deck: [] };
                     if (!Array.isArray(squad.inventory)) squad.inventory = [];
-                    squad.inventory.push({ type: randomType, level: 1 });
+                    
+                    if (this.stage === 2) rewardLevel = Phaser.Math.Between(1, 2);
+                    else if (this.stage === 3) rewardLevel = 2;
+                    else if (this.stage === 4) rewardLevel = Phaser.Math.Between(2, 3);
+                    else if (this.stage === 5) rewardLevel = 3;
+
+                    if (randomType === 'leader' || randomType === 'normal') {
+                        rewardCount = Math.pow(2, rewardLevel - 1);
+                        for (let i = 0; i < rewardCount; i++) {
+                            squad.inventory.push({ type: randomType, level: 1 });
+                        }
+                        rewardLevel = 1; 
+                    } else {
+                        rewardCount = 1;
+                        squad.inventory.push({ type: randomType, level: rewardLevel });
+                    }
+
                     this.registry.set('squad', squad);
                     localStorage.setItem('nyanya_squad', JSON.stringify(squad));
                     drawnCardKey = randomType;
@@ -544,12 +568,12 @@ export default class GameScene extends Phaser.Scene {
                     this.time.delayedCall(200, () => { 
                         this.time.timeScale = 1;
                         this.scene.pause();
-                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: finalReward, drawnCard: drawnCardKey });
+                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: finalReward, drawnCard: drawnCardKey, drawnCardLevel: rewardLevel, drawnCardCount: rewardCount });
                     });
                 } else {
                     this.time.delayedCall(200, () => { 
                         this.time.timeScale = 1;
-                        this.sys.game.events.emit('game-over', 'victory', finalReward, drawnCardKey);
+                        this.sys.game.events.emit('game-over', 'victory', finalReward, drawnCardKey, rewardLevel, rewardCount);
                     });
                 }
             } else {
@@ -560,7 +584,7 @@ export default class GameScene extends Phaser.Scene {
 
                 this.time.delayedCall(200, () => { // 빠르게 모달 발생 (800 -> 200)
                     this.time.timeScale = 1;
-                    this.sys.game.events.emit('game-over', gameResult);
+                    this.sys.game.events.emit('game-over', gameResult, this.runGold || 0);
                 });
             }
         }

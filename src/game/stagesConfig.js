@@ -121,7 +121,7 @@ export const STAGE_CONFIG = {
         },
         clearReward: 100000,
         scaleMultiplier: 1.0,
-        nextStage: null,
+        nextStage: 6,
         events: [
             {
                 type: 'warning',
@@ -138,6 +138,39 @@ export const STAGE_CONFIG = {
             enemySpeedMultiplier: 1.4,
             spawnRateMultiplier: 4.5,
             description: 'The ultimate nightmare. The boss is nearly immortal and the enemies are endless. Only the strongest will survive.'
+        }
+    },
+    6: {
+        background: 'bg_stage6',
+        boss: {
+            isCustom: true,
+            type: 'boss6',
+            spriteKey: 'enemy_boss6',
+            hp: 5000000,
+            damage: 50,
+            range: 800,
+            w: 183,
+            scale: 0.8,
+            reward: 100000,
+            isBoss: true,
+            cooldown: 3000,
+            isKnockbackImmune: true,
+            yOffset: 290
+        },
+        clearReward: 300000,
+        scaleMultiplier: 1.0,
+        nextStage: null,
+        events: [
+            {
+                type: 'warning',
+                time: 3000,
+                message: '최종 보스전이 시작되었습니다! 적 기본 유닛이 없습니다.'
+            }
+        ],
+        traits: {
+            enemySpeedMultiplier: 1.5,
+            spawnRateMultiplier: 1.0,
+            description: '궁극의 보스전. 적 부하 유닛 없이 오직 보스만 등장합니다. 모든 화력을 쏟아부으세요!'
         }
     }
 };

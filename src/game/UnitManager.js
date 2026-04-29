@@ -26,10 +26,10 @@ export default class UnitManager {
                     unit.breathingTween.stop();
                     unit.breathingTween = null;
                 }
-                
+
                 unit.setScale(unit.baseScale * multiplier);
                 unit.logicWidth = (unit.baseWidth || 0) * multiplier;
-                
+
                 // Restart breathing for bosses
                 if (unit.isBoss) {
                     this.addBreathingEffect(unit);
@@ -77,8 +77,8 @@ export default class UnitManager {
 
         const healerLevelBonus = typeKey === 'healer' ? (1 + (level - 1) * 0.1) : levelBonus;
 
-        const finalSpecs = { 
-            ...specs, 
+        const finalSpecs = {
+            ...specs,
             ...extraSpecs,
             typeKey,
             hp: specs.hp * healerLevelBonus,
@@ -90,7 +90,7 @@ export default class UnitManager {
         const spriteKey = 'ally_' + typeKey;
         const ally = new Unit(this.scene, 0, yOffsetBase + yOffset, spriteKey, finalSpecs, true, this);
 
-        
+
         this.allies.push(ally);
         return ally;
     }
@@ -114,7 +114,7 @@ export default class UnitManager {
         const specs = { ...(ENEMY_TYPES[typeChoice] || ENEMY_TYPES[0]) };
         const stageConfig = STAGE_CONFIG[this.scene.stage];
         const traitMultiplier = stageConfig?.traits?.enemySpeedMultiplier || 1.0;
-        
+
         const stageClears = this.scene.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0 };
         const clearCount = stageClears[this.scene.stage] || 0;
         const clearBonus = 1 + (clearCount * 0.02);
@@ -139,7 +139,7 @@ export default class UnitManager {
     spawnBoss(isAlly) {
         const stageConfig = STAGE_CONFIG[this.scene.stage];
         const type = isAlly ? 'leader' : 'boss';
-        
+
         let specs;
         let spriteKey;
 
@@ -153,10 +153,10 @@ export default class UnitManager {
             spriteKey = 'ally_leader';
         } else {
             if (stageConfig.boss.isCustom) {
-                specs = { 
+                specs = {
                     ...stageConfig.boss,
                     attackCooldown: stageConfig.boss.cooldown || BOSS_CONFIG.boss.attackCooldown,
-                    speed: 0 
+                    speed: 0
                 };
                 spriteKey = stageConfig.boss.spriteKey || 'enemy_boss';
             } else {
@@ -174,7 +174,7 @@ export default class UnitManager {
             specs.damage *= clearBonus;
         }
 
-        const yOffset = 270;
+        const yOffset = specs.yOffset !== undefined ? specs.yOffset : 270;
         const boss = new Unit(this.scene, isAlly ? 50 : 750, yOffset, spriteKey, specs, isAlly, this);
 
 
@@ -212,7 +212,7 @@ export default class UnitManager {
 
     updateUnits(time, delta) {
         let gameOverResult = null;
-        
+
         // Update Allies
         for (let i = this.allies.length - 1; i >= 0; i--) {
             const result = this.handleUnitUpdate(this.allies[i], time, delta, this.enemies, i, true);
@@ -232,7 +232,7 @@ export default class UnitManager {
 
     handleUnitUpdate(unit, time, delta, opponents, index, isAlly) {
         const updateResult = unit.update(time, delta, opponents);
-        
+
         if (updateResult === 'dead') {
             const group = isAlly ? this.allies : this.enemies;
             group.splice(index, 1);
@@ -245,7 +245,7 @@ export default class UnitManager {
             }
 
             if (unit.isBoss) return isAlly ? 'defeat' : 'victory';
-            
+
         }
 
         return null;
