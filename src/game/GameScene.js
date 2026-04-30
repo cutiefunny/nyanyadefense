@@ -522,9 +522,12 @@ export default class GameScene extends Phaser.Scene {
                 let rewardCount = 1;
                 const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
                 const unlockedTypes = ['leader', ...Object.keys(ALLY_TYPES)].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
+                
+                const newlyUnlocked = Object.entries(ALLY_TYPES).find(([key, spec]) => spec.unlockStage === this.stage);
                 let drawnCardKey = '';
+                
                 if (unlockedTypes.length > 0) {
-                    const randomType = Phaser.Utils.Array.GetRandom(unlockedTypes);
+                    const randomType = (clearCount === 0 && newlyUnlocked) ? newlyUnlocked[0] : Phaser.Utils.Array.GetRandom(unlockedTypes);
                     let squad = this.registry.get('squad') || { inventory: [], deck: [] };
                     if (!Array.isArray(squad.inventory)) squad.inventory = [];
                     
