@@ -461,7 +461,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
                 // Play a heal sound if available (reuse hit for now or just silent)
             } else if (this.specs.type === 'boss6') {
-                this.fireLaserPattern();
+                this.fireWavePattern();
             } else {
                 // Normal Damage & Knockback
                 let damageToApply = currentDamage;
@@ -529,50 +529,49 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
     }
 
-    fireLaserPattern() {
-        const eyeX = this.x - 20; // Slightly to the left of center for left-facing boss
-        const eyeY = this.y - (335 * this.scaleY * 0.82); // Eye level
+    fireWavePattern() {
+        const startX = this.x - 40;
+        const groundY = this.y - 45;
+        const waveCount = 10;
+        const waveSpacing = 60;
 
-        const laser = this.scene.add.graphics().setDepth(3000);
-        const sweep = { currentX: 800 };
-        const sweepDuration = 500;
+        // Play a charge sound or initial burst sound
+        this.scene.sound.play('hit3', { volume: 0.6, rate: 0.8 });
 
-        // Deal damage to everyone in range (Left 30% of screen is safe zone: 800 * 0.3 = 240)
-        const allies = this.unitManager.allies;
-        allies.forEach(ally => {
-            if (ally.active && ally.hp > 0 && ally.x >= 240) {
-                ally.takeDamage(this.attackDamage, this.isAlly);
-            }
-        });
+        for (let i = 0; i < waveCount; i++) {
+            this.scene.time.delayedCall(i * 80, () => {
+                if (!this.scene) return;
 
-        // Laser sweep sound (optional hit)
-        this.scene.sound.play('hit1', { volume: 0.8 });
+                const waveX = startX - (i * waveSpacing);
+                if (waveX < 240) return; // Stop at safe zone (30% point)
 
-        this.scene.tweens.add({
-            targets: sweep,
-            currentX: 240, // Stops at 30% point from the left
-            duration: sweepDuration,
-            ease: 'Linear',
-            onUpdate: () => {
-                laser.clear();
+                // Visual wave (ground shockwave)
+                const wave = this.scene.add.ellipse(waveX, groundY, 20, 80, 0x00d2ff, 0.6)
+                    .setDepth(this.depth + 1);
 
-                // Laser beam (Outer glow)
-                laser.lineStyle(20, 0xff0055, 0.5);
-                laser.lineBetween(eyeX, eyeY, sweep.currentX, 270);
-                laser.lineBetween(eyeX, eyeY, sweep.currentX, 290);
+                this.scene.tweens.add({
+                    targets: wave,
+                    width: 60,
+                    alpha: 0,
+                    duration: 500,
+                    ease: 'Cubic.easeOut',
+                    onComplete: () => wave.destroy()
+                });
 
-                // Laser beam (Inner core)
-                laser.lineStyle(6, 0xffffff, 1.0);
-                laser.lineBetween(eyeX, eyeY, sweep.currentX, 280);
+                // Damage allies in the wave range
+                const allies = this.unitManager.allies;
+                allies.forEach(ally => {
+                    if (ally.active && ally.hp > 0 && Math.abs(ally.x - waveX) < 30) {
+                        ally.takeDamage(this.attackDamage * 0.4, this.isAlly); // Cumulative damage
+                    }
+                });
 
-                // Ground impact spark
-                laser.fillStyle(0xffaa00, 0.8);
-                laser.fillCircle(sweep.currentX, 280, 15);
-            },
-            onComplete: () => {
-                laser.destroy();
-            }
-        });
+                // Small ground dust/particles
+                if (i % 2 === 0) {
+                    this.scene.sound.play('hit1', { volume: 0.2, rate: 1.5 });
+                }
+            });
+        }
     }
 
     throwGrenade(target, damage) {

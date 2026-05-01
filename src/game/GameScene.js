@@ -56,8 +56,8 @@ export default class GameScene extends Phaser.Scene {
             if (match) {
                 const suffix = match[1];
                 const key = `enemy_boss${suffix}`;
-                const fWidth = suffix === '6' ? 183 : 200;
-                const fHeight = suffix === '6' ? 335 : 200;
+                const fWidth = 200; // All bosses use 200x200 except mortar
+                const fHeight = 200;
                 this.load.spritesheet(key, unitImages[path], { frameWidth: fWidth, frameHeight: fHeight });
             }
         });
@@ -309,7 +309,10 @@ export default class GameScene extends Phaser.Scene {
         const isMortar = key === 'ally_mortar';
         
         let frameConfig;
-        if (isBossSprite) {
+        if (key === 'enemy_boss6') {
+            // New boss6 mapping: 0: idle, 1: attack, 2: hurt
+            frameConfig = { walk: [0, 0], attack: [1, 1], hurt: [2, 2] };
+        } else if (isBossSprite) {
             frameConfig = { walk: [0, 1], attack: [0, 1], hurt: [0, 1] };
         } else if (isMortar) {
             // Mortar: Frame 0 = idle/walk, Frame 1 = attack, Frame 2 = hurt
