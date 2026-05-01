@@ -19,6 +19,7 @@ import bgm_level1 from '../assets/sounds/level1.mp3';
 // Vite dynamic glob import for all unit png files
 const unitImages = import.meta.glob('../assets/units/*.png', { eager: true, import: 'default' });
 const bgImages = import.meta.glob('../assets/backgrounds/stage*.jpg', { eager: true, import: 'default' });
+const itemImages = import.meta.glob('../assets/items/*.png', { eager: true, import: 'default' });
 
 export default class GameScene extends Phaser.Scene {
     preload() {
@@ -69,6 +70,9 @@ export default class GameScene extends Phaser.Scene {
 
         const canonUrl = unitImages['../assets/units/canon.png'];
         if (canonUrl) this.load.spritesheet('ally_mortar', canonUrl, { frameWidth: 200, frameHeight: 200 });
+
+        const shieldUrl = itemImages['../assets/items/shield.png'];
+        if (shieldUrl) this.load.image('item_shield', shieldUrl);
     }
 
     init(data) {
@@ -94,31 +98,39 @@ export default class GameScene extends Phaser.Scene {
         }
         this.deck = squad.deck;
         this.spawnedDeckIndices = new Set();
-        this.mortarGroupIndices = [];
-        this.tankerComboIndices = [];
+        this.mortarGroupIndices = []; // Array of arrays: [[0,1,2], ...]
+        this.tankerComboIndices = []; // Array of arrays: [[0,1], ...]
+
+        const usedIndices = new Set();
 
         // Check for 3 consecutive shooters in the deck
         for (let i = 0; i <= this.deck.length - 3; i++) {
-            if (this.deck[i]?.type === 'shooter' && 
+            if (!usedIndices.has(i) && !usedIndices.has(i+1) && !usedIndices.has(i+2) &&
+                this.deck[i]?.type === 'shooter' && 
                 this.deck[i+1]?.type === 'shooter' && 
                 this.deck[i+2]?.type === 'shooter') {
-                this.mortarGroupIndices = [i, i+1, i+2];
-                break;
+                const group = [i, i+1, i+2];
+                this.mortarGroupIndices.push(group);
+                group.forEach(idx => usedIndices.add(idx));
+                i += 2; // Skip to next possible group
             }
         }
-        this.registry.set('mortarGroupIndices', this.mortarGroupIndices);
+        // Flatten for registry/UI compatibility
+        this.registry.set('mortarGroupIndices', this.mortarGroupIndices.flat());
 
-        // Check for 2 consecutive tankers in the deck (if not part of mortar, but mortar is shooters so fine)
-        if (this.mortarGroupIndices.length === 0 || true) { // Always check for tankers
-            for (let i = 0; i <= this.deck.length - 2; i++) {
-                // Skip if these indices are already part of a special group (though shooters/tankers don't overlap)
-                if (this.deck[i]?.type === 'tanker' && this.deck[i+1]?.type === 'tanker') {
-                    this.tankerComboIndices = [i, i+1];
-                    break;
-                }
+        // Check for 2 consecutive tankers in the deck
+        for (let i = 0; i <= this.deck.length - 2; i++) {
+            if (!usedIndices.has(i) && !usedIndices.has(i+1) &&
+                this.deck[i]?.type === 'tanker' && 
+                this.deck[i+1]?.type === 'tanker') {
+                const group = [i, i+1];
+                this.tankerComboIndices.push(group);
+                group.forEach(idx => usedIndices.add(idx));
+                i += 1; // Skip to next possible group
             }
         }
-        this.registry.set('tankerComboIndices', this.tankerComboIndices);
+        // Flatten for registry/UI compatibility
+        this.registry.set('tankerComboIndices', this.tankerComboIndices.flat());
 
         this.deckAutoSpawnTimer = 0;
         this.mouseSpawnTimer = 0;
@@ -136,6 +148,12 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
         this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        // Create a simple circle texture for particles
+        const circleGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        circleGraphics.fillStyle(0xffffff);
+        circleGraphics.fillCircle(8, 8, 8);
+        circleGraphics.generateTexture('circle_particle', 16, 16);
 
         // Play BGM
         this.bgm = this.sound.add('bgm_level1', { loop: true, volume: 0.3 });
@@ -166,9 +184,8 @@ export default class GameScene extends Phaser.Scene {
         const leader = this.unitManager.spawnBoss(true); // Ally Leader
         this.unitManager.spawnBoss(false); // Enemy Boss
 
-        // Spawn Mortar Group if exists (Merge 3 shooters into 1 Mortar)
-        if (this.mortarGroupIndices.length > 0) {
-            const indices = this.mortarGroupIndices;
+        // Spawn Mortar Groups if exist (Merge 3 shooters into 1 Mortar)
+        this.mortarGroupIndices.forEach(indices => {
             const cardObj = this.deck[indices[0]];
             
             // Spawn only ONE unit for the 3-unit combo
@@ -194,12 +211,12 @@ export default class GameScene extends Phaser.Scene {
             
             // Show a special notification
             this.showFloatingText('박격포병 배치!', 400, 150, '#9b59b6');
-        }
+        });
 
-        // Spawn Tanker Combo if exists
-        if (this.tankerComboIndices.length > 0) {
-            const idx1 = this.tankerComboIndices[0];
-            const idx2 = this.tankerComboIndices[1];
+        // Spawn Tanker Combos if exist
+        this.tankerComboIndices.forEach(indices => {
+            const idx1 = indices[0];
+            const idx2 = indices[1];
             const card1 = this.deck[idx1];
             const card2 = this.deck[idx2];
 
@@ -233,7 +250,7 @@ export default class GameScene extends Phaser.Scene {
             this.sys.game.events.emit('deck-unit-spawned', idx2);
 
             this.showFloatingText('양문형 탱크 배치!', 400, 120, '#3498db');
-        }
+        });
 
         // Enable Drag to move for Ally Leader
         leader.setInteractive({ draggable: true });
@@ -498,13 +515,14 @@ export default class GameScene extends Phaser.Scene {
     gainGlobalExp(amount, x = 400, y = 50) {
         if (this.isGameOver) return;
 
-        this.runGold = (this.runGold || 0) + amount;
+        const intAmount = Math.floor(amount);
+        this.runGold = (this.runGold || 0) + intAmount;
         
         const currentGlobal = this.registry.get('globalGold') || 0;
-        this.registry.set('globalGold', currentGlobal + amount);
+        this.registry.set('globalGold', currentGlobal + intAmount);
 
-        // Visual indicator (optional but recommended for feedback)
-        this.showFloatingText(`+${Math.floor(amount)} 냥`, x, y, '#fbd46d');
+        // Visual indicator
+        this.showFloatingText(`+${intAmount} 냥`, x, y, '#fbd46d');
     }
 
     showFloatingText(text, x, y, color) {

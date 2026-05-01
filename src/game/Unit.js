@@ -64,6 +64,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             this.baseScale *= 1.2; // Slightly larger
             this.setScale(this.baseScale * multiplier);
             this.setTint(0x3498db); // Distinct color
+            this.createShield();
         }
 
         // Apply Leader Perks if applicable
@@ -90,8 +91,28 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.hpBarFill = this.scene.add.rectangle(this.x - barW / 2, barY, barW, 8, this.isAlly ? 0x2ecc71 : 0xe74c3c).setDepth(2001).setOrigin(0, 0.5);
     }
 
+    createShield() {
+        // Position it in front of the tank (right side for allies)
+        const shieldX = this.x + 25;
+        const shieldY = this.y - 35;
+        this.shieldGraphic = this.scene.add.image(shieldX, shieldY, 'item_shield')
+            .setDepth(this.depth + 1);
+
+        // Scale the shield appropriately
+        const multiplier = this.unitManager.getStageScaleMultiplier();
+        this.shieldGraphic.setScale(0.8 * multiplier);
+    }
+
     update(time, delta, opponents) {
         if (this.hp <= 0) return 'dead';
+
+        // Update Shield Position
+        if (this.shieldGraphic) {
+            const offsetX = this.flipX ? (this.displayWidth / 2) : -(this.displayWidth / 2);
+            this.shieldGraphic.x = this.x + offsetX;
+            this.shieldGraphic.y = this.y - this.displayHeight / 2;
+            this.shieldGraphic.setDepth(this.depth + 1);
+        }
 
         // Update Flash Effect
         if (this.hitFlashTimer > 0) {
@@ -190,7 +211,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 if (target) {
                     this.throwMortar(target, this.attackDamage);
                     this.play(`${this.spriteKey}_attack`, true);
-                    
+
                     // Recoil Effect: Move back slightly and return
                     const originalX = this.x;
                     this.scene.tweens.add({
@@ -622,17 +643,18 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     throwMortar(target, damage) {
-        const mortar = this.scene.add.circle(this.x, this.y - 40, 8, 0x555555).setDepth(2001);
+        const mortar = this.scene.add.circle(this.x, this.y - 40, 8, 0x333333).setDepth(2001);
         const targetX = target.x;
         const targetY = target.y - 10;
 
         // Visual trail
-        const particles = this.scene.add.particles(0, 0, 'hit1', {
-            speed: 10,
-            scale: { start: 0.2, end: 0 },
-            alpha: { start: 0.5, end: 0 },
-            lifespan: 400,
-            follow: mortar
+        const particles = this.scene.add.particles(0, 0, 'circle_particle', {
+            speed: 5,
+            scale: { start: 0.3, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            lifespan: 600,
+            follow: mortar,
+            tint: 0x888888
         }).setDepth(2000);
 
         // Parabolic trajectory
@@ -822,6 +844,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         if (this.shadow) this.shadow.destroy();
         if (this.hpBarBg) this.hpBarBg.destroy();
         if (this.hpBarFill) this.hpBarFill.destroy();
+        if (this.shieldGraphic) this.shieldGraphic.destroy();
         if (this.breathingTween) this.breathingTween.stop();
         super.destroy();
     }
