@@ -88,7 +88,7 @@ export default class UnitManager {
             cooldown: finalCooldown
         };
 
-        const spriteKey = 'ally_' + typeKey;
+        const spriteKey = extraSpecs.spriteKey || 'ally_' + typeKey;
         const ally = new Unit(this.scene, 0, yOffsetBase + yOffset, spriteKey, finalSpecs, true, this);
 
 

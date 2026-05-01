@@ -14,8 +14,6 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         // Basic properties
         this.setOrigin(0.5, 1);
-        if (isAlly) this.setFlipX(true);
-
         const multiplier = unitManager.getStageScaleMultiplier();
         this.baseScale = specs.scale || (isAlly ? 0.5 : 0.6);
         this.setScale(this.baseScale * multiplier);
@@ -48,6 +46,25 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.superArmorTimer = 0; // Hidden skill timer for tanker
         this.dashCooldown = 0; // Hidden skill for normal unit
         this.isDashing = false;
+
+        this.isMortarMode = specs.isMortarMode || false;
+        if (this.isMortarMode) {
+            this.speed = 0;
+            this.attackRange = 800; // Screen-wide range
+            this.attackCooldown = 5000; // 5 seconds
+            this.isKnockbackImmune = true;
+        }
+
+        if (isAlly && !this.isMortarMode) this.setFlipX(true);
+
+        this.isDoubleDoorTank = specs.isDoubleDoorTank || false;
+        if (this.isDoubleDoorTank) {
+            this.defense = (specs.defense1 + specs.defense2) / 2 + 3;
+            this.isKnockbackImmune = true;
+            this.baseScale *= 1.2; // Slightly larger
+            this.setScale(this.baseScale * multiplier);
+            this.setTint(0x3498db); // Distinct color
+        }
 
         // Apply Leader Perks if applicable
         if (this.isBoss && this.isAlly) {
@@ -167,6 +184,37 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             }
         }
 
+        if (this.isMortarMode) {
+            if (time - this.lastAttackTime >= this.attackCooldown) {
+                this.lastAttackTime = time;
+                if (target) {
+                    this.throwMortar(target, this.attackDamage);
+                    this.play(`${this.spriteKey}_attack`, true);
+                    
+                    // Recoil Effect: Move back slightly and return
+                    const originalX = this.x;
+                    this.scene.tweens.add({
+                        targets: this,
+                        x: originalX - 10,
+                        duration: 100,
+                        yoyo: true,
+                        ease: 'Power1',
+                        onComplete: () => {
+                            this.x = originalX;
+                        }
+                    });
+
+                    // Return to idle after 0.3 seconds
+                    this.scene.time.delayedCall(300, () => {
+                        if (this.active && this.hp > 0) {
+                            this.play(`${this.spriteKey}_idle`, true);
+                        }
+                    });
+                }
+            }
+            return;
+        }
+
         if (canAttack && target && minDist <= this.attackRange) {
             this.handleAttack(time, target);
         }
@@ -214,6 +262,16 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         let target = null;
         let minDist = Infinity;
         const halfW = this.logicWidth / 2;
+
+        if (!this.isAlly) {
+            const doubleDoorTank = opponents.find(opp => opp.isDoubleDoorTank && opp.hp > 0);
+            if (doubleDoorTank) {
+                const distToTank = Math.abs(this.x - doubleDoorTank.x) - (halfW + doubleDoorTank.logicWidth / 2);
+                if (distToTank <= this.attackRange + 100) { // If within reach or close enough to prioritize
+                    return doubleDoorTank;
+                }
+            }
+        }
 
         for (let j = 0; j < opponents.length; j++) {
             const opp = opponents[j];
@@ -294,6 +352,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             } else {
                 desiredMove = 1; // Advance if no one to follow
             }
+        } else if (this.isMortarMode) {
+            desiredMove = 0;
         } else if (target) {
             if (this.typeKey === 'shooter') {
                 if (minDist < 120) desiredMove = -1;
@@ -393,13 +453,16 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 target.takeDamage(damageToApply, this.isAlly);
 
                 if (this.hasSplash) {
-                    const splashRange = 30;
+                    // Splash Suppression: If target is Double Door Tank, reduce splash range and damage
+                    const splashRange = target.isDoubleDoorTank ? 10 : 30;
+                    const splashDamageMult = target.isDoubleDoorTank ? 0.2 : 0.5;
+
                     const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
                     opponents.forEach(opp => {
                         if (opp !== target && opp.active && opp.hp > 0) {
                             const dist = Math.abs(target.x - opp.x);
                             if (dist <= splashRange) {
-                                opp.takeDamage(damageToApply * 0.5, this.isAlly);
+                                opp.takeDamage(damageToApply * splashDamageMult, this.isAlly);
                                 // Splash visual
                                 const circle = this.scene.add.circle(opp.x, opp.y - 20, 15, 0xffaa00, 0.6).setDepth(3000);
                                 this.scene.tweens.add({
@@ -453,10 +516,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         const sweep = { currentX: 800 };
         const sweepDuration = 500;
 
-        // Deal damage to everyone
+        // Deal damage to everyone in range (Left 30% of screen is safe zone: 800 * 0.3 = 240)
         const allies = this.unitManager.allies;
         allies.forEach(ally => {
-            if (ally.active && ally.hp > 0) {
+            if (ally.active && ally.hp > 0 && ally.x >= 240) {
                 ally.takeDamage(this.attackDamage, this.isAlly);
             }
         });
@@ -466,7 +529,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         this.scene.tweens.add({
             targets: sweep,
-            currentX: 160,
+            currentX: 240, // Stops at 30% point from the left
             duration: sweepDuration,
             ease: 'Linear',
             onUpdate: () => {
@@ -550,6 +613,83 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                             targets: opp,
                             x: opp.x + (this.isAlly ? 30 : -30),
                             duration: 150,
+                            ease: 'Cubic.easeOut'
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    throwMortar(target, damage) {
+        const mortar = this.scene.add.circle(this.x, this.y - 40, 8, 0x555555).setDepth(2001);
+        const targetX = target.x;
+        const targetY = target.y - 10;
+
+        // Visual trail
+        const particles = this.scene.add.particles(0, 0, 'hit1', {
+            speed: 10,
+            scale: { start: 0.2, end: 0 },
+            alpha: { start: 0.5, end: 0 },
+            lifespan: 400,
+            follow: mortar
+        }).setDepth(2000);
+
+        // Parabolic trajectory
+        this.scene.tweens.add({
+            targets: mortar,
+            x: targetX,
+            duration: 1000,
+            ease: 'Linear'
+        });
+
+        this.scene.tweens.add({
+            targets: mortar,
+            y: targetY - 250, // Higher arc for mortar
+            duration: 500,
+            yoyo: true,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                if (mortar.active) mortar.destroy();
+                particles.destroy();
+                this.explodeMortar(targetX, targetY, damage);
+            }
+        });
+    }
+
+    explodeMortar(x, y, baseDamage) {
+        if (!this.scene || !this.active) return;
+
+        // Visual effect - larger explosion
+        const explosion = this.scene.add.circle(x, y, 15, 0xffaa00, 1).setDepth(3000);
+        this.scene.tweens.add({
+            targets: explosion,
+            radius: 100,
+            alpha: 0,
+            duration: 400,
+            ease: 'Cubic.easeOut',
+            onComplete: () => { if (explosion.active) explosion.destroy(); }
+        });
+
+        // Flash and shake
+        this.scene.cameras.main.shake(150, 0.008);
+        this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 1.0, rate: 0.4 });
+
+        // Damage logic - stronger than grenade
+        const damage = baseDamage * 5;
+        const splashRange = 100;
+        const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
+
+        opponents.forEach(opp => {
+            if (opp.active && opp.hp > 0) {
+                const dist = Math.abs(x - opp.x);
+                if (dist <= splashRange) {
+                    opp.takeDamage(damage, this.isAlly);
+                    if (!opp.isKnockbackImmune && !opp.isBoss) {
+                        this.scene.tweens.add({
+                            targets: opp,
+                            x: opp.x + (this.isAlly ? 50 : -50),
+                            duration: 200,
                             ease: 'Cubic.easeOut'
                         });
                     }

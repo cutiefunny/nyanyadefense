@@ -32,6 +32,8 @@ function App() {
   const [victoryDrawnCard, setVictoryDrawnCard] = createSignal('');
   const [victoryDrawnCardLevel, setVictoryDrawnCardLevel] = createSignal(1);
   const [victoryDrawnCardCount, setVictoryDrawnCardCount] = createSignal(1);
+  const [mortarIndices, setMortarIndices] = createSignal([]);
+  const [allyHPs, setAllyHPs] = createSignal({});
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -97,9 +99,17 @@ function App() {
       const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [null, null, null] };
       const deck = squad.deck || [null, null, null];
       setDeckUnits(deck);
-      // Initialize spawned status for each deck slot
+      
+      const mIndices = gameInstance.registry.get('mortarGroupIndices') || [];
+      const tIndices = gameInstance.registry.get('tankerComboIndices') || [];
+      setMortarIndices(mIndices);
+
+      // Initialize spawned status for each deck slot, including combo units
       const initSpawned = {};
-      deck.forEach((_, idx) => initSpawned[idx] = false);
+      deck.forEach((_, idx) => {
+        const isComboUnit = mIndices.includes(idx) || tIndices.includes(idx);
+        initSpawned[idx] = isComboUnit;
+      });
       setSpawnedUnits(initSpawned);
     });
 
@@ -136,6 +146,10 @@ function App() {
 
     gameInstance.events.on('deck-unit-spawned', (idx) => {
       setSpawnedUnits(prev => ({...prev, [idx]: true}));
+    });
+
+    gameInstance.events.on('update-ally-hps', (hps) => {
+      setAllyHPs(hps);
     });
 
     gameInstance.events.on('game-over', (result, reward = 0, drawnCard = '', drawnCardLevel = 1, drawnCardCount = 1) => {
@@ -205,6 +219,9 @@ function App() {
         localStorage.setItem('nyanya_squad', JSON.stringify(value));
         if (currentSceneKey() === 'GameScene') {
             setDeckUnits(value.deck || [null, null, null]);
+            if (gameInstance) {
+                setMortarIndices(gameInstance.registry.get('mortarGroupIndices') || []);
+            }
         }
     });
     gameInstance.registry.events.on('changedata-leaderPerks', (parent, value) => {
@@ -628,15 +645,46 @@ function App() {
                     const spec = ALLY_TYPES[unitType];
                     const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6', healer: '#ff88aa' };
                     const isUsed = spawnedUnits()[idx];
+                    const isMortarPart = mortarIndices().includes(idx);
+                    
+                    // HP Bar logic for normal and combo units
+                    let currentHP = 0;
+                    if (isUsed) {
+                        if (isMortarPart) {
+                            currentHP = allyHPs()[mortarIndices()[0]] || 0;
+                        } else {
+                            // Check for tanker combo (if I had those indices in App.jsx too)
+                            // For now, check if the index itself has HP reported
+                            currentHP = allyHPs()[idx] ?? 0;
+                            // Fallback for tanker combo if idx is idx2
+                            if (currentHP === 0 && idx > 0) {
+                                // Simple check for tanker combo if not explicitly tracked yet
+                                // Actually, I should probably export tankerComboIndices too
+                                const tIndices = gameInstance?.registry.get('tankerComboIndices') || [];
+                                if (tIndices.includes(idx)) {
+                                    currentHP = allyHPs()[tIndices[0]] || 0;
+                                }
+                            }
+                        }
+                    }
+
                     return (
-                      <button class="btn ally-btn" 
+                      <button class={`btn ally-btn ${isMortarPart ? 'bundled-unit' : ''} ${isUsed ? 'is-used' : ''}`} 
                         disabled={isUsed || gameOver() !== '' || stageCleared()} 
                         onClick={() => handleSpawn(idx)}
-                        style={{ "border-color": slotColors[unitType] || '#fff' }}>
+                        style={{ "border-color": isMortarPart ? '#9b59b6' : (slotColors[unitType] || '#fff'), "position": "relative" }}>
+                          {isUsed && (
+                            <div class="card-hp-bar">
+                                <div class="card-hp-fill" style={{ width: `${currentHP * 100}%` }}></div>
+                            </div>
+                          )}
+                          {isMortarPart && idx === mortarIndices()[1] && (
+                            <div class="bundled-label">박격포병 부대</div>
+                          )}
                           <div class={`unit-icon ${unitType}-icon`} style={{ 
                             "background-color": "transparent"
                           }}></div>
-                          <span class="cost">{isUsed ? '배치됨' : `${cardObj.level}★ ${spec?.name?.split(' ')[0]}`}</span>
+                          <span class="cost">{`${cardObj.level}★ ${spec?.name?.split(' ')[0]}`}</span>
                       </button>
                     );
                   })}

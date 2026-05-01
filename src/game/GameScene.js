@@ -66,6 +66,9 @@ export default class GameScene extends Phaser.Scene {
 
         const mouseUrl = unitImages['../assets/units/mouse.png'];
         if (mouseUrl) this.load.spritesheet('bg_mouse', mouseUrl, { frameWidth: 100, frameHeight: 65 });
+
+        const canonUrl = unitImages['../assets/units/canon.png'];
+        if (canonUrl) this.load.spritesheet('ally_mortar', canonUrl, { frameWidth: 200, frameHeight: 200 });
     }
 
     init(data) {
@@ -91,6 +94,32 @@ export default class GameScene extends Phaser.Scene {
         }
         this.deck = squad.deck;
         this.spawnedDeckIndices = new Set();
+        this.mortarGroupIndices = [];
+        this.tankerComboIndices = [];
+
+        // Check for 3 consecutive shooters in the deck
+        for (let i = 0; i <= this.deck.length - 3; i++) {
+            if (this.deck[i]?.type === 'shooter' && 
+                this.deck[i+1]?.type === 'shooter' && 
+                this.deck[i+2]?.type === 'shooter') {
+                this.mortarGroupIndices = [i, i+1, i+2];
+                break;
+            }
+        }
+        this.registry.set('mortarGroupIndices', this.mortarGroupIndices);
+
+        // Check for 2 consecutive tankers in the deck (if not part of mortar, but mortar is shooters so fine)
+        if (this.mortarGroupIndices.length === 0 || true) { // Always check for tankers
+            for (let i = 0; i <= this.deck.length - 2; i++) {
+                // Skip if these indices are already part of a special group (though shooters/tankers don't overlap)
+                if (this.deck[i]?.type === 'tanker' && this.deck[i+1]?.type === 'tanker') {
+                    this.tankerComboIndices = [i, i+1];
+                    break;
+                }
+            }
+        }
+        this.registry.set('tankerComboIndices', this.tankerComboIndices);
+
         this.deckAutoSpawnTimer = 0;
         this.mouseSpawnTimer = 0;
         this.currentMouse = null;
@@ -137,6 +166,75 @@ export default class GameScene extends Phaser.Scene {
         const leader = this.unitManager.spawnBoss(true); // Ally Leader
         this.unitManager.spawnBoss(false); // Enemy Boss
 
+        // Spawn Mortar Group if exists (Merge 3 shooters into 1 Mortar)
+        if (this.mortarGroupIndices.length > 0) {
+            const indices = this.mortarGroupIndices;
+            const cardObj = this.deck[indices[0]];
+            
+            // Spawn only ONE unit for the 3-unit combo
+            const mortar = this.unitManager.spawnAlly(cardObj.type, 270, { 
+                deckIndex: indices[0], 
+                level: cardObj.level || 1,
+                isMortarMode: true,
+                spriteKey: 'ally_mortar'
+            });
+
+            if (mortar) {
+                mortar.x = 50;
+                mortar.maxHp *= 3;
+                mortar.hp = mortar.maxHp;
+                mortar.attackDamage *= 3;
+            }
+
+            // Mark all three as spawned and notify UI
+            indices.forEach(idx => {
+                this.spawnedDeckIndices.add(idx);
+                this.sys.game.events.emit('deck-unit-spawned', idx);
+            });
+            
+            // Show a special notification
+            this.showFloatingText('박격포병 배치!', 400, 150, '#9b59b6');
+        }
+
+        // Spawn Tanker Combo if exists
+        if (this.tankerComboIndices.length > 0) {
+            const idx1 = this.tankerComboIndices[0];
+            const idx2 = this.tankerComboIndices[1];
+            const card1 = this.deck[idx1];
+            const card2 = this.deck[idx2];
+
+            // Calculate defense based on levels
+            const getDefense = (type, level) => {
+                const specs = ALLY_TYPES[type];
+                let def = specs.defense || 0;
+                if (type === 'tanker') def += (level - 1) * 2;
+                return def;
+            };
+
+            const def1 = getDefense('tanker', card1.level || 1);
+            const def2 = getDefense('tanker', card2.level || 1);
+
+            const tank = this.unitManager.spawnAlly('tanker', 270, {
+                deckIndex: idx1, // Use first index
+                level: Math.max(card1.level || 1, card2.level || 1),
+                isDoubleDoorTank: true,
+                defense1: def1,
+                defense2: def2
+            });
+
+            if (tank) {
+                tank.maxHp *= 2;
+                tank.hp = tank.maxHp;
+            }
+            
+            this.spawnedDeckIndices.add(idx1);
+            this.spawnedDeckIndices.add(idx2);
+            this.sys.game.events.emit('deck-unit-spawned', idx1);
+            this.sys.game.events.emit('deck-unit-spawned', idx2);
+
+            this.showFloatingText('양문형 탱크 배치!', 400, 120, '#3498db');
+        }
+
         // Enable Drag to move for Ally Leader
         leader.setInteractive({ draggable: true });
         leader.on('dragstart', () => {
@@ -159,7 +257,8 @@ export default class GameScene extends Phaser.Scene {
         const allUnitKeys = [
             ...Object.keys(ALLY_TYPES).map(k => `ally_${k}`),
             ...ENEMY_TYPES.map(e => `enemy_${e.type}`),
-            'ally_leader'
+            'ally_leader',
+            'ally_mortar'
         ];
 
         // Add stage-specific bosses to animation keys
@@ -190,7 +289,17 @@ export default class GameScene extends Phaser.Scene {
         if (!this.textures.exists(key) || this.anims.exists(`${key}_idle`)) return;
 
         const isBossSprite = key.includes('boss');
-        const frameConfig = isBossSprite ? { walk: [0, 1], attack: [0, 1], hurt: [0, 1] } : { walk: [1, 2], attack: [3, 3], hurt: [4, 4] };
+        const isMortar = key === 'ally_mortar';
+        
+        let frameConfig;
+        if (isBossSprite) {
+            frameConfig = { walk: [0, 1], attack: [0, 1], hurt: [0, 1] };
+        } else if (isMortar) {
+            // Mortar: Frame 0 = idle/walk, Frame 1 = attack, Frame 2 = hurt
+            frameConfig = { walk: [0, 0], attack: [1, 1], hurt: [2, 2] };
+        } else {
+            frameConfig = { walk: [1, 2], attack: [3, 3], hurt: [4, 4] };
+        }
 
         this.anims.create({ key: `${key}_idle`, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 0 }), frameRate: 1, repeat: -1 });
         this.anims.create({ key: `${key}_walk`, frames: this.anims.generateFrameNumbers(key, { start: frameConfig.walk[0], end: frameConfig.walk[1] }), frameRate: 4, repeat: -1 });
@@ -495,6 +604,21 @@ export default class GameScene extends Phaser.Scene {
                 }
                 this.deckAutoSpawnTimer = 0;
             }
+        }
+
+        // Emit HP updates for allies periodically (every 100ms)
+        if (!this.hpUpdateTimer) this.hpUpdateTimer = 0;
+        this.hpUpdateTimer += scaledDelta;
+        if (this.hpUpdateTimer >= 100) {
+            const allyHPs = {};
+            this.unitManager.allies.forEach(ally => {
+                if (ally.deckIndex !== undefined) {
+                    const hpPercent = Math.max(0, ally.hp / ally.maxHp);
+                    allyHPs[ally.deckIndex] = hpPercent;
+                }
+            });
+            this.sys.game.events.emit('update-ally-hps', allyHPs);
+            this.hpUpdateTimer = 0;
         }
 
         // Delegate unit logic update (Pass custom battleTime for speed control)
