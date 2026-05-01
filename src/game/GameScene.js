@@ -182,7 +182,9 @@ export default class GameScene extends Phaser.Scene {
 
         // Spawn Bosses (Objective Units)
         const leader = this.unitManager.spawnBoss(true); // Ally Leader
-        this.unitManager.spawnBoss(false); // Enemy Boss
+        if (this.stage !== 5) {
+            this.unitManager.spawnBoss(false); // Enemy Boss
+        }
 
         // Spawn Mortar Groups if exist (Merge 3 shooters into 1 Mortar)
         this.mortarGroupIndices.forEach(indices => {
@@ -580,7 +582,7 @@ export default class GameScene extends Phaser.Scene {
         const spawnDelay = baseSpawnDelay / spawnRateMultiplier;
 
         if (this.enemySpawnTimer > spawnDelay) {
-            if (this.stage !== 6) {
+            if (this.stage !== 5 && this.stage !== 6) {
                 this.spawnEnemy();
             }
             this.enemySpawnTimer = 0;
@@ -779,6 +781,9 @@ export default class GameScene extends Phaser.Scene {
                 for (let i = 0; i < count; i++) {
                     this.time.delayedCall(i * 200, () => this.spawnEnemy());
                 }
+                break;
+            case 'spawn_boss':
+                this.unitManager.spawnBoss(false, event.details?.x);
                 break;
         }
     }

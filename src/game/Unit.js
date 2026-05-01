@@ -246,8 +246,11 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         // Limit ally position to be no further than enemy boss (적 보스보다 더 오른쪽에 위치 금지)
         if (this.isAlly && this.hp > 0) {
             const enemyBoss = this.unitManager.getEnemyBoss();
-            if (enemyBoss && this.x > enemyBoss.x) {
-                this.x = enemyBoss.x;
+            if (enemyBoss) {
+                const stopX = enemyBoss.x - enemyBoss.logicWidth / 2;
+                if (this.x > stopX) {
+                    this.x = stopX;
+                }
             }
         }
 
@@ -396,10 +399,13 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             if (this.isAlly && this.x + moveAmount < 20) moveAmount = 0;
             if (!this.isAlly && this.x + moveAmount > 780) moveAmount = 0;
         } else if (desiredMove === 1 && this.isAlly) {
-            // 아군은 적 보스보다 더 오른쪽에 위치하면 안 됨
+            // 아군은 적 보스보다 더 오른쪽에 위치하면 안 됨 (보스의 왼쪽 끝 경계선 기준)
             const enemyBoss = this.unitManager.getEnemyBoss();
-            if (enemyBoss && this.x + moveAmount > enemyBoss.x) {
-                moveAmount = Math.max(0, enemyBoss.x - this.x);
+            if (enemyBoss) {
+                const stopX = enemyBoss.x - enemyBoss.logicWidth / 2;
+                if (this.x + moveAmount > stopX) {
+                    moveAmount = Math.max(0, stopX - this.x);
+                }
             }
         }
 
@@ -532,18 +538,19 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     fireWavePattern() {
         const startX = this.x - 40;
         const groundY = this.y - 45;
-        const waveCount = 10;
-        const waveSpacing = 60;
+        const totalRange = 400; // 50% of 800px screen
+        const waveCount = 8;
+        const waveSpacing = totalRange / waveCount;
 
         // Play a charge sound or initial burst sound
         this.scene.sound.play('hit3', { volume: 0.6, rate: 0.8 });
 
         for (let i = 0; i < waveCount; i++) {
-            this.scene.time.delayedCall(i * 80, () => {
+            this.scene.time.delayedCall(i * 30, () => {
                 if (!this.scene) return;
 
                 const waveX = startX - (i * waveSpacing);
-                if (waveX < 240) return; // Stop at safe zone (30% point)
+                if (waveX < startX - totalRange) return;
 
                 // Visual wave (ground shockwave)
                 const wave = this.scene.add.ellipse(waveX, groundY, 20, 80, 0x00d2ff, 0.6)
@@ -562,7 +569,22 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 const allies = this.unitManager.allies;
                 allies.forEach(ally => {
                     if (ally.active && ally.hp > 0 && Math.abs(ally.x - waveX) < 30) {
-                        ally.takeDamage(this.attackDamage * 0.4, this.isAlly); // Cumulative damage
+                        let currentDamageMult = 0.4;
+                        
+                        // 양문형 탱커 보호 로직: 해당 유닛보다 오른쪽에 양문형 탱커가 있다면 데미지 80% 감소 (20%만 적용)
+                        const isProtected = allies.some(other => 
+                            other !== ally && 
+                            other.active && 
+                            other.hp > 0 && 
+                            other.isDoubleDoorTank && 
+                            other.x > ally.x
+                        );
+
+                        if (isProtected && !ally.isDoubleDoorTank) {
+                            currentDamageMult *= 0.2;
+                        }
+
+                        ally.takeDamage(this.attackDamage * currentDamageMult, this.isAlly, true); 
                     }
                 });
 
@@ -627,7 +649,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             if (opp.active && opp.hp > 0) {
                 const dist = Math.abs(x - opp.x);
                 if (dist <= splashRange) {
-                    opp.takeDamage(damage, this.isAlly);
+                    opp.takeDamage(damage, this.isAlly, true);
                     if (!opp.isKnockbackImmune && !opp.isBoss) {
                         this.scene.tweens.add({
                             targets: opp,
@@ -705,7 +727,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             if (opp.active && opp.hp > 0) {
                 const dist = Math.abs(x - opp.x);
                 if (dist <= splashRange) {
-                    opp.takeDamage(damage, this.isAlly);
+                    opp.takeDamage(damage, this.isAlly, true);
                     if (!opp.isKnockbackImmune && !opp.isBoss) {
                         this.scene.tweens.add({
                             targets: opp,
@@ -719,7 +741,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         });
     }
 
-    takeDamage(amount, fromAlly) {
+    takeDamage(amount, fromAlly, isSplash = false) {
         // 슈퍼아머 발동 중에는 데미지 무시
         if (this.superArmorTimer > 0) return;
 
@@ -730,6 +752,22 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         if (!fromAlly) {
             this.lastHitByEnemyTime = this.scene.time.now;
+        }
+
+        // 아군 유닛 공통: 스플래시 대미지(웨이브/폭발) 피격 시 뒤로 밀림 연출
+        if (isSplash && this.isAlly) {
+            // 양문형 탱커는 추가적인 블록 이펙트 발생
+            if (this.isDoubleDoorTank) {
+                this.effectManager.playBlockEffect(this);
+                this.scene.sound.play('hit3', { volume: 0.4, rate: 1.2 });
+            }
+
+            this.scene.tweens.add({
+                targets: this,
+                x: this.x - 50,
+                duration: 200,
+                ease: 'Cubic.easeOut'
+            });
         }
 
         // Hidden Skill: Tanker Super Armor

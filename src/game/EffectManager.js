@@ -173,4 +173,21 @@ export default class EffectManager {
         });
     }
 
+    playBlockEffect(unit) {
+        const block = this.scene.add.circle(unit.x, unit.y - unit.displayHeight / 2, 20, 0xffffff, 0.3)
+            .setDepth(3001)
+            .setStrokeStyle(4, 0x4dd0e1, 1);
+        
+        this.scene.tweens.add({
+            targets: block,
+            scale: 2.5,
+            alpha: 0,
+            duration: 300,
+            ease: 'Cubic.easeOut',
+            onComplete: () => block.destroy()
+        });
+        
+        // Intense particle burst
+        this.hitEmitter.emitParticleAt(unit.x, unit.y - unit.displayHeight / 2, 12);
+    }
 }

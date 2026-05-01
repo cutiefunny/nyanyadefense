@@ -137,7 +137,7 @@ export default class UnitManager {
         return enemy;
     }
 
-    spawnBoss(isAlly) {
+    spawnBoss(isAlly, overrideX = null) {
         const stageConfig = STAGE_CONFIG[this.scene.stage];
         const type = isAlly ? 'leader' : 'boss';
 
@@ -177,7 +177,8 @@ export default class UnitManager {
         }
 
         const yOffset = specs.yOffset !== undefined ? specs.yOffset : 270;
-        const boss = new Unit(this.scene, isAlly ? 50 : 750, yOffset, spriteKey, specs, isAlly, this);
+        const xPos = overrideX !== null ? overrideX : (isAlly ? 50 : 750);
+        const boss = new Unit(this.scene, xPos, yOffset, spriteKey, specs, isAlly, this);
 
 
         // Breathing animation effect
@@ -246,7 +247,13 @@ export default class UnitManager {
                 this.scene.gainGlobalExp(unit.reward, unit.x, unit.y);
             }
 
-            if (unit.isBoss) return isAlly ? 'defeat' : 'victory';
+            if (unit.isBoss) {
+                if (isAlly) return 'defeat';
+                
+                // 적 보스가 죽었을 때, 전장에 다른 적 보스가 더 있는지 확인
+                const remainingBosses = this.enemies.some(e => e.isBoss && e !== unit);
+                if (!remainingBosses) return 'victory';
+            }
 
         }
 

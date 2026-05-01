@@ -111,33 +111,33 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss5',
             spriteKey: 'enemy_boss5',
-            hp: 1200000,
-            damage: 800,
+            hp: 80000,
+            damage: 80,
             w: 200,
-            scale: 0.8,
+            scale: 0.7,
+            range: 300,
             reward: 50000,
             isBoss: true,
             cooldown: 1200
         },
         clearReward: 100000,
-        scaleMultiplier: 1.0,
+        scaleMultiplier: 0.8,
         nextStage: 6,
-        events: [
+        events: Array.from({ length: 5 }, (_, i) => ({
+            type: 'spawn_boss',
+            time: 0,
+            details: { x: 240 + (i * (560 / 4)) } // 70% of 800px spread from 240 to 800
+        })).concat([
             {
                 type: 'warning',
                 time: 5000,
-                message: 'ABSOLUTE PERIL: THE CORE OF SHADOWS'
-            },
-            {
-                type: 'warning',
-                time: 30000,
-                message: 'THE EARTH SHUDDERS...'
+                message: 'BOSS RUSH: 5 POWERFUL BOSSES DETECTED!'
             }
-        ],
+        ]),
         traits: {
-            enemySpeedMultiplier: 1.4,
-            spawnRateMultiplier: 4.5,
-            description: 'The ultimate nightmare. The boss is nearly immortal and the enemies are endless. Only the strongest will survive.'
+            enemySpeedMultiplier: 1.2,
+            spawnRateMultiplier: 0.8,
+            description: 'Boss Rush Mode. 5 powerful bosses await you from the start. Can you break through their line?'
         }
     },
     6: {
@@ -146,8 +146,8 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss6',
             spriteKey: 'enemy_boss6',
-            hp: 5000000,
-            damage: 50,
+            hp: 200000,
+            damage: 300,
             range: 800,
             w: 183,
             scale: 0.8,
@@ -164,7 +164,7 @@ export const STAGE_CONFIG = {
             {
                 type: 'warning',
                 time: 3000,
-                message: '최종 보스전이 시작되었습니다! 적 기본 유닛이 없습니다.'
+                message: '레드로드의 보스, 깨비를 잡아라!'
             }
         ],
         traits: {
