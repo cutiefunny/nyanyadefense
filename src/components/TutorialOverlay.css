@@ -41,8 +41,8 @@
   background: white;
   padding: 30px 25px 20px;
   border-radius: 24px;
-  max-width: 450px;
-  width: 90%;
+  max-width: 600px;
+  width: 50%;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
@@ -54,7 +54,7 @@
 
 .tutorial-bubble.mini {
   position: absolute;
-  max-width: 320px;
+  width: 50%;
   padding: 12px;
   border-radius: 20px;
   border-width: 3px;
@@ -157,9 +157,10 @@
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  padding: 8px 30px 8px 12px;
+  padding: 8px 35px 8px 15px;
   /* Extra right padding for close btn */
-  max-width: 240px;
+  width: 50%;
+  max-width: none;
 }
 
 .tutorial-bubble.auto-info .tutorial-text {
@@ -169,19 +170,18 @@
 
 .tutorial-close-mini {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  background: #eee;
-  border: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  font-size: 12px;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  color: #888;
+  color: #ffffff;
   transition: all 0.2s;
   z-index: 10;
 }

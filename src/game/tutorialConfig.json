@@ -33,7 +33,7 @@
     },
     "steps": [
       {
-        "text": "여기서 보유한 대원 카드를 드래그해서 출격 덱에 넣을 수 있다냥.",
+        "text": "여기서 보유한 유닛 카드를 클릭해서 덱에 배치하거나 카드끼리 합쳐서 업그레이드 할 수 있다!",
         "position": "center"
       },
       {
@@ -63,9 +63,9 @@
         "position": "center"
       },
       {
-        "text": "이제 '파워업' 탭에서 대원들의 능력을 강화할 수 있다냥.",
+        "text": "이제 '부대 편성' 탭에서 덱 빌딩을 할 수 있다!",
         "position": "center",
-        "highlight": "upgrade_button"
+        "highlight": "squad_button"
       }
     ]
   },

@@ -14,7 +14,9 @@ export default class LobbyScene extends Phaser.Scene {
 
     init(data) {
         // 내부 탭 전환이 아닌 경우(외부에서 씬 시작)에만 MAIN으로 리셋
-        if (!data?.keepTab) {
+        if (data?.tab) {
+            this.tab = data.tab;
+        } else if (!data?.keepTab) {
             this.tab = 'MAIN';
         }
 
@@ -933,8 +935,6 @@ export default class LobbyScene extends Phaser.Scene {
                     }
                 }
             });
-
-
         }
 
         // ─── Right Side: Current Deck ───
@@ -957,6 +957,38 @@ export default class LobbyScene extends Phaser.Scene {
                 .setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
 
+            slotBg.on('pointerdown', () => {
+                if (this.selectedCardIndex !== undefined) {
+                    const selectedCard = invCards[this.selectedCardIndex];
+                    const prevInSlot = deckSlots[i];
+
+                    // Place selected card into this slot
+                    deckSlots[i] = selectedCard;
+                    
+                    if (prevInSlot) {
+                        // Swap: put previous card into the same inventory slot
+                        invCards[this.selectedCardIndex] = prevInSlot;
+                    } else {
+                        // Just remove from inventory
+                        invCards.splice(this.selectedCardIndex, 1);
+                    }
+
+                    this.selectedCardIndex = undefined;
+                    squad.deck = deckSlots;
+                    squad.inventory = invCards;
+                    this.saveSquad(squad);
+                    this.scene.restart({ keepTab: true });
+                } else if (unitType) {
+                    // Normal behavior: remove from deck
+                    invCards.push(cardObj);
+                    deckSlots[i] = null;
+                    squad.deck = deckSlots;
+                    squad.inventory = invCards;
+                    this.saveSquad(squad);
+                    this.scene.restart({ keepTab: true });
+                }
+            });
+
             if (unitType) {
                 if (this.textures.exists(`ally_${unitType}`)) {
                     this.add.sprite(x, y - 5, `ally_${unitType}`, 0).setDisplaySize(32, 32);
@@ -964,16 +996,6 @@ export default class LobbyScene extends Phaser.Scene {
                 this.add.text(x, y + 14, `${cardObj.level}★`, {
                     fontSize: '11px', fontFamily: 'Arial Black', fill: '#fbd46d'
                 }).setOrigin(0.5);
-
-                // Click to remove from deck
-                slotBg.on('pointerdown', () => {
-                    invCards.push(cardObj);
-                    deckSlots[i] = null;
-                    squad.deck = deckSlots;
-                    squad.inventory = invCards;
-                    this.saveSquad(squad);
-                    this.scene.restart({ keepTab: true });
-                });
             } else {
                 this.add.text(x, y, '＋', {
                     fontSize: '20px', fontFamily: 'Arial Black', fill: '#555'

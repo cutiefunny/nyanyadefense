@@ -191,6 +191,8 @@ function App() {
 
     gameInstance.events.on('stage-clear', (data) => {
       setStageCleared(data);
+      setShowGuide(false);
+      setActiveTutorial(null);
       if (isRepeatMode()) {
         setTimeout(() => {
           if (stageCleared()) {
@@ -220,6 +222,8 @@ function App() {
       setVictoryDrawnCard(drawnCard);
       setVictoryDrawnCardLevel(drawnCardLevel);
       setVictoryDrawnCardCount(drawnCardCount);
+      setShowGuide(false);
+      setActiveTutorial(null);
       if (result === 'victory' && isRepeatMode()) {
         setTimeout(() => {
           if (gameOver() === 'victory') {
@@ -237,7 +241,7 @@ function App() {
           if (gameOver() !== '' && gameOver() !== 'victory') {
             if (gameInstance) {
               gameInstance.scene.stop('GameScene');
-              gameInstance.scene.start('LobbyScene');
+              gameInstance.scene.start('LobbyScene', { tab: 'MAIN' });
             }
             setCurrentSceneKey('LobbyScene');
             setGameOver('');
@@ -253,6 +257,11 @@ function App() {
 
     gameInstance.events.on('show-guide', () => {
       setShowGuide(true);
+    });
+
+    gameInstance.events.on('boss-dead', () => {
+      setShowGuide(false);
+      setActiveTutorial(null);
     });
 
     gameInstance.events.on('unit-unlocked', (info) => {
@@ -414,7 +423,7 @@ function App() {
               <button onClick={() => {
                 if (gameInstance) {
                   gameInstance.scene.stop('GameScene');
-                  gameInstance.scene.start('LobbyScene');
+                  gameInstance.scene.start('LobbyScene', { tab: 'MAIN' });
                 }
                 setCurrentSceneKey('LobbyScene');
                 setCurrentTab('MAIN');
@@ -474,7 +483,7 @@ function App() {
                 setStageCleared(null);
                 if (gameInstance) {
                   gameInstance.scene.stop('GameScene');
-                  gameInstance.scene.start('LobbyScene');
+                  gameInstance.scene.start('LobbyScene', { tab: 'MAIN' });
                 }
                 setCurrentSceneKey('LobbyScene');
                 setCurrentTab('MAIN');

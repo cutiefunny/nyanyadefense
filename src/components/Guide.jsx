@@ -26,7 +26,7 @@ function Guide(props) {
       <div class="guide-content">
         <div class="guide-header">
           <h1>인게임 업그레이드 가이드</h1>
-          <button class="close-btn" onClick={props.onClose}>&times;</button>
+          <button class="close-btn" onClick={props.onClose}>닫기</button>
         </div>
         
         <div class="guide-sections">

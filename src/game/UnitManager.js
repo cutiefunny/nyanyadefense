@@ -252,7 +252,10 @@ export default class UnitManager {
                 
                 // 적 보스가 죽었을 때, 전장에 다른 적 보스가 더 있는지 확인
                 const remainingBosses = this.enemies.some(e => e.isBoss && e !== unit);
-                if (!remainingBosses) return 'victory';
+                if (!remainingBosses) {
+                    this.scene.sys.game.events.emit('boss-dead');
+                    return 'victory';
+                }
             }
 
         }

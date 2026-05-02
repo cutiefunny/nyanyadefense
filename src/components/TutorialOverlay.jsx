@@ -144,7 +144,7 @@ export default function TutorialOverlay(props) {
           </Show>
 
           <Show when={props.tutorial?.autoCycle}>
-            <button class="tutorial-close-mini" onClick={handleSkip}>×</button>
+            <button class="tutorial-close-mini" onClick={handleSkip}>닫기</button>
           </Show>
 
           <div class="tutorial-body">
