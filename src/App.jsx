@@ -58,6 +58,10 @@ function App() {
         return currentTab() === trigger.tab;
       case 'stage_cleared':
         return data.type === 'stage_cleared' && data.stage === trigger.stage;
+      case 'card_merged':
+        return data.type === 'card_merged';
+      case 'mortar_detected':
+        return data.type === 'mortar_detected';
       case 'stage_completed':
         const clears = JSON.parse(localStorage.getItem('nyanya_stageClears') || '{}');
         return !!clears[trigger.stage];
@@ -176,6 +180,14 @@ function App() {
 
     gameInstance.events.on('update-cannon', (cp) => {
       setCannonProgress(cp);
+    });
+
+    gameInstance.events.on('card-merged', () => {
+      checkTutorials({ type: 'card_merged' });
+    });
+
+    gameInstance.events.on('mortar-detected', () => {
+      checkTutorials({ type: 'mortar_detected' });
     });
 
     gameInstance.events.on('level-up', (lvl) => {

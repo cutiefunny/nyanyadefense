@@ -43,6 +43,46 @@
     ]
   },
   {
+    "id": "tutorial_merge",
+    "trigger": {
+      "type": "card_merged"
+    },
+    "steps": [
+      {
+        "text": "유닛 업그레이드에 성공했구냐! 훌륭하다냥!",
+        "position": "center"
+      },
+      {
+        "text": "이렇게 같은 레벨의 카드를 합치면 다음 레벨의 카드가 된다!",
+        "position": "center"
+      },
+      {
+        "text": "5레벨을 달성하면 유닛만의 특수 스킬이 개방되니 참조해라냥!",
+        "position": "center"
+      }
+    ]
+  },
+  {
+    "id": "tutorial_mortar",
+    "trigger": {
+      "type": "mortar_detected"
+    },
+    "steps": [
+      {
+        "text": "턱시도 3마리를 연속으로 배치하면 강력한 '박격포병'이 된다냥!",
+        "position": "center"
+      },
+      {
+        "text": "박격포병은 사거리가 길고 광역 피해를 주는 아주 강력한 유닛이다!",
+        "position": "center"
+      },
+      {
+        "text": "다른 조합들도 있을지 모르니 탐구해봐라냥!",
+        "position": "center"
+      }
+    ]
+  },
+  {
     "id": "tutorial_after_clear_1",
     "trigger": {
       "type": "all",

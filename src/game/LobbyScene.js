@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ALLY_TYPES, BOSS_CONFIG } from './unitsConfig';
+import { STAGE_CONFIG } from './stagesConfig';
 import lobby_bg from '../assets/lobby_bg.png';
 import lobby_cat from '../assets/lobby_cat.jpg';
 
@@ -651,11 +652,12 @@ export default class LobbyScene extends Phaser.Scene {
         const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
         if (this.stagePage === undefined) this.stagePage = 0;
         const totalStages = [1, 2, 3, 4, 5, 6];
+        const pageSize = 3;
         
         // Pagination arrows
         if (this.stagePage > 0) {
-            const leftArrow = this.add.text(30, 220, '◀', {
-                fontSize: '32px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
+            const leftArrow = this.add.text(100, 160, '◀', {
+                fontSize: '48px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
             }).setOrigin(0.5).setDepth(5000).setInteractive({ useHandCursor: true });
             leftArrow.on('pointerdown', (pointer, localX, localY, event) => {
                 if (event) event.stopPropagation();
@@ -664,9 +666,9 @@ export default class LobbyScene extends Phaser.Scene {
             });
         }
 
-        if ((this.stagePage + 1) * 5 < totalStages.length) {
-            const rightArrow = this.add.text(770, 220, '▶', {
-                fontSize: '32px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
+        if ((this.stagePage + 1) * pageSize < totalStages.length) {
+            const rightArrow = this.add.text(700, 160, '▶', {
+                fontSize: '48px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
             }).setOrigin(0.5).setDepth(5000).setInteractive({ useHandCursor: true });
             rightArrow.on('pointerdown', (pointer, localX, localY, event) => {
                 if (event) event.stopPropagation();
@@ -675,10 +677,10 @@ export default class LobbyScene extends Phaser.Scene {
             });
         }
 
-        const visibleStages = totalStages.slice(this.stagePage * 5, (this.stagePage + 1) * 5);
+        const visibleStages = totalStages.slice(this.stagePage * pageSize, (this.stagePage + 1) * pageSize);
         visibleStages.forEach((s, i) => {
-            const x = 80 + i * 160;
-            const y = 160;
+            const x = 400 + (i - (visibleStages.length - 1) / 2) * 180;
+            const y = 150;
 
             // Unlock logic: Stage 1 is always open. Stage N is open if Stage N-1 clear count > 0.
             const isLocked = s > 1 && (stageClears[s - 1] || 0) <= 0;
@@ -687,10 +689,10 @@ export default class LobbyScene extends Phaser.Scene {
             // Background image preview
             const bgKey = `bg_stage${s}`;
             if (this.textures.exists(bgKey)) {
-                this.add.image(x, y, bgKey).setDisplaySize(150, 100).setAlpha(isLocked ? 0.2 : 0.6);
+                this.add.image(x, y, bgKey).setDisplaySize(160, 100).setAlpha(isLocked ? 0.2 : 0.6);
             }
 
-            const card = this.add.rectangle(x, y, 150, 100, 0xffffff, isLocked ? 0.1 : 0.2)
+            const card = this.add.rectangle(x, y, 160, 100, 0xffffff, isLocked ? 0.1 : 0.2)
                 .setStrokeStyle(4, isLocked ? 0x444444 : 0x000000);
 
             if (isLocked) {
@@ -707,7 +709,7 @@ export default class LobbyScene extends Phaser.Scene {
             } else {
                 card.setInteractive({ useHandCursor: true });
 
-                this.add.text(x, y - 10, `STAGE ${s}`, {
+                this.add.text(x, y - 15, `STAGE ${s}`, {
                     fontSize: '24px',
                     fontFamily: 'Arial Black',
                     fill: '#000000',
@@ -715,17 +717,17 @@ export default class LobbyScene extends Phaser.Scene {
                     strokeThickness: 2
                 }).setOrigin(0.5);
 
-                this.add.text(x, y + 20, '전투개시!!', {
-                    fontSize: '16px',
+                this.add.text(x, y + 15, STAGE_CONFIG[s]?.name || '전투개시!!', {
+                    fontSize: '15px',
                     fontFamily: 'Arial Black',
-                    fill: '#e74c3c',
-                    stroke: '#fff',
-                    strokeThickness: 2
+                    fill: '#fbd46d',
+                    stroke: '#000',
+                    strokeThickness: 3
                 }).setOrigin(0.5);
 
                 // Clear Count Display
-                this.add.text(x, y + 42, `Cleared: ${clears} times`, {
-                    fontSize: '12px',
+                this.add.text(x, y + 38, `Cleared: ${clears}회`, {
+                    fontSize: '11px',
                     fontFamily: 'Arial Black',
                     fill: '#333333'
                 }).setOrigin(0.5);
@@ -781,6 +783,17 @@ export default class LobbyScene extends Phaser.Scene {
     saveSquad(squad) {
         this.registry.set('squad', squad);
         localStorage.setItem('nyanya_squad', JSON.stringify(squad));
+
+        // Check for 3 consecutive shooters for mortar tutorial
+        const deck = squad.deck;
+        for (let i = 0; i <= deck.length - 3; i++) {
+            if (deck[i]?.type === 'shooter' && 
+                deck[i+1]?.type === 'shooter' && 
+                deck[i+2]?.type === 'shooter') {
+                this.sys.game.events.emit('mortar-detected');
+                break;
+            }
+        }
     }
 
     renderSquadTab() {
@@ -889,6 +902,7 @@ export default class LobbyScene extends Phaser.Scene {
                         }
                         // Merge!
                         card.level += 1;
+                        this.sys.game.events.emit('card-merged');
                         
                         // Emit hidden skills triggers
                         if (card.level >= 5) {

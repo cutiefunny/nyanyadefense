@@ -1,5 +1,6 @@
 export const STAGE_CONFIG = {
     1: {
+        name: '상수역 1번 출구',
         background: 'bg_stage1',
         boss: {
             isCustom: true,
@@ -24,6 +25,7 @@ export const STAGE_CONFIG = {
         }
     },
     2: {
+        name: '근육고양이잡화점',
         background: 'bg_stage2',
         boss: {
             isCustom: true,
@@ -47,6 +49,7 @@ export const STAGE_CONFIG = {
         }
     },
     3: {
+        name: '근육고양이롹앤롤',
         background: 'bg_stage3',
         boss: {
             isCustom: true,
@@ -76,6 +79,7 @@ export const STAGE_CONFIG = {
         }
     },
     4: {
+        name: '크로스핏칸',
         background: 'bg_stage4',
         boss: {
             isCustom: true,
@@ -106,6 +110,7 @@ export const STAGE_CONFIG = {
         }
     },
     5: {
+        name: '겨울이 머무는 집',
         background: 'bg_stage5',
         boss: {
             isCustom: true,
@@ -141,6 +146,7 @@ export const STAGE_CONFIG = {
         }
     },
     6: {
+        name: '상상마당',
         background: 'bg_stage6',
         boss: {
             isCustom: true,
