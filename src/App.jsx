@@ -6,6 +6,8 @@ import GameScene from './game/GameScene';
 import { ALLY_TYPES } from './game/unitsConfig';
 import LEADER_SKILL_TREE from './game/leaderSkillTree.json';
 import Guide from './components/Guide';
+import TUTORIAL_CONFIG from './game/tutorialConfig.json';
+import TutorialOverlay from './components/TutorialOverlay';
 import './App.css';
 
 const unitImages = import.meta.glob('./assets/units/*.png', { eager: true, import: 'default' });
@@ -34,9 +36,52 @@ function App() {
   const [victoryDrawnCardCount, setVictoryDrawnCardCount] = createSignal(1);
   const [mortarIndices, setMortarIndices] = createSignal([]);
   const [allyHPs, setAllyHPs] = createSignal({});
+  const [completedTutorials, setCompletedTutorials] = createSignal(
+    JSON.parse(localStorage.getItem('nyanya_completedTutorials') || '[]')
+  );
+  const [tutorialsDisabled, setTutorialsDisabled] = createSignal(
+    localStorage.getItem('nyanya_tutorialsDisabled') === 'true'
+  );
+  const [activeTutorial, setActiveTutorial] = createSignal(null);
+  const [currentTab, setCurrentTab] = createSignal('MAIN');
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
+
+  const isTriggerMatched = (trigger, data) => {
+    switch (trigger.type) {
+      case 'game_start':
+        return data.type === 'game_start';
+      case 'scene_active':
+        return currentSceneKey() === trigger.scene;
+      case 'tab_active':
+        return currentTab() === trigger.tab;
+      case 'stage_cleared':
+        return data.type === 'stage_cleared' && data.stage === trigger.stage;
+      case 'all':
+        return trigger.conditions.every(cond => isTriggerMatched(cond, data));
+      case 'any':
+        return trigger.conditions.some(cond => isTriggerMatched(cond, data));
+      default:
+        return false;
+    }
+  };
+
+  const checkTutorials = (triggerData = {}) => {
+    console.log('Checking tutorials with trigger:', triggerData, 'Disabled:', tutorialsDisabled());
+    if (activeTutorial() || tutorialsDisabled()) return;
+    for (const tutorial of TUTORIAL_CONFIG) {
+      if (completedTutorials().includes(tutorial.id)) {
+        console.log('Tutorial already completed:', tutorial.id);
+        continue;
+      }
+      if (isTriggerMatched(tutorial.trigger, triggerData)) {
+        console.log('Tutorial triggered!', tutorial.id);
+        setActiveTutorial(tutorial);
+        break;
+      }
+    }
+  };
 
   onMount(() => {
     const handleKeyDown = (e) => {
@@ -81,6 +126,11 @@ function App() {
 
     gameInstance = new Phaser.Game(config);
 
+    // Initial check for game_start
+    setTimeout(() => {
+      checkTutorials({ type: 'game_start' });
+    }, 1000);
+
     gameInstance.events.on('lobby-ready', () => {
       currentScene = null;  // stale 참조 해제
       setCurrentSceneKey('LobbyScene');
@@ -88,6 +138,12 @@ function App() {
       setStageCleared(null);
       setIsAutoMode(true);
       setSpawnedUnits({normal: false, tanker: false, shooter: false});
+      checkTutorials();
+    });
+
+    gameInstance.events.on('tab-changed', (tab) => {
+      setCurrentTab(tab);
+      checkTutorials();
     });
 
     gameInstance.events.on('game-ready', (scene) => {
@@ -142,6 +198,7 @@ function App() {
           }
         }, 3000);
       }
+      checkTutorials({ type: 'stage_cleared', stage: data.stage });
     });
 
     gameInstance.events.on('deck-unit-spawned', (idx) => {
@@ -277,6 +334,26 @@ function App() {
       <div class="game-wrapper">
 
         <div ref={gameContainer} class="phaser-container"></div>
+        <TutorialOverlay 
+          tutorial={activeTutorial()} 
+          onComplete={(id, disableAll) => {
+            if (disableAll) {
+              setTutorialsDisabled(true);
+              localStorage.setItem('nyanya_tutorialsDisabled', 'true');
+            }
+            
+            const newCompleted = [...completedTutorials(), id];
+            setCompletedTutorials(newCompleted);
+            localStorage.setItem('nyanya_completedTutorials', JSON.stringify(newCompleted));
+            
+            setActiveTutorial(null);
+            
+            // Check for next tutorial immediately after one is completed
+            if (!disableAll) {
+              setTimeout(() => checkTutorials(), 300);
+            }
+          }} 
+        />
         {gameOver() !== '' && (
           <div class="game-over-screen">
             <div style={{ "display": "flex", "flex-direction": "column", "align-items": "center", "justify-content": "center", "width": "100%", "height": "100%", "position": "relative" }}>
@@ -613,6 +690,16 @@ function App() {
                 3x Speed
               </button>
               
+              <button class="dev-btn" onClick={() => {
+                setCompletedTutorials([]);
+                setTutorialsDisabled(false);
+                localStorage.removeItem('nyanya_completedTutorials');
+                localStorage.removeItem('nyanya_tutorialsDisabled');
+                alert('Tutorials reset! Refresh or trigger a condition.');
+              }}>
+                Reset Tutorials
+              </button>
+              
               {!confirmReset() ? (
                 <button class="dev-btn danger" onPointerDown={() => setConfirmReset(true)}>
                   Reset All
@@ -712,6 +799,7 @@ function App() {
           <Guide onClose={() => setShowGuide(false)} />
         </Portal>
       )}
+
     </div>
   );
 }

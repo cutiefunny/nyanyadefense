@@ -1,0 +1,174 @@
+.tutorial-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.tutorial-highlight {
+  position: absolute;
+  z-index: 30002;
+  border: 4px solid #fbd46d;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 15px #fbd46d;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tutorial-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(3px);
+}
+
+/* If highlight is active, hide the main mask and use the highlight's box-shadow mask instead */
+.tutorial-overlay:has(.tutorial-highlight) .tutorial-mask {
+  display: none;
+}
+
+.tutorial-bubble {
+  position: relative;
+  background: white;
+  padding: 30px 25px 20px;
+  border-radius: 24px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 5px solid #fbd46d;
+  z-index: 30001;
+}
+
+.tutorial-bubble.mini {
+  position: absolute;
+  max-width: 320px;
+  padding: 12px;
+  border-radius: 20px;
+  border-width: 3px;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tutorial-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #fbd46d22;
+  margin-bottom: 10px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tutorial-skip-btn {
+  background: none;
+  border: none;
+  color: #bbb;
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 5px 8px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.tutorial-skip-btn:hover {
+  background: #f5f5f5;
+  color: #888;
+}
+
+.cat-avatar {
+  background: white;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  border: 2px solid #fbd46d;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tutorial-body {
+  padding: 5px 2px;
+}
+
+.tutorial-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #333;
+  font-weight: 600;
+  word-break: keep-all;
+}
+
+.step-indicator {
+  font-size: 0.75rem;
+  color: #aaa;
+  font-weight: bold;
+}
+
+.tutorial-next-btn {
+  background: #fbd46d;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #000;
+  box-shadow: 0 3px 0 #d4af37;
+}
+
+.tutorial-next-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 #d4af37;
+}
+
+.tutorial-next-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #d4af37;
+}
+
+.tutorial-next-btn:hover {
+  transform: translateY(-2px);
+  background: #f1c40f;
+  box-shadow: 0 6px 0 #d4af37;
+}
+
+.tutorial-next-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 #d4af37;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.8) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}

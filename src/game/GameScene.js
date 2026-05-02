@@ -138,6 +138,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Reset timeScale or apply passed speed
         this.time.timeScale = this.gameSpeed;
+        this.runGold = 0;
     }
 
 

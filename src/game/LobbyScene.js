@@ -181,6 +181,7 @@ export default class LobbyScene extends Phaser.Scene {
         this.renderHeader();
         this.checkHiddenSkillNotifications();
         this.sys.game.events.emit('lobby-ready');
+        this.sys.game.events.emit('tab-changed', this.tab);
     }
 
     checkHiddenSkillNotifications() {

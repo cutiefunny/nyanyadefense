@@ -1,0 +1,61 @@
+[
+  {
+    "id": "tutorial_start",
+    "trigger": {
+      "type": "game_start"
+    },
+    "steps": [
+      {
+        "text": "안녕! '냐냐 디펜스'에 온 걸 환영한다냥!",
+        "position": "center"
+      },
+      {
+        "text": "먼저 전투에 나갈 부대를 편성해야 한다냥.",
+        "position": "center"
+      },
+      {
+        "text": "'부대 편성' 버튼을 눌러서 대원들을 배치해보자냥!",
+        "position": "center",
+        "highlight": "squad_button"
+      }
+    ]
+  },
+  {
+    "id": "tutorial_squad",
+    "trigger": {
+      "type": "all",
+      "conditions": [
+        { "type": "scene_active", "scene": "LobbyScene" },
+        { "type": "tab_active", "tab": "SQUAD" }
+      ]
+    },
+    "steps": [
+      {
+        "text": "여기서 보유한 대원 카드를 드래그해서 출격 덱에 넣을 수 있다냥.",
+        "position": "center"
+      },
+      {
+        "text": "덱 편성이 끝났다면 다시 '메인'으로 돌아가서 '전투개시'를 눌러보자냥!",
+        "position": "center"
+      }
+    ]
+  },
+  {
+    "id": "tutorial_after_clear_1",
+    "trigger": {
+      "type": "stage_cleared",
+      "stage": 1
+    },
+    "steps": [
+      {
+        "text": "첫 스테이지 클리어를 축하한다냥!",
+        "position": "center"
+      },
+      {
+        "text": "이제 '파워업' 탭에서 대원들의 능력을 강화할 수 있다냥.",
+        "position": "center",
+        "highlight": "upgrade_button"
+      }
+    ]
+  }
+]
