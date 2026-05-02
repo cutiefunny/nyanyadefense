@@ -6,17 +6,13 @@
     },
     "steps": [
       {
-        "text": "안녕! '냐냐 디펜스'에 온 걸 환영한다냥!",
+        "text": "안녕! '상수동 디펜스'에 온 걸 환영한다냥!",
         "position": "center"
       },
       {
-        "text": "먼저 전투에 나갈 부대를 편성해야 한다냥.",
-        "position": "center"
-      },
-      {
-        "text": "'부대 편성' 버튼을 눌러서 대원들을 배치해보자냥!",
+        "text": "일단 냅다 전투를 해보자!",
         "position": "center",
-        "highlight": "squad_button"
+        "highlight": "battle_button"
       }
     ]
   },
@@ -25,8 +21,14 @@
     "trigger": {
       "type": "all",
       "conditions": [
-        { "type": "scene_active", "scene": "LobbyScene" },
-        { "type": "tab_active", "tab": "SQUAD" }
+        {
+          "type": "scene_active",
+          "scene": "LobbyScene"
+        },
+        {
+          "type": "tab_active",
+          "tab": "SQUAD"
+        }
       ]
     },
     "steps": [
@@ -43,8 +45,17 @@
   {
     "id": "tutorial_after_clear_1",
     "trigger": {
-      "type": "stage_cleared",
-      "stage": 1
+      "type": "all",
+      "conditions": [
+        {
+          "type": "scene_active",
+          "scene": "LobbyScene"
+        },
+        {
+          "type": "stage_completed",
+          "stage": 1
+        }
+      ]
     },
     "steps": [
       {
@@ -55,6 +66,28 @@
         "text": "이제 '파워업' 탭에서 대원들의 능력을 강화할 수 있다냥.",
         "position": "center",
         "highlight": "upgrade_button"
+      }
+    ]
+  },
+  {
+    "id": "tutorial_battle_1",
+    "trigger": {
+      "type": "scene_active",
+      "scene": "GameScene"
+    },
+    "autoCycle": 5000,
+    "steps": [
+      {
+        "text": "리더 김냐냐씨는 일정 간격으로 공격력 버프 함성을 사용한다!",
+        "position": "top-right"
+      },
+      {
+        "text": "함성의 기본 효과는 10초간 주변 유닛들의 공격력과 공격속도 2배!",
+        "position": "top-right"
+      },
+      {
+        "text": "돌아다니는 쥐를 터치해서 잡으면 김냐냐씨의 체력이 회복된다!",
+        "position": "top-right"
       }
     ]
   }
