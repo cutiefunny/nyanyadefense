@@ -10,6 +10,8 @@ export default class UnitManager {
         this.allies = [];
         this.enemies = [];
         this.enemySpawnCount = 0;
+        this.allyDamageTaken = 0;
+        this.enemyDamageTaken = 0;
     }
 
     getStageScaleMultiplier() {
@@ -132,6 +134,12 @@ export default class UnitManager {
 
         const spriteKey = 'enemy_' + specs.type;
         const enemy = new Unit(this.scene, 800, yOffsetBase + yOffset, spriteKey, specs, false, this);
+
+        // If Heavy Metal (boss3 buff) is active, apply it to newly spawned enemies
+        const boss3 = this.enemies.find(e => e.isBoss && e.typeKey === 'boss3' && e.active);
+        if (boss3 && boss3.buffRemainingTime > 0) {
+            enemy.buffRemainingTime = boss3.buffRemainingTime;
+        }
 
         this.enemies.push(enemy);
         return enemy;

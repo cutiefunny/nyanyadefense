@@ -531,18 +531,20 @@ export default class GameScene extends Phaser.Scene {
         this.showFloatingText(`+${intAmount} 냥`, x, y, '#fbd46d');
     }
 
-    showFloatingText(text, x, y, color) {
+    showFloatingText(text, x, y, color = '#ff0000', isDescending = false) {
+        if (!this.active) return;
         const floatingText = this.add.text(x, y, text, {
             fontSize: '18px',
-            fontFamily: 'Arial Black',
             fill: color,
-            stroke: '#000',
-            strokeThickness: 3
-        }).setOrigin(0.5);
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3,
+            fontFamily: 'Arial'
+        }).setOrigin(0.5).setDepth(5000);
 
         this.tweens.add({
             targets: floatingText,
-            y: y - 50,
+            y: isDescending ? y + 50 : y - 50,
             alpha: 0,
             duration: 1000,
             ease: 'Cubic.easeOut',

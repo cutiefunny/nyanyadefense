@@ -86,12 +86,14 @@ export const STAGE_CONFIG = {
             type: 'boss4',
             spriteKey: 'enemy_boss4',
             hp: 250000,
-            damage: 350,
+            damage: 30,
             w: 150,
             scale: 0.5,
             reward: 15000,
             isBoss: true,
-            cooldown: 800 // fast attack
+            cooldown: 800, // fast attack
+            hasSplash: true,
+            range: 70
         },
         clearReward: 30000,
         scaleMultiplier: 1.0,

@@ -56,6 +56,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         if (isAlly && !this.isMortarMode) this.setFlipX(true);
+        
+        this.hasSplash = specs.hasSplash || false;
 
         this.isDoubleDoorTank = specs.isDoubleDoorTank || false;
         if (this.isDoubleDoorTank) {
@@ -96,6 +98,11 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 yoyo: true,
                 repeat: -1
             });
+        }
+
+        // Initialize skill timer for boss3 to trigger after 10s (30s threshold - 20s initial)
+        if (this.typeKey === 'boss3' && !this.isAlly) {
+            this.skillTimer = 20000;
         }
     }
 
@@ -211,6 +218,17 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         // Handle Animation State
         this.updateAnimation(actuallyMoving, target, minDist);
 
+        // Boss 3 Guitar Playing Animation (Heavy Metal Skill)
+        if (this.typeKey === 'boss3' && this.isBoss && !this.isAlly && this.buffRemainingTime > 0) {
+            this.guitarTimer = (this.guitarTimer || 0) + delta;
+            if (this.guitarTimer >= 100) {
+                this.guitarTimer = 0;
+                // Alternate between frame 0 and 1
+                const nextFrame = (this.frame.name == 0) ? 1 : 0;
+                this.setFrame(nextFrame);
+            }
+        }
+
         // Handle Attack
         let canAttack = true;
         if (this.isBoss && this.isAlly && this.scene.isAutoMode && !this.isDragging) {
@@ -259,6 +277,16 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         // Handle Buffs
         this.updateBuffs(delta);
 
+        // Handle Boss Skills (롹시코기 Stage 3 Boss)
+        if (this.isBoss && !this.isAlly && this.typeKey === 'boss3') {
+            this.skillTimer = (this.skillTimer || 0) + delta;
+            if (this.skillTimer >= 30000) {
+                this.skillTimer = 0;
+                console.log('[Boss Skill] Triggering Heavy Metal');
+                this.useHeavyMetalSkill();
+            }
+        }
+
         // Limit ally position to be no further than enemy boss (적 보스보다 더 오른쪽에 위치 금지)
         if (this.isAlly && this.hp > 0) {
             const enemyBoss = this.unitManager.getEnemyBoss();
@@ -285,15 +313,15 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 if (ally.active && ally.hp > 0) {
                     const dx = this.x - ally.x;
                     const dy = this.y - ally.y;
-                    
+
                     // Elliptical distance check scaled by stage multiplier
                     const rangeX = 50 * multiplier;
                     const rangeY = 40 * multiplier;
-                    const isInside = (dx*dx)/(rangeX*rangeX) + (dy*dy)/(rangeY*rangeY) <= 1;
-                    
+                    const isInside = (dx * dx) / (rangeX * rangeX) + (dy * dy) / (rangeY * rangeY) <= 1;
+
                     if (isInside) {
                         ally.hp = Math.min(ally.maxHp, ally.hp + healAmount);
-                        
+
                         // Show floating text for ALL units being healed, periodically
                         if (shouldShowText) {
                             this.scene.showFloatingText("+2", ally.x, ally.y - 30, "#2ecc71");
@@ -440,7 +468,11 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     handleMovement(delta, desiredMove, target, minDist) {
-        let moveAmount = this.speed * (delta / 16) * desiredMove;
+        let currentSpeed = this.speed;
+        if (this.buffRemainingTime > 0 && !this.isAlly) {
+            currentSpeed *= 2;
+        }
+        let moveAmount = currentSpeed * (delta / 16) * desiredMove;
 
         // Map bounds & Boss-relative constraints
         if (desiredMove === -1) {
@@ -515,7 +547,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 });
 
                 // Play a heal sound if available (reuse hit for now or just silent)
-            } else if (this.specs.type === 'boss6') {
+            } else if (this.typeKey === 'boss6') {
                 this.fireWavePattern();
             } else {
                 // Normal Damage & Knockback
@@ -530,8 +562,14 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
                 if (this.hasSplash) {
                     // Splash Suppression: If target is Double Door Tank, reduce splash range and damage
-                    const splashRange = target.isDoubleDoorTank ? 10 : 30;
-                    const splashDamageMult = target.isDoubleDoorTank ? 0.2 : 0.5;
+                    let splashRange = target.isDoubleDoorTank ? 10 : 30;
+                    let splashDamageMult = target.isDoubleDoorTank ? 0.2 : 0.5;
+
+                    // Special range for Boss 4
+                    if (this.typeKey === 'boss4' && !this.isAlly) {
+                        splashRange = 50;
+                        splashDamageMult = 0.5;
+                    }
 
                     const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
                     opponents.forEach(opp => {
@@ -619,13 +657,13 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 allies.forEach(ally => {
                     if (ally.active && ally.hp > 0 && Math.abs(ally.x - waveX) < 30) {
                         let currentDamageMult = 0.4;
-                        
+
                         // 양문형 탱커 보호 로직: 해당 유닛보다 오른쪽에 양문형 탱커가 있다면 데미지 80% 감소 (20%만 적용)
-                        const isProtected = allies.some(other => 
-                            other !== ally && 
-                            other.active && 
-                            other.hp > 0 && 
-                            other.isDoubleDoorTank && 
+                        const isProtected = allies.some(other =>
+                            other !== ally &&
+                            other.active &&
+                            other.hp > 0 &&
+                            other.isDoubleDoorTank &&
                             other.x > ally.x
                         );
 
@@ -633,7 +671,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                             currentDamageMult *= 0.2;
                         }
 
-                        ally.takeDamage(this.attackDamage * currentDamageMult, this.isAlly, true); 
+                        ally.takeDamage(this.attackDamage * currentDamageMult, this.isAlly, true);
                     }
                 });
 
@@ -796,6 +834,13 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         const finalDamage = Math.max(1, amount - this.defense);
         this.hp -= finalDamage;
+
+        // Track damage for global summary
+        if (this.isAlly) {
+            this.unitManager.allyDamageTaken += finalDamage;
+        } else {
+            this.unitManager.enemyDamageTaken += finalDamage;
+        }
         this.hitFlashTimer = 100; // 0.1s white flash
         this.setTint(0xffffff);
 
@@ -839,6 +884,20 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         this.effectManager.playHitEffect(this, amount);
+    }
+
+    useHeavyMetalSkill() {
+        if (!this.scene) return;
+        this.scene.showFloatingText('헤비메탈 발동!', this.x, this.y - 120, '#e74c3c');
+        this.scene.sound.play('hit3', { volume: 0.8, rate: 0.5 });
+        this.scene.cameras.main.shake(500, 0.01);
+
+        const enemies = this.unitManager.enemies;
+        enemies.forEach(enemy => {
+            if (enemy.active && enemy.hp > 0) {
+                enemy.buffRemainingTime = 10000; // 10 seconds
+            }
+        });
     }
 
     updateBuffs(delta) {
