@@ -62,6 +62,8 @@ function App() {
         return data.type === 'card_merged';
       case 'mortar_detected':
         return data.type === 'mortar_detected';
+      case 'tanker_combo_detected':
+        return data.type === 'tanker_combo_detected';
       case 'stage_completed':
         const clears = JSON.parse(localStorage.getItem('nyanya_stageClears') || '{}');
         return !!clears[trigger.stage];
@@ -75,11 +77,9 @@ function App() {
   };
 
   const checkTutorials = (triggerData = {}) => {
-    console.log('Checking tutorials with trigger:', triggerData, 'Disabled:', tutorialsDisabled());
     if (activeTutorial() || tutorialsDisabled()) return;
     for (const tutorial of TUTORIAL_CONFIG) {
       if (completedTutorials().includes(tutorial.id)) {
-        console.log('Tutorial already completed:', tutorial.id);
         continue;
       }
       if (isTriggerMatched(tutorial.trigger, triggerData)) {
@@ -188,6 +188,10 @@ function App() {
 
     gameInstance.events.on('mortar-detected', () => {
       checkTutorials({ type: 'mortar_detected' });
+    });
+
+    gameInstance.events.on('tanker-combo-detected', () => {
+      checkTutorials({ type: 'tanker_combo_detected' });
     });
 
     gameInstance.events.on('level-up', (lvl) => {

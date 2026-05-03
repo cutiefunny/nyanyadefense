@@ -81,6 +81,22 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             this.shadow.setSize(isAlly ? 80 : 120, 16);
             this.createHPBar();
         }
+
+        // Healer Aura (Hidden Skill: 장판힐) Range Graphic
+        if (this.typeKey === 'healer' && this.specs.level >= 5 && isAlly) {
+            const auraW = 100 * multiplier;
+            const auraH = 40 * multiplier;
+            this.auraGraphic = this.scene.add.ellipse(x, y, auraW, auraH, 0x2ecc71, 0.2).setDepth(this.depth - 0.2);
+            this.scene.tweens.add({
+                targets: this.auraGraphic,
+                alpha: 0.1,
+                scaleX: 1.1,
+                scaleY: 1.1,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1
+            });
+        }
     }
 
     createHPBar() {
@@ -252,6 +268,39 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                     this.x = stopX;
                 }
             }
+        }
+
+        // Handle Healer Aura (Hidden Skill: 장판힐)
+        if (this.typeKey === 'healer' && this.specs.level >= 5 && this.hp > 0) {
+            const healAmount = 2 * (delta / 1000);
+            const allies = this.unitManager.allies;
+            const multiplier = this.unitManager.getStageScaleMultiplier();
+
+            // Timer to show floating text for all healed units once per second
+            this.auraHealEffectTimer = (this.auraHealEffectTimer || 0) + delta;
+            const shouldShowText = this.auraHealEffectTimer >= 1000;
+            if (shouldShowText) this.auraHealEffectTimer = 0;
+
+            allies.forEach(ally => {
+                if (ally.active && ally.hp > 0) {
+                    const dx = this.x - ally.x;
+                    const dy = this.y - ally.y;
+                    
+                    // Elliptical distance check scaled by stage multiplier
+                    const rangeX = 50 * multiplier;
+                    const rangeY = 40 * multiplier;
+                    const isInside = (dx*dx)/(rangeX*rangeX) + (dy*dy)/(rangeY*rangeY) <= 1;
+                    
+                    if (isInside) {
+                        ally.hp = Math.min(ally.maxHp, ally.hp + healAmount);
+                        
+                        // Show floating text for ALL units being healed, periodically
+                        if (shouldShowText) {
+                            this.scene.showFloatingText("+2", ally.x, ally.y - 30, "#2ecc71");
+                        }
+                    }
+                }
+            });
         }
 
         // Update UI
@@ -827,6 +876,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             this.shadow.x = this.x;
             this.shadow.y = this.y;
         }
+
+        if (this.auraGraphic) {
+            this.auraGraphic.x = this.x;
+            this.auraGraphic.y = this.y;
+            this.auraGraphic.setDepth(this.depth - 0.2);
+        }
     }
 
     applyLeaderPerks() {
@@ -882,6 +937,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         if (this.hpBarBg) this.hpBarBg.destroy();
         if (this.hpBarFill) this.hpBarFill.destroy();
         if (this.shieldGraphic) this.shieldGraphic.destroy();
+        if (this.auraGraphic) this.auraGraphic.destroy();
         if (this.breathingTween) this.breathingTween.stop();
         super.destroy();
     }

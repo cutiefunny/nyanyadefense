@@ -83,6 +83,22 @@
     ]
   },
   {
+    "id": "tutorial_tanker_combo",
+    "trigger": {
+      "type": "tanker_combo_detected"
+    },
+    "steps": [
+      {
+        "text": "탱크 2마리를 연속으로 배치하면 '양문형 탱크'가 된다냥!",
+        "position": "center"
+      },
+      {
+        "text": "양문형 탱크는 체력이 높고 방어력이 뛰어나 아군을 든든하게 지켜준다냥!",
+        "position": "center"
+      }
+    ]
+  },
+  {
     "id": "tutorial_after_clear_1",
     "trigger": {
       "type": "all",

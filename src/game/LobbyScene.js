@@ -794,6 +794,14 @@ export default class LobbyScene extends Phaser.Scene {
                 break;
             }
         }
+
+        // Check for 2 consecutive tankers for tanker-combo tutorial
+        for (let i = 0; i <= deck.length - 2; i++) {
+            if (deck[i]?.type === 'tanker' && deck[i+1]?.type === 'tanker') {
+                this.sys.game.events.emit('tanker-combo-detected');
+                break;
+            }
+        }
     }
 
     renderSquadTab() {
@@ -930,8 +938,8 @@ export default class LobbyScene extends Phaser.Scene {
                             } else if (card.type === 'healer' && !localStorage.getItem('nyanya_hiddenSkillSeen_healer')) {
                                 this.sys.game.events.emit('show-hidden-skill', {
                                     unitName: '점박이',
-                                    skillName: '대천사의 자비 (보호막)',
-                                    desc: '치유 시 대상의 최대 체력을 초과한 회복량은 3초 동안 유지되는 보호막으로 전환됩니다.'
+                                    skillName: '장판힐',
+                                    desc: '자신을 포함한 주변 20px 이내의 모든 아군의 체력을 초당 2씩 지속적으로 회복시킵니다.'
                                 });
                                 localStorage.setItem('nyanya_hiddenSkillSeen_healer', 'true');
                             }
@@ -1021,6 +1029,73 @@ export default class LobbyScene extends Phaser.Scene {
         if (this.selectedCardIndex !== undefined && invCards[this.selectedCardIndex]) {
             const selectedCard = invCards[this.selectedCardIndex];
             const deployY = 275;
+            const statsCenterX = 200;
+
+            // Unit Name & Stats Display with Premium Box
+            const spec = ALLY_TYPES[selectedCard.type] || BOSS_CONFIG[selectedCard.type] || { hp: 0, damage: 0, defense: 0, name: selectedCard.type };
+            const level = selectedCard.level || 1;
+            
+            const levelBonus = (selectedCard.type === 'healer') ? (1 + (level - 1) * 0.1) : (1 + (level - 1) * 0.2);
+            const curHP = Math.floor(spec.hp * levelBonus);
+            const curATK = Math.floor(spec.damage * levelBonus);
+            let curDEF = spec.defense || 0;
+            if (selectedCard.type === 'tanker') curDEF += (level - 1) * 2;
+
+            // Calculate DPS/HPS
+            let curCooldown = spec.cooldown || 1000;
+            if (selectedCard.type === 'shooter') {
+                curCooldown /= (1 + (level - 1) * 0.05);
+            } else if (selectedCard.type === 'healer') {
+                curCooldown /= (1 + (level - 1) * 0.1);
+            }
+            const curDPS = (curATK / (curCooldown / 1000)).toFixed(1);
+            const atkLabel = (selectedCard.type === 'healer') ? 'HPS' : 'DPS';
+
+            // Stats background panel
+            this.add.rectangle(statsCenterX, deployY - 50, 280, 50, 0x000000, 0.5)
+                .setStrokeStyle(1, 0xfbd46d, 0.3)
+                .setOrigin(0.5);
+
+            let skillName = "";
+            if (level >= 5) {
+                const skills = {
+                    tanker: "금강불괴",
+                    shooter: "수류탄 투척",
+                    normal: "순간 대시",
+                    healer: "장판힐"
+                };
+                skillName = skills[selectedCard.type] ? `${skills[selectedCard.type]}` : "";
+            }
+
+            const baseNameText = `${spec.name} (Lv.${level})`;
+            const nameStyle = { fontSize: '15px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 2 };
+            const skillStyle = { fontSize: '15px', fontFamily: 'Arial Black', fill: '#f1c40f', stroke: '#000', strokeThickness: 2 };
+            
+            if (skillName) {
+                const nameObj = this.make.text({ x: 0, y: 0, text: baseNameText, style: nameStyle });
+                const skillObj = this.make.text({ x: 0, y: 0, text: skillName, style: skillStyle });
+                const totalWidth = nameObj.width + 8 + skillObj.width;
+                const startX = statsCenterX - totalWidth / 2;
+                
+                this.add.text(startX, deployY - 62, baseNameText, nameStyle).setOrigin(0, 0.5);
+                this.add.text(startX + nameObj.width + 8, deployY - 62, skillName, skillStyle).setOrigin(0, 0.5);
+                
+                nameObj.destroy();
+                skillObj.destroy();
+            } else {
+                this.add.text(statsCenterX, deployY - 62, baseNameText, nameStyle).setOrigin(0.5);
+            }
+
+            const statsStyle = { fontSize: '13px', fontFamily: 'Arial Black', stroke: '#000', strokeThickness: 2 };
+            
+            if (curDEF > 0) {
+                this.add.text(statsCenterX - 85, deployY - 40, `HP: ${curHP}`, { ...statsStyle, fill: '#ff7675' }).setOrigin(0.5);
+                this.add.text(statsCenterX, deployY - 40, `${atkLabel}: ${curDPS}`, { ...statsStyle, fill: '#fab1a0' }).setOrigin(0.5);
+                this.add.text(statsCenterX + 85, deployY - 40, `DEF: ${curDEF}`, { ...statsStyle, fill: '#74b9ff' }).setOrigin(0.5);
+            } else {
+                this.add.text(statsCenterX - 50, deployY - 40, `HP: ${curHP}`, { ...statsStyle, fill: '#ff7675' }).setOrigin(0.5);
+                this.add.text(statsCenterX + 50, deployY - 40, `${atkLabel}: ${curDPS}`, { ...statsStyle, fill: '#fab1a0' }).setOrigin(0.5);
+            }
 
             // Deploy Button (Left)
             const deployBtn = this.add.rectangle(130, deployY, 130, 30, 0x27ae60)
@@ -1045,7 +1120,6 @@ export default class LobbyScene extends Phaser.Scene {
             });
 
             // Sell Button (Right)
-            const spec = ALLY_TYPES[selectedCard.type] || { cost: 200 };
             const refundAmount = (spec.cost || 200) * Math.pow(2, selectedCard.level - 1);
 
             const bigSellBtn = this.add.rectangle(270, deployY, 130, 30, 0xc0392b)
