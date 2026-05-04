@@ -507,6 +507,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             let name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
             const level = levels[id] || 1;
+            const isMaxLevel = (id === 'deck_slots' && level >= 9);
 
             let upgradeCost = 0;
             let neededCards = 0;
@@ -535,9 +536,9 @@ export default class LobbyScene extends Phaser.Scene {
                 }
             }
 
-            const canAfford = (id === 'leader' || id === 'normal') && type === 'unit' 
+            const canAfford = !isMaxLevel && ((id === 'leader' || id === 'normal') && type === 'unit' 
                 ? cardCount >= neededCards 
-                : gold >= upgradeCost;
+                : gold >= upgradeCost);
 
             const bg = this.add.rectangle(0, y, 370, 48, 0x1a1a2e, 0.8)
                 .setStrokeStyle(2, type === 'unit' ? 0xfbd46d : 0x43d8c9, 0.5);
@@ -558,11 +559,11 @@ export default class LobbyScene extends Phaser.Scene {
             }).setOrigin(0, 0.5);
             container.add(lvText);
 
-            const upgradeBtn = this.add.rectangle(135, y, 90, 30, canAfford ? 0xe74c3c : 0x95a5a6)
+            const upgradeBtn = this.add.rectangle(135, y, 90, 30, isMaxLevel ? 0x95a5a6 : (canAfford ? 0xe74c3c : 0x95a5a6))
                 .setStrokeStyle(2, 0x000000)
-                .setInteractive({ useHandCursor: true });
+                .setInteractive({ useHandCursor: !isMaxLevel });
 
-            const btnText = this.add.text(135, y, (id === 'leader' || id === 'normal') && type === 'unit' ? `UP ${neededCards}장` : `UP ${upgradeCost}`, {
+            const btnText = this.add.text(135, y, isMaxLevel ? 'MAX' : ((id === 'leader' || id === 'normal') && type === 'unit' ? `UP ${neededCards}장` : `UP ${upgradeCost}`), {
                 fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
             }).setOrigin(0.5);
 
@@ -570,6 +571,7 @@ export default class LobbyScene extends Phaser.Scene {
             container.add(btnText);
 
             upgradeBtn.on('pointerdown', () => {
+                if (isMaxLevel) return;
                 const currentGold = this.registry.get('globalGold');
                 if ((id === 'leader' || id === 'normal') && type === 'unit') {
                     if (cardCount >= neededCards) {

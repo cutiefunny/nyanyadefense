@@ -15,6 +15,10 @@ import ouch1_sound from '../assets/sounds/Ouch1.mp3';
 import ouch2_sound from '../assets/sounds/Ouch2.mp3';
 
 import bgm_level1 from '../assets/sounds/level1.mp3';
+import boss3_skill_sound from '../assets/sounds/boss3_skill.mp3';
+import boom_sound from '../assets/sounds/Boom.wav';
+import canon_sound from '../assets/sounds/canon.wav';
+import grenade_sound from '../assets/sounds/grenade.wav';
 
 // Vite dynamic glob import for all unit png files
 const unitImages = import.meta.glob('../assets/units/*.png', { eager: true, import: 'default' });
@@ -38,6 +42,10 @@ export default class GameScene extends Phaser.Scene {
         this.load.audio('ouch2', ouch2_sound);
 
         this.load.audio('bgm_level1', bgm_level1);
+        this.load.audio('boss3_skill', boss3_skill_sound);
+        this.load.audio('boom', boom_sound);
+        this.load.audio('canon', canon_sound);
+        this.load.audio('grenade', grenade_sound);
 
         // Dynamically load all ally and enemy sprite sheets
         Object.keys(ALLY_TYPES).forEach(key => {
@@ -532,7 +540,6 @@ export default class GameScene extends Phaser.Scene {
     }
 
     showFloatingText(text, x, y, color = '#ff0000', isDescending = false) {
-        if (!this.active) return;
         const floatingText = this.add.text(x, y, text, {
             fontSize: '18px',
             fill: color,
@@ -580,9 +587,13 @@ export default class GameScene extends Phaser.Scene {
         const config = STAGE_CONFIG[this.stage];
         const spawnRateMultiplier = config?.traits?.spawnRateMultiplier || 1.0;
 
-        // 수정: 적의 스폰 속도는 플레이어의 level이 아닌 enemyLevel(난이도)에 비례하도록 변경하며, 스테이지 특성을 반영합니다.
         const baseSpawnDelay = Math.max(800, 4000 - this.enemyLevel * 350);
-        const spawnDelay = baseSpawnDelay / spawnRateMultiplier;
+        
+        // Heavy Metal (boss3 skill) check: double spawn rate during skill duration
+        const boss3 = this.unitManager.enemies.find(e => e.isBoss && e.typeKey === 'boss3' && e.active);
+        const skillSpawnMultiplier = (boss3 && boss3.buffRemainingTime > 0) ? 2.0 : 1.0;
+        
+        const spawnDelay = baseSpawnDelay / (spawnRateMultiplier * skillSpawnMultiplier);
 
         if (this.enemySpawnTimer > spawnDelay) {
             if (this.stage !== 5 && this.stage !== 6) {

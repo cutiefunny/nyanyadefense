@@ -591,7 +591,9 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                     });
                 }
 
-                this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.5 });
+                if (Math.random() < 0.1) {
+                    this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.5 });
+                }
 
                 const knockbackChance = 0.10 + this.bonusKnockback;
                 if (!target.isKnockbackImmune && !target.isBoss && Math.random() <= knockbackChance) {
@@ -725,7 +727,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         // Flash and shake
         this.scene.cameras.main.shake(100, 0.005);
-        this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.8, rate: 0.5 });
+        this.scene.sound.play('grenade', { volume: 0.7 });
 
         // Damage logic
         const damage = baseDamage * 3;
@@ -751,6 +753,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     throwMortar(target, damage) {
+        this.scene.sound.play('canon', { volume: 0.6 });
         const mortar = this.scene.add.circle(this.x, this.y - 40, 8, 0x333333).setDepth(2001);
         const targetX = target.x;
         const targetY = target.y - 10;
@@ -803,7 +806,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         // Flash and shake
         this.scene.cameras.main.shake(150, 0.008);
-        this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 1.0, rate: 0.4 });
+        this.scene.sound.play('boom', { volume: 0.7 });
 
         // Damage logic - stronger than grenade
         const damage = baseDamage * 5;
@@ -853,7 +856,9 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             // 양문형 탱커는 추가적인 블록 이펙트 발생
             if (this.isDoubleDoorTank) {
                 this.effectManager.playBlockEffect(this);
-                this.scene.sound.play('hit3', { volume: 0.4, rate: 1.2 });
+                if (Math.random() < 0.1) {
+                    this.scene.sound.play('hit3', { volume: 0.4, rate: 1.2 });
+                }
             }
 
             this.scene.tweens.add({
@@ -888,8 +893,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
     useHeavyMetalSkill() {
         if (!this.scene) return;
-        this.scene.showFloatingText('헤비메탈 발동!', this.x, this.y - 120, '#e74c3c');
-        this.scene.sound.play('hit3', { volume: 0.8, rate: 0.5 });
+        const messages = ['헤비메탈!', '나락도 락이다!', 'Rock will never die!', 'Rock you!'];
+        const message = Phaser.Utils.Array.GetRandom(messages);
+        this.scene.showFloatingText(message, this.x, this.y - 200, '#e74c3c');
+        this.scene.sound.play('boss3_skill', { volume: 0.8 });
         this.scene.cameras.main.shake(500, 0.01);
 
         const enemies = this.unitManager.enemies;
