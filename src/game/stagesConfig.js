@@ -164,7 +164,7 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss6',
             spriteKey: 'enemy_boss6',
-            hp: 100000,
+            hp: 50000,
             damage: 300,
             range: 800,
             w: 183,
@@ -172,6 +172,7 @@ export const STAGE_CONFIG = {
             reward: 100000,
             isBoss: true,
             cooldown: 3000,
+            speed: 0.1,
             isKnockbackImmune: true,
             yOffset: 290,
             bossDescription: '레드로드의 지배자인 깨비는 파동 공격을 구사하는 강력한 보스다!'

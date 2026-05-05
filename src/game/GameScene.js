@@ -106,12 +106,29 @@ export default class GameScene extends Phaser.Scene {
         }
         this.deck = squad.deck;
         this.spawnedDeckIndices = new Set();
-        this.mortarGroupIndices = []; // Array of arrays: [[0,1,2], ...]
-        this.tankerComboIndices = []; // Array of arrays: [[0,1], ...]
+        this.superMortarGroupIndices = []; // [[0,1,2,3,4], ...]
+        this.mortarGroupIndices = []; // [[0,1,2], ...]
+        this.tankerComboIndices = []; // [[0,1], ...]
 
         const usedIndices = new Set();
 
-        // Check for 3 consecutive shooters in the deck
+        // Check for 5 consecutive shooters (Super Mortar)
+        for (let i = 0; i <= this.deck.length - 5; i++) {
+            if (!usedIndices.has(i) && !usedIndices.has(i+1) && !usedIndices.has(i+2) && !usedIndices.has(i+3) && !usedIndices.has(i+4) &&
+                this.deck[i]?.type === 'shooter' && 
+                this.deck[i+1]?.type === 'shooter' && 
+                this.deck[i+2]?.type === 'shooter' && 
+                this.deck[i+3]?.type === 'shooter' && 
+                this.deck[i+4]?.type === 'shooter') {
+                const group = [i, i+1, i+2, i+3, i+4];
+                this.superMortarGroupIndices.push(group);
+                group.forEach(idx => usedIndices.add(idx));
+                i += 4;
+            }
+        }
+        this.registry.set('superMortarGroupIndices', this.superMortarGroupIndices.flat());
+
+        // Check for 3 consecutive shooters (Normal Mortar)
         for (let i = 0; i <= this.deck.length - 3; i++) {
             if (!usedIndices.has(i) && !usedIndices.has(i+1) && !usedIndices.has(i+2) &&
                 this.deck[i]?.type === 'shooter' && 
@@ -120,13 +137,12 @@ export default class GameScene extends Phaser.Scene {
                 const group = [i, i+1, i+2];
                 this.mortarGroupIndices.push(group);
                 group.forEach(idx => usedIndices.add(idx));
-                i += 2; // Skip to next possible group
+                i += 2;
             }
         }
-        // Flatten for registry/UI compatibility
         this.registry.set('mortarGroupIndices', this.mortarGroupIndices.flat());
 
-        // Check for 2 consecutive tankers in the deck
+        // Check for 2 consecutive tankers
         for (let i = 0; i <= this.deck.length - 2; i++) {
             if (!usedIndices.has(i) && !usedIndices.has(i+1) &&
                 this.deck[i]?.type === 'tanker' && 
@@ -134,10 +150,9 @@ export default class GameScene extends Phaser.Scene {
                 const group = [i, i+1];
                 this.tankerComboIndices.push(group);
                 group.forEach(idx => usedIndices.add(idx));
-                i += 1; // Skip to next possible group
+                i += 1;
             }
         }
-        // Flatten for registry/UI compatibility
         this.registry.set('tankerComboIndices', this.tankerComboIndices.flat());
 
         this.deckAutoSpawnTimer = 0;
@@ -222,6 +237,31 @@ export default class GameScene extends Phaser.Scene {
             
             // Show a special notification
             this.showFloatingText('박격포병 배치!', 400, 150, '#9b59b6');
+        });
+
+        // Spawn Super Mortar Groups (5 shooters)
+        this.superMortarGroupIndices.forEach(indices => {
+            const cardObj = this.deck[indices[0]];
+            const mortar = this.unitManager.spawnAlly(cardObj.type, 270, { 
+                deckIndex: indices[0], 
+                level: cardObj.level || 1,
+                isMortarMode: true,
+                isSuperMortar: true,
+                spriteKey: 'ally_mortar'
+            });
+
+            if (mortar) {
+                mortar.x = 50;
+                mortar.maxHp *= 5;
+                mortar.hp = mortar.maxHp;
+                mortar.attackDamage *= 5;
+            }
+
+            indices.forEach(idx => {
+                this.spawnedDeckIndices.add(idx);
+                this.sys.game.events.emit('deck-unit-spawned', idx);
+            });
+            this.showFloatingText('슈퍼 박격포 배치!', 400, 150, '#ff0000');
         });
 
         // Spawn Tanker Combos if exist
@@ -698,14 +738,16 @@ export default class GameScene extends Phaser.Scene {
                     else if (this.stage === 5) rewardLevel = 3;
 
                     if (randomType === 'leader' || randomType === 'normal') {
-                        rewardCount = Math.pow(2, rewardLevel - 1);
+                        rewardCount = Math.pow(2, rewardLevel - 1) * 2; // Doubled
                         for (let i = 0; i < rewardCount; i++) {
                             squad.inventory.push({ type: randomType, level: 1 });
                         }
                         rewardLevel = 1; 
                     } else {
-                        rewardCount = 1;
-                        squad.inventory.push({ type: randomType, level: rewardLevel });
+                        rewardCount = 2; // Doubled
+                        for (let i = 0; i < rewardCount; i++) {
+                            squad.inventory.push({ type: randomType, level: rewardLevel });
+                        }
                     }
 
                     this.registry.set('squad', squad);

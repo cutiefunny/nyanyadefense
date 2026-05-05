@@ -48,6 +48,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.isDashing = false;
 
         this.isMortarMode = specs.isMortarMode || false;
+        this.isSuperMortar = specs.isSuperMortar || false;
         if (this.isMortarMode) {
             this.speed = 0;
             this.attackRange = 800; // Screen-wide range
@@ -172,7 +173,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         if (this.dashCooldown > 0) {
             this.dashCooldown -= delta;
         }
-        if (this.typeKey === 'normal' && !this.isBoss && !this.isDashing && this.dashCooldown <= 0 && target && minDist <= 100 && minDist > this.attackRange + 10) {
+        if ((this.typeKey === 'normal' || this.typeKey === 'raccoon') && !this.isBoss && !this.isDashing && this.dashCooldown <= 0 && target && minDist <= 100 && minDist > this.attackRange + 10) {
             if (this.specs.level >= 5) {
                 this.isDashing = true;
                 this.dashCooldown = 3000; // 3s cooldown
@@ -288,6 +289,23 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 this.skillTimer = 0;
                 console.log('[Boss Skill] Triggering Heavy Metal');
                 this.useHeavyMetalSkill();
+            }
+        }
+
+        // Boss 7 Shotgun Logic (Separate from main attack, fires while grenade is on CD)
+        if (this.typeKey === 'boss7' && !this.isAlly && this.hp > 0) {
+            this.lastShotgunTime = this.lastShotgunTime || 0;
+            if (time - this.lastShotgunTime >= 2000) {
+                const target = this.unitManager.allies.find(a => {
+                    if (!a.active || a.hp <= 0) return false;
+                    const dist = Math.abs(this.x - a.x) - (this.logicWidth / 2 + a.logicWidth / 2);
+                    return dist <= 60;
+                });
+
+                if (target) {
+                    this.fireShotgun(target, this.attackDamage);
+                    this.lastShotgunTime = time;
+                }
             }
         }
 
@@ -578,11 +596,22 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                     }
 
                     const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
+                    const tankers = opponents.filter(opp => opp.active && opp.hp > 0 && opp.isDoubleDoorTank);
+
                     opponents.forEach(opp => {
                         if (opp !== target && opp.active && opp.hp > 0) {
                             const dist = Math.abs(target.x - opp.x);
                             if (dist <= splashRange) {
-                                opp.takeDamage(damageToApply * splashDamageMult, this.isAlly);
+                                let finalDamage = damageToApply * splashDamageMult;
+                                
+                                // Protection for units behind Double-Door Tanker
+                                const isProtected = tankers.some(tank => {
+                                    if (tank === opp) return false;
+                                    return (target.x > tank.x && opp.x < tank.x) || (target.x < tank.x && opp.x > tank.x);
+                                });
+                                if (isProtected) finalDamage *= 0.2;
+
+                                opp.takeDamage(finalDamage, this.isAlly, true);
                                 // Splash visual
                                 const circle = this.scene.add.circle(opp.x, opp.y - 20, 15, 0xffaa00, 0.6).setDepth(3000);
                                 this.scene.tweens.add({
@@ -606,7 +635,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
                 // If buffed, ignore knockback immunity for normal tankers, but Double-Door tankers and bosses stay immune
                 const isDoubleDoor = target.isDoubleDoorTank || false;
-                const targetImmune = this.buffRemainingTime > 0 ? (target.isBoss || isDoubleDoor) : (target.isKnockbackImmune || target.isBoss);
+                const isSuperArmor = (target.typeKey === 'tanker' && target.specs.level >= 5) || (target.superArmorTimer > 0);
+                const targetImmune = this.buffRemainingTime > 0 ? (target.isBoss || isDoubleDoor || isSuperArmor) : (target.isKnockbackImmune || target.isBoss);
                 
                 if (!targetImmune && Math.random() <= knockbackChance) {
                     target.stunRemainingTime = 400;
@@ -753,12 +783,20 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         const damage = baseDamage * 3;
         const splashRange = 80;
         const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
+        const tankers = opponents.filter(opp => opp.active && opp.hp > 0 && opp.isDoubleDoorTank);
 
         opponents.forEach(opp => {
             if (opp.active && opp.hp > 0) {
                 const dist = Math.abs(x - opp.x);
                 if (dist <= splashRange) {
-                    opp.takeDamage(damage, this.isAlly, true);
+                    let finalDamage = damage;
+                    const isProtected = tankers.some(tank => {
+                        if (tank === opp) return false;
+                        return (x > tank.x && opp.x < tank.x) || (x < tank.x && opp.x > tank.x);
+                    });
+                    if (isProtected) finalDamage *= 0.2;
+
+                    opp.takeDamage(finalDamage, this.isAlly, true);
                     if (!opp.isKnockbackImmune && !opp.isBoss) {
                         this.scene.tweens.add({
                             targets: opp,
@@ -774,7 +812,9 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
     throwMortar(target, damage) {
         this.scene.sound.play('canon', { volume: 0.6 });
-        const mortar = this.scene.add.circle(this.x, this.y - 40, 8, 0x333333).setDepth(2001);
+        const shellColor = this.isSuperMortar ? 0xff2222 : 0x333333;
+        const trailColor = this.isSuperMortar ? 0xff4444 : 0x888888;
+        const mortar = this.scene.add.circle(this.x, this.y - 40, this.isSuperMortar ? 12 : 8, shellColor).setDepth(2001);
         const targetX = target.x;
         const targetY = target.y - 10;
 
@@ -785,7 +825,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             alpha: { start: 0.6, end: 0 },
             lifespan: 600,
             follow: mortar,
-            tint: 0x888888
+            tint: trailColor
         }).setDepth(2000);
 
         // Parabolic trajectory
@@ -814,10 +854,11 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         if (!this.scene || !this.active) return;
 
         // Visual effect - larger explosion
-        const explosion = this.scene.add.circle(x, y, 15, 0xffaa00, 1).setDepth(3000);
+        const explosionColor = this.isSuperMortar ? 0xff2222 : 0xffaa00;
+        const explosion = this.scene.add.circle(x, y, 15, explosionColor, 1).setDepth(3000);
         this.scene.tweens.add({
             targets: explosion,
-            radius: 100,
+            radius: this.isSuperMortar ? 150 : 100,
             alpha: 0,
             duration: 400,
             ease: 'Cubic.easeOut',
@@ -829,15 +870,27 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.scene.sound.play('boom', { volume: 0.7 });
 
         // Damage logic - stronger than grenade
-        const damage = baseDamage * 5;
-        const splashRange = 100;
+        // Normal Mortar (3 shooters) = 3 * 5 = 15x
+        // Super Mortar (5 shooters) = 5 * 10 = 50x (roughly 3x power of normal, user asked 2x of "standard" mortar but 5 shooters is already 1.6x more)
+        // Let's use 10x multiplier for super mortar baseDamage (which is already 5x of individual shooter)
+        const damageMult = this.isSuperMortar ? 10 : 5;
+        const damage = baseDamage * damageMult;
+        const splashRange = this.isSuperMortar ? 130 : 100;
         const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
+        const tankers = opponents.filter(opp => opp.active && opp.hp > 0 && opp.isDoubleDoorTank);
 
         opponents.forEach(opp => {
             if (opp.active && opp.hp > 0) {
                 const dist = Math.abs(x - opp.x);
                 if (dist <= splashRange) {
-                    opp.takeDamage(damage, this.isAlly, true);
+                    let finalDamage = damage;
+                    const isProtected = tankers.some(tank => {
+                        if (tank === opp) return false;
+                        return (x > tank.x && opp.x < tank.x) || (x < tank.x && opp.x > tank.x);
+                    });
+                    if (isProtected) finalDamage *= 0.2;
+
+                    opp.takeDamage(finalDamage, this.isAlly, true);
                     if (!opp.isKnockbackImmune && !opp.isBoss) {
                         this.scene.tweens.add({
                             targets: opp,
@@ -846,6 +899,91 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                             ease: 'Cubic.easeOut'
                         });
                     }
+                }
+            }
+        });
+    }
+
+    fireShotgun(target, damage) {
+        if (!this.scene || !this.active) return;
+
+        this.scene.sound.play('canon', { volume: 0.8, rate: 1.2 });
+        this.scene.cameras.main.shake(150, 0.012);
+
+        // Muzzle Flash
+        const flash = this.scene.add.circle(this.x + (this.isAlly ? 40 : -40), this.y - 45, 35, 0xffaa00, 1).setDepth(3001);
+        this.scene.tweens.add({
+            targets: flash,
+            scale: 2.5,
+            alpha: 0,
+            duration: 150,
+            onComplete: () => flash.destroy()
+        });
+
+        // Powerful Visual: multiple pellets with trails
+        const pelletCount = 18;
+        const startX = this.x + (this.isAlly ? 40 : -40);
+        const startY = this.y - 45;
+
+        for (let i = 0; i < pelletCount; i++) {
+            const pellet = this.scene.add.circle(startX, startY, 4, 0xffffff, 1).setDepth(3000);
+            const angle = Phaser.Math.FloatBetween(-0.8, 0.8); // Increased spread (was -0.4 to 0.4)
+            const dist = Phaser.Math.FloatBetween(100, 180); // Reduced visual distance
+            const targetX = startX + (this.isAlly ? 1 : -1) * Math.cos(angle) * dist;
+            const targetY = startY + Math.sin(angle) * dist;
+            
+            this.scene.tweens.add({
+                targets: pellet,
+                x: targetX,
+                y: targetY,
+                alpha: 0,
+                scale: 0.2,
+                duration: 400,
+                ease: 'Power2',
+                onComplete: () => pellet.destroy()
+            });
+            
+            // Bullet trail line
+            const line = this.scene.add.line(0, 0, startX, startY, targetX, targetY, 0xffdd00, 0.3).setOrigin(0).setDepth(2999);
+            this.scene.tweens.add({
+                targets: line,
+                alpha: 0,
+                duration: 250,
+                onComplete: () => line.destroy()
+            });
+        }
+
+        // Damage all units in 75px range (halved from 150px)
+        const range = 75;
+        const shotgunDamage = damage * 2.0;
+        const opponents = this.isAlly ? this.unitManager.enemies : this.unitManager.allies;
+        const tankers = opponents.filter(opp => opp.active && opp.hp > 0 && opp.isDoubleDoorTank);
+
+        opponents.forEach(opp => {
+            if (opp.active && opp.hp > 0) {
+                const dist = Math.abs(this.x - opp.x) - (this.logicWidth / 2 + opp.logicWidth / 2);
+                if (dist <= range) {
+                    let finalDamage = shotgunDamage;
+                    const isProtected = tankers.some(tank => {
+                        if (tank === opp) return false;
+                        return (this.x > tank.x && opp.x < tank.x) || (this.x < tank.x && opp.x > tank.x);
+                    });
+                    if (isProtected) finalDamage *= 0.2;
+
+                    opp.takeDamage(finalDamage, this.isAlly, true);
+                    // Massive knockback (Immune for bosses, Double-door tanks, and Level 5+ tankers)
+                    const isSuperArmor = (opp.typeKey === 'tanker' && opp.specs.level >= 5) || (opp.superArmorTimer > 0);
+                    const isKnockbackImmune = opp.isKnockbackImmune || opp.isBoss || opp.isDoubleDoorTank || isSuperArmor;
+
+                    if (!isKnockbackImmune) {
+                        this.scene.tweens.add({
+                            targets: opp,
+                            x: opp.x + (this.isAlly ? 120 : -120),
+                            duration: 300,
+                            ease: 'Cubic.easeOut'
+                        });
+                    }
+                    this.effectManager.playHitEffect(opp.x, opp.y - 20);
                 }
             }
         });
@@ -873,20 +1011,21 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         // 아군 유닛 공통: 스플래시 대미지(웨이브/폭발) 피격 시 뒤로 밀림 연출
         if (isSplash && this.isAlly) {
-            // 양문형 탱커는 추가적인 블록 이펙트 발생
+            // 양문형 탱커는 밀려나는 대신 제자리에서 잠시 멈춤
             if (this.isDoubleDoorTank) {
                 this.effectManager.playBlockEffect(this);
                 if (Math.random() < 0.1) {
                     this.scene.sound.play('hit3', { volume: 0.4, rate: 1.2 });
                 }
+                this.stunRemainingTime = 300; // 0.3초간 제자리 멈춤
+            } else {
+                this.scene.tweens.add({
+                    targets: this,
+                    x: this.x - 50,
+                    duration: 200,
+                    ease: 'Cubic.easeOut'
+                });
             }
-
-            this.scene.tweens.add({
-                targets: this,
-                x: this.x - 50,
-                duration: 200,
-                ease: 'Cubic.easeOut'
-            });
         }
 
         // Hidden Skill: Tanker Super Armor
