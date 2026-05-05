@@ -56,7 +56,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         if (isAlly && !this.isMortarMode) this.setFlipX(true);
-        
+
         this.hasSplash = specs.hasSplash || false;
 
         this.isDoubleDoorTank = specs.isDoubleDoorTank || false;
@@ -220,12 +220,16 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
         // Boss 3 Guitar Playing Animation (Heavy Metal Skill)
         if (this.typeKey === 'boss3' && this.isBoss && !this.isAlly && this.buffRemainingTime > 0) {
-            this.guitarTimer = (this.guitarTimer || 0) + delta;
-            if (this.guitarTimer >= 100) {
-                this.guitarTimer = 0;
-                // Alternate between frame 0 and 1
-                const nextFrame = (this.frame.name == 0) ? 1 : 0;
-                this.setFrame(nextFrame);
+            // Only manual-switch frames if not playing an attack animation
+            const isAttacking = this.anims.isPlaying && this.anims.currentAnim.key.includes('attack');
+            if (!isAttacking) {
+                this.guitarTimer = (this.guitarTimer || 0) + delta;
+                if (this.guitarTimer >= 100) {
+                    this.guitarTimer = 0;
+                    // Alternate between frame 0 and 1
+                    const nextFrame = (this.frame.name == 0 || this.frame.name === '0') ? 1 : 0;
+                    this.setFrame(nextFrame);
+                }
             }
         }
 
@@ -547,6 +551,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 });
 
                 // Play a heal sound if available (reuse hit for now or just silent)
+            } else if (this.typeKey === 'boss7') {
+                this.throwGrenade(target, currentDamage);
             } else if (this.typeKey === 'boss6') {
                 this.fireWavePattern();
             } else {
@@ -595,12 +601,25 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                     this.scene.sound.play('hit' + Phaser.Math.Between(1, 3), { volume: 0.5 });
                 }
 
-                const knockbackChance = 0.10 + this.bonusKnockback;
-                if (!target.isKnockbackImmune && !target.isBoss && Math.random() <= knockbackChance) {
+                let knockbackChance = 0.10 + this.bonusKnockback;
+                if (this.buffRemainingTime > 0) knockbackChance *= 6; // 500% increase = 6x
+
+                // If buffed, ignore knockback immunity for normal tankers, but Double-Door tankers and bosses stay immune
+                const isDoubleDoor = target.isDoubleDoorTank || false;
+                const targetImmune = this.buffRemainingTime > 0 ? (target.isBoss || isDoubleDoor) : (target.isKnockbackImmune || target.isBoss);
+                
+                if (!targetImmune && Math.random() <= knockbackChance) {
                     target.stunRemainingTime = 400;
+                    
+                    // Normal tankers (who have isKnockbackImmune) only move 10% of the distance
+                    let kbDistance = 40;
+                    if (this.buffRemainingTime > 0 && target.isKnockbackImmune) {
+                        kbDistance = 4;
+                    }
+                    
                     this.scene.tweens.add({
                         targets: target,
-                        x: target.x + (this.isAlly ? 40 : -40),
+                        x: target.x + (this.isAlly ? kbDistance : -kbDistance),
                         duration: 200,
                         ease: 'Cubic.easeOut'
                     });
@@ -686,7 +705,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     throwGrenade(target, damage) {
-        const grenade = this.scene.add.circle(this.x, this.y - 40, 6, 0x333333).setDepth(2001);
+        const startY = this.isBoss ? (this.y - this.displayHeight * 0.6) : (this.y - 40);
+        const grenade = this.scene.add.circle(this.x, startY, 6, 0x333333).setDepth(2001);
         const targetX = target.x;
         const targetY = target.y - 20;
 
@@ -896,7 +916,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         const messages = ['헤비메탈!', '나락도 락이다!', 'Rock will never die!', 'Rock you!'];
         const message = Phaser.Utils.Array.GetRandom(messages);
         this.scene.showFloatingText(message, this.x, this.y - 200, '#e74c3c');
-        this.scene.sound.play('boss3_skill', { volume: 0.8 });
+        this.scene.sound.play('boss3_skill', { volume: 1.0 });
         this.scene.cameras.main.shake(500, 0.01);
 
         const enemies = this.unitManager.enemies;

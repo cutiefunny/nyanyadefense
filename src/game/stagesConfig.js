@@ -11,7 +11,10 @@ export const STAGE_CONFIG = {
             w: 80,
             scale: 0.8,
             reward: 800,
-            isBoss: true
+            isBoss: true,
+            range: 30,
+            cooldown: 1500,
+            bossDescription: '특별한 능력은 없는 기본 들개지만, 방심은 금물!'
         },
 
         clearReward: 1500,
@@ -21,7 +24,7 @@ export const STAGE_CONFIG = {
         traits: {
             enemySpeedMultiplier: 0.9,
             spawnRateMultiplier: 0.7,
-            description: 'Easy starter stage.'
+            description: '홍대병자의 시작 지점은 홍대입구역 9번 출구가 아니다!'
         }
     },
     2: {
@@ -31,12 +34,16 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss2',
             spriteKey: 'enemy_boss2',
-            hp: 12000,
-            damage: 40,
+            hp: 30000,
+            damage: 50,
             w: 120,
             scale: 0.6,
             reward: 2000,
-            isBoss: true
+            isBoss: true,
+            hasSplash: true,
+            range: 40,
+            cooldown: 2000,
+            bossDescription: '강한 맷집과 범위공격 능력을 지닌 불독을 조심해라!'
         },
         clearReward: 3500,
         scaleMultiplier: 1.2,
@@ -45,7 +52,7 @@ export const STAGE_CONFIG = {
         traits: {
             enemySpeedMultiplier: 1.2,
             spawnRateMultiplier: 1.5,
-            description: 'Increased enemy speed and spawn rate. Mercenaries and Power-ups are highly recommended.'
+            description: '2022년에 시작 된 상수동의 쓸모 없는 소품점이다!'
         }
     },
     3: {
@@ -55,12 +62,16 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss3',
             spriteKey: 'enemy_boss3',
-            hp: 40000,
-            damage: 90,
+            hp: 20000,
+            damage: 0,
             w: 120,
             scale: 0.6,
             reward: 5000,
-            isBoss: true
+            isBoss: true,
+            hasSplash: false,
+            range: 0,
+            cooldown: 5000,
+            bossDescription: '10초간 들개들을 광폭화 시키는 헤비메탈 콘서트를 조심하라!'
         },
         clearReward: 10000,
         scaleMultiplier: 1.5,
@@ -69,13 +80,13 @@ export const STAGE_CONFIG = {
             {
                 type: 'warning',
                 time: 10000,
-                message: 'Massive enemies detected!'
+                message: 'We will rock you!!'
             }
         ],
         traits: {
-            enemySpeedMultiplier: 1.0,
-            spawnRateMultiplier: 2.0,
-            description: 'Final battle. Enemies are relentless and numerous. Maximum Power-ups required!'
+            enemySpeedMultiplier: 1.2,
+            spawnRateMultiplier: 2.5,
+            description: '롹앤롤 굿즈를 판매하는 역시나 쓸모 없는 소품점이다!'
         }
     },
     4: {
@@ -85,30 +96,29 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss4',
             spriteKey: 'enemy_boss4',
-            hp: 250000,
-            damage: 30,
+            hp: 40000,
+            damage: 40,
             w: 150,
             scale: 0.5,
             reward: 15000,
             isBoss: true,
             cooldown: 800, // fast attack
             hasSplash: true,
-            range: 70
+            range: 70,
+            bossDescription: '크로스핏으로 단련되어 강력한 범위공격력을 지닌 불테리어에 맞서라!'
         },
         clearReward: 30000,
         scaleMultiplier: 1.0,
         nextStage: 5,
         events: [
             {
-                type: 'warning',
-                time: 5000,
-                message: 'EXTREME STAGE: BOSS REVENGE'
+
             }
         ],
         traits: {
-            enemySpeedMultiplier: 1.3,
-            spawnRateMultiplier: 3.0,
-            description: 'The final, extreme challenge. The ultimate boss has arrived. You need maxed out power-ups and a solid strategy!'
+            enemySpeedMultiplier: 1.2,
+            spawnRateMultiplier: 1.0,
+            description: '홍대 지역 유일의 크로스핏 박스다!'
         }
     },
     5: {
@@ -118,14 +128,16 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss5',
             spriteKey: 'enemy_boss5',
-            hp: 80000,
-            damage: 80,
+            hp: 20000,
+            damage: 50,
             w: 200,
             scale: 0.7,
             range: 300,
             reward: 50000,
             isBoss: true,
-            cooldown: 1200
+            cooldown: 1200,
+            hasSplash: true,
+            bossDescription: '그들은 나쁘지 않지만, 그래도 들개들의 편이다. 5마리의 겨울이들을 쓰러뜨려라!'
         },
         clearReward: 100000,
         scaleMultiplier: 0.8,
@@ -136,15 +148,13 @@ export const STAGE_CONFIG = {
             details: { x: 240 + (i * (560 / 4)) } // 70% of 800px spread from 240 to 800
         })).concat([
             {
-                type: 'warning',
-                time: 5000,
-                message: 'BOSS RUSH: 5 POWERFUL BOSSES DETECTED!'
+
             }
         ]),
         traits: {
             enemySpeedMultiplier: 1.2,
             spawnRateMultiplier: 0.8,
-            description: 'Boss Rush Mode. 5 powerful bosses await you from the start. Can you break through their line?'
+            description: '상수동에서 거대한 사모예드를 본 적이 있다면, 바로 여기서 출발한 아이들이다.'
         }
     },
     6: {
@@ -163,11 +173,12 @@ export const STAGE_CONFIG = {
             isBoss: true,
             cooldown: 3000,
             isKnockbackImmune: true,
-            yOffset: 290
+            yOffset: 290,
+            bossDescription: '레드로드의 지배자인 깨비는 파동 공격을 구사하는 강력한 보스다!'
         },
-        clearReward: 300000,
+        clearReward: 30000,
         scaleMultiplier: 0.8,
-        nextStage: null,
+        nextStage: 7,
         events: [
             {
                 type: 'warning',
@@ -178,7 +189,40 @@ export const STAGE_CONFIG = {
         traits: {
             enemySpeedMultiplier: 1.5,
             spawnRateMultiplier: 1.0,
-            description: '궁극의 보스전. 적 부하 유닛 없이 오직 보스만 등장합니다. 모든 화력을 쏟아부으세요!'
+            description: '명실상부한 홍대의 중심 상상마당이다! 이 곳은 단 하나의 보스가 지키고 있지만 공략이 쉽지 않을 것!'
+        }
+    },
+    7: {
+        name: '홍문관',
+        background: 'bg_stage7',
+        boss: {
+            isCustom: true,
+            type: 'boss7',
+            spriteKey: 'enemy_boss7',
+            hp: 20000,
+            damage: 50,
+            range: 800,
+            w: 200,
+            scale: 0.5,
+            reward: 200000,
+            isBoss: true,
+            cooldown: 3000,
+            isKnockbackImmune: true,
+            yOffset: 290,
+            bossDescription: '미대생 말티즈는 목에 걸린 그림통에서 강력한 수류탄을 발사한다!'
+        },
+        clearReward: 500000,
+        scaleMultiplier: 0.7,
+        nextStage: null,
+        events: [
+            {
+
+            }
+        ],
+        traits: {
+            enemySpeedMultiplier: 1.0,
+            spawnRateMultiplier: 0.5,
+            description: '입구가 이 정도라면, 홍익대학교는 얼마나 크고 화려한 곳일까? 라고 생각만 하자!'
         }
     }
 };

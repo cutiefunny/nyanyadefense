@@ -73,10 +73,10 @@ export default class LobbyScene extends Phaser.Scene {
             try {
                 this.registry.set('stageClears', JSON.parse(savedClears));
             } catch (e) {
-                this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+                this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
             }
         } else {
-            this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+            this.registry.set('stageClears', { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
         }
 
         // Leader Perks: { level: perkId }
@@ -164,6 +164,20 @@ export default class LobbyScene extends Phaser.Scene {
         });
         const leaderUrl = unitImages['../assets/units/leader.png'];
         if (leaderUrl) this.load.spritesheet('ally_leader', leaderUrl, { frameWidth: 100, frameHeight: 100 });
+
+        // Load Boss spritesheets for Stage Modal
+        const dogUrl = unitImages['../assets/units/dog.png'];
+        if (dogUrl) this.load.spritesheet('enemy_dog', dogUrl, { frameWidth: 100, frameHeight: 100 });
+
+        Object.keys(unitImages).forEach(path => {
+            const match = path.match(/boss(\d*)\.png$/);
+            if (match) {
+                const suffix = match[1];
+                const key = `enemy_boss${suffix}`;
+                // Use 200x200 for bosses as per GameScene logic
+                this.load.spritesheet(key, unitImages[path], { frameWidth: 200, frameHeight: 200 });
+            }
+        });
     }
 
     create() {
@@ -651,9 +665,9 @@ export default class LobbyScene extends Phaser.Scene {
             strokeThickness: 5
         }).setOrigin(0.5);
 
-        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
         if (this.stagePage === undefined) this.stagePage = 0;
-        const totalStages = [1, 2, 3, 4, 5, 6];
+        const totalStages = [1, 2, 3, 4, 5, 6, 7];
         const pageSize = 3;
         
         // Pagination arrows
@@ -684,8 +698,8 @@ export default class LobbyScene extends Phaser.Scene {
             const x = 400 + (i - (visibleStages.length - 1) / 2) * 180;
             const y = 150;
 
-            // Unlock logic: Stage 1 is always open. Stage N is open if Stage N-1 clear count > 0.
-            const isLocked = s > 1 && (stageClears[s - 1] || 0) <= 0;
+            // Unlock logic: Set to false to open all stages as requested
+            const isLocked = false;
             const clears = stageClears[s] || 0;
 
             // Background image preview
@@ -737,7 +751,7 @@ export default class LobbyScene extends Phaser.Scene {
                 card.on('pointerover', () => card.setAlpha(1.0).setScale(1.05));
                 card.on('pointerout', () => card.setAlpha(0.2).setScale(1.0));
                 card.on('pointerdown', () => {
-                    this.scene.start('GameScene', { stage: s });
+                    this.showStageModal(s);
                 });
             }
         });
@@ -804,6 +818,108 @@ export default class LobbyScene extends Phaser.Scene {
                 break;
             }
         }
+    }
+
+    showStageModal(stageId) {
+        const config = STAGE_CONFIG[stageId];
+        if (!config) return;
+
+        const overlay = this.add.rectangle(400, 150, 800, 300, 0x000000, 0.7).setDepth(6000).setInteractive();
+        const modal = this.add.container(400, 150).setDepth(6001);
+
+        // Modal Background
+        const bg = this.add.rectangle(0, 0, 600, 260, 0x1a1a2e, 0.95)
+            .setStrokeStyle(4, 0xfbd46d);
+        modal.add(bg);
+
+        // --- LEFT COLUMN ---
+        // Stage Preview Image
+        if (this.textures.exists(`bg_stage${stageId}`)) {
+            const preview = this.add.image(-180, -35, `bg_stage${stageId}`)
+                .setDisplaySize(200, 120);
+            const previewBorder = this.add.rectangle(-180, -35, 204, 124).setStrokeStyle(2, 0xffffff, 0.5);
+            modal.add([preview, previewBorder]);
+        }
+
+        // Start Button (below thumbnail)
+        const startBtn = this.add.rectangle(-180, 75, 180, 45, 0xe74c3c)
+            .setStrokeStyle(2, 0x000000)
+            .setInteractive({ useHandCursor: true });
+        const startText = this.add.text(-180, 75, '전투 시작!', {
+            fontSize: '22px',
+            fontFamily: 'Arial Black',
+            fill: '#ffffff'
+        }).setOrigin(0.5);
+        modal.add([startBtn, startText]);
+
+        // --- RIGHT COLUMN ---
+        // Stage Title
+        const title = this.add.text(-60, -100, `STAGE ${stageId}: ${config.name}`, {
+            fontSize: '26px',
+            fontFamily: 'Arial Black',
+            fill: '#fbd46d',
+            stroke: '#000',
+            strokeThickness: 4
+        }).setOrigin(0, 0.5);
+        modal.add(title);
+
+        // Description
+        const desc = this.add.text(-60, -70, config.traits?.description || '전투를 준비하세요!', {
+            fontSize: '14px',
+            fontFamily: 'Arial',
+            fill: '#ffffff',
+            wordWrap: { width: 340 }
+        }).setOrigin(0, 0);
+        modal.add(desc);
+
+        // Boss Info Section
+        if (config.boss) {
+            const bossSprite = this.add.sprite(-25, 45, config.boss.spriteKey || 'enemy_dog', 0)
+                .setDisplaySize(80, 80);
+            
+            const bossDesc = this.add.text(30, 10, config.boss.bossDescription || '', {
+                fontSize: '14px',
+                fontFamily: 'Arial',
+                fill: '#bdc3c7',
+                wordWrap: { width: 250 },
+                fontStyle: 'italic'
+            }).setOrigin(0, 0);
+            
+            modal.add([bossSprite, bossDesc]);
+        }
+
+        const closeBtn = this.add.text(280, -110, '✕', {
+            fontSize: '24px',
+            fontFamily: 'Arial Black',
+            fill: '#ffffff'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        modal.add(closeBtn);
+
+        // Interactions
+        startBtn.on('pointerover', () => startBtn.setFillStyle(0xff5e4d).setScale(1.05));
+        startBtn.on('pointerout', () => startBtn.setFillStyle(0xe74c3c).setScale(1.0));
+        startBtn.on('pointerdown', () => {
+            this.scene.start('GameScene', { stage: stageId });
+        });
+
+        const closeModal = () => {
+            overlay.destroy();
+            modal.destroy();
+        };
+
+        closeBtn.on('pointerdown', closeModal);
+        overlay.on('pointerdown', closeModal);
+
+        // Entrance Animation
+        modal.setScale(0.5);
+        modal.alpha = 0;
+        this.tweens.add({
+            targets: modal,
+            scale: 1,
+            alpha: 1,
+            duration: 200,
+            ease: 'Back.easeOut'
+        });
     }
 
     renderSquadTab() {

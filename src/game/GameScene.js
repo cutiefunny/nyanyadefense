@@ -320,8 +320,8 @@ export default class GameScene extends Phaser.Scene {
         const isMortar = key === 'ally_mortar';
         
         let frameConfig;
-        if (key === 'enemy_boss6') {
-            // New boss6 mapping: 0: idle, 1: attack, 2: hurt
+        if (key === 'enemy_boss6' || key === 'enemy_boss7') {
+            // New boss mapping: 0: idle, 1: attack, 2: hurt
             frameConfig = { walk: [0, 0], attack: [1, 1], hurt: [2, 2] };
         } else if (isBossSprite) {
             frameConfig = { walk: [0, 1], attack: [0, 1], hurt: [0, 1] };
@@ -591,7 +591,7 @@ export default class GameScene extends Phaser.Scene {
         
         // Heavy Metal (boss3 skill) check: double spawn rate during skill duration
         const boss3 = this.unitManager.enemies.find(e => e.isBoss && e.typeKey === 'boss3' && e.active);
-        const skillSpawnMultiplier = (boss3 && boss3.buffRemainingTime > 0) ? 2.0 : 1.0;
+        const skillSpawnMultiplier = (boss3 && boss3.buffRemainingTime > 0) ? 3.0 : 1.0;
         
         const spawnDelay = baseSpawnDelay / (spawnRateMultiplier * skillSpawnMultiplier);
 
@@ -664,7 +664,7 @@ export default class GameScene extends Phaser.Scene {
             if (gameResult === 'victory') {
                 const config = STAGE_CONFIG[this.stage];
                 // Add reward to global gold immediately on victory
-                const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+                const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
                 const clearCount = stageClearsBefore[this.stage] || 0;
                 const clearRewardMultiplier = 1 + (clearCount * 0.02);
 

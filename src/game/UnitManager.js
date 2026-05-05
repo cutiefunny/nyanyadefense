@@ -164,8 +164,8 @@ export default class UnitManager {
         } else {
             if (stageConfig.boss.isCustom) {
                 specs = {
+                    ...BOSS_CONFIG.boss,
                     ...stageConfig.boss,
-                    attackCooldown: stageConfig.boss.cooldown || BOSS_CONFIG.boss.attackCooldown,
                     speed: 0
                 };
                 spriteKey = stageConfig.boss.spriteKey || 'enemy_boss';
