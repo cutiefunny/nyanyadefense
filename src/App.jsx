@@ -14,6 +14,7 @@ const unitImages = import.meta.glob('./assets/units/*.png', { eager: true, impor
 
 function App() {
   const [spawnedUnits, setSpawnedUnits] = createSignal({});
+  const [respawnTimers, setRespawnTimers] = createSignal({}); // { deckIndex: timeLeft }
   const [deckUnits, setDeckUnits] = createSignal([]); // deck from squad
   const [level, setLevel] = createSignal(1);
   const [gameOver, setGameOver] = createSignal('');
@@ -230,6 +231,18 @@ function App() {
 
     gameInstance.events.on('update-ally-hps', (hps) => {
       setAllyHPs(hps);
+    });
+
+    gameInstance.events.on('unit-respawn-countdown', (data) => {
+      setRespawnTimers(prev => {
+        const next = { ...prev };
+        if (data.timeLeft < 0) {
+          delete next[data.index];
+        } else {
+          next[data.index] = data.timeLeft;
+        }
+        return next;
+      });
     });
 
     gameInstance.events.on('game-over', (result, reward = 0, drawnCard = '', drawnCardLevel = 1, drawnCardCount = 1) => {
@@ -762,7 +775,7 @@ function App() {
                 if (!cardObj || !cardObj.type) return null;
                 const unitType = cardObj.type;
                 const spec = ALLY_TYPES[unitType];
-                const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6', healer: '#ff88aa' };
+                const slotColors = { normal: '#43d8c9', tanker: '#3498db', shooter: '#9b59b6', healer: '#ff88aa', raccoon: '#8d6e63' };
                 const isUsed = spawnedUnits()[idx];
                 const isMortarPart = mortarIndices().includes(idx);
 
@@ -792,9 +805,28 @@ function App() {
                     disabled={isUsed || gameOver() !== '' || stageCleared()}
                     onClick={() => handleSpawn(idx)}
                     style={{ "border-color": isMortarPart ? '#9b59b6' : (slotColors[unitType] || '#fff'), "position": "relative" }}>
-                    {isUsed && (
+                    {isUsed && !respawnTimers()[idx] && (
                       <div class="card-hp-bar">
                         <div class="card-hp-fill" style={{ width: `${currentHP * 100}%` }}></div>
+                      </div>
+                    )}
+                    {respawnTimers()[idx] !== undefined && (
+                      <div class="respawn-overlay" style={{
+                        "position": "absolute",
+                        "top": "0",
+                        "left": "0",
+                        "width": "100%",
+                        "height": "100%",
+                        "background": "rgba(0,0,0,0.6)",
+                        "display": "flex",
+                        "align-items": "center",
+                        "justify-content": "center",
+                        "z-index": "20",
+                        "border-radius": "8px"
+                      }}>
+                        <span style={{ "color": "#fbd46d", "font-size": "24px", "font-weight": "900", "text-shadow": "0 0 10px #000" }}>
+                          {respawnTimers()[idx]}
+                        </span>
                       </div>
                     )}
                     {isMortarPart && idx === mortarIndices()[1] && (

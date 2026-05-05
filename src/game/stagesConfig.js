@@ -34,8 +34,8 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss2',
             spriteKey: 'enemy_boss2',
-            hp: 30000,
-            damage: 50,
+            hp: 10000,
+            damage: 30,
             w: 120,
             scale: 0.6,
             reward: 2000,
@@ -50,8 +50,8 @@ export const STAGE_CONFIG = {
         nextStage: 3,
         events: [],
         traits: {
-            enemySpeedMultiplier: 1.2,
-            spawnRateMultiplier: 1.5,
+            enemySpeedMultiplier: 1.0,
+            spawnRateMultiplier: 1.0,
             description: '2022년에 시작 된 상수동의 쓸모 없는 소품점이다!'
         }
     },
@@ -62,7 +62,7 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss3',
             spriteKey: 'enemy_boss3',
-            hp: 20000,
+            hp: 10000,
             damage: 0,
             w: 120,
             scale: 0.6,
@@ -84,8 +84,8 @@ export const STAGE_CONFIG = {
             }
         ],
         traits: {
-            enemySpeedMultiplier: 1.2,
-            spawnRateMultiplier: 2.5,
+            enemySpeedMultiplier: 1.0,
+            spawnRateMultiplier: 1.0,
             description: '롹앤롤 굿즈를 판매하는 역시나 쓸모 없는 소품점이다!'
         }
     },
@@ -96,7 +96,7 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss4',
             spriteKey: 'enemy_boss4',
-            hp: 40000,
+            hp: 20000,
             damage: 40,
             w: 150,
             scale: 0.5,
@@ -128,7 +128,7 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss5',
             spriteKey: 'enemy_boss5',
-            hp: 20000,
+            hp: 15000,
             damage: 50,
             w: 200,
             scale: 0.7,
@@ -164,7 +164,7 @@ export const STAGE_CONFIG = {
             isCustom: true,
             type: 'boss6',
             spriteKey: 'enemy_boss6',
-            hp: 200000,
+            hp: 100000,
             damage: 300,
             range: 800,
             w: 183,

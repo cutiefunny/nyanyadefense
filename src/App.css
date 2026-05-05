@@ -462,6 +462,10 @@ body {
   background-image: url('./assets/units/healer.png');
 }
 
+.raccoon-icon {
+  background-image: url('./assets/units/raccoon.png');
+}
+
 .ability-icon {
   font-size: 24px;
   margin-bottom: 8px;

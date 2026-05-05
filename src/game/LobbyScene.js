@@ -936,7 +936,7 @@ export default class LobbyScene extends Phaser.Scene {
         const squad = JSON.parse(JSON.stringify(this.registry.get('squad') || { inventory: [], deck: [] }));
         const invCards = squad.inventory || [];
         const deckSlots = squad.deck || [null];
-        const slotColors = { normal: 0x43d8c9, tanker: 0x3498db, shooter: 0x9b59b6, healer: 0xff88aa };
+        const slotColors = { normal: 0x43d8c9, tanker: 0x3498db, shooter: 0x9b59b6, healer: 0xff88aa, raccoon: 0x8d6e63 };
 
         // ─── Left Side: Inventory Cards ───
         const invLeftX = 50;

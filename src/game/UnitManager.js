@@ -250,6 +250,34 @@ export default class UnitManager {
 
             this.scene.sound.play('ouch' + Phaser.Math.Between(1, 2), { volume: 0.5 });
             this.effectManager.playDeathEffect(unit);
+            
+            // Raccoon Respawn Logic
+            if (isAlly && unit.specs && unit.specs.canRespawn && unit.deckIndex !== undefined) {
+                const deckIndex = unit.deckIndex;
+                const typeKey = unit.typeKey;
+                const level = unit.specs.level;
+                let timeLeft = 10;
+                
+                this.scene.sys.game.events.emit('unit-respawn-countdown', { index: deckIndex, timeLeft });
+
+                this.scene.time.addEvent({
+                    delay: 1000,
+                    repeat: 9,
+                    callback: () => {
+                        timeLeft--;
+                        this.scene.sys.game.events.emit('unit-respawn-countdown', { index: deckIndex, timeLeft });
+                        
+                        if (timeLeft <= 0) {
+                            if (this.scene && this.scene.scene.isActive()) {
+                                this.spawnAlly(typeKey, 270, { level: level, deckIndex: deckIndex });
+                                this.scene.showFloatingText('부활!', 100, 270, '#8d6e63');
+                                // Signal that respawn is complete
+                                this.scene.sys.game.events.emit('unit-respawn-countdown', { index: deckIndex, timeLeft: -1 });
+                            }
+                        }
+                    }
+                });
+            }
 
             if (!isAlly && unit.reward) {
                 this.scene.gainGlobalExp(unit.reward, unit.x, unit.y);
