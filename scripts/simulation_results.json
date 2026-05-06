@@ -1,0 +1,611 @@
+[
+  {
+    "stage": 1,
+    "clearRate": "20.0%",
+    "avgTime": "142.8s",
+    "details": [
+      {
+        "victory": false,
+        "time": 180000
+      },
+      {
+        "victory": false,
+        "time": 152836.20000002655
+      },
+      {
+        "victory": false,
+        "time": 143424.00000002325
+      },
+      {
+        "victory": true,
+        "time": 114224.60000001302
+      },
+      {
+        "victory": true,
+        "time": 125994.00000001714
+      },
+      {
+        "victory": false,
+        "time": 180000
+      },
+      {
+        "victory": false,
+        "time": 146246.00000002424
+      },
+      {
+        "victory": false,
+        "time": 180000
+      },
+      {
+        "victory": true,
+        "time": 133132.00000001965
+      },
+      {
+        "victory": false,
+        "time": 176574.20000003488
+      },
+      {
+        "victory": true,
+        "time": 113195.40000001265
+      },
+      {
+        "victory": false,
+        "time": 177902.20000003534
+      },
+      {
+        "victory": false,
+        "time": 144021.60000002346
+      },
+      {
+        "victory": false,
+        "time": 88776.80000000409
+      },
+      {
+        "victory": false,
+        "time": 85573.00000000297
+      },
+      {
+        "victory": false,
+        "time": 144337.00000002357
+      },
+      {
+        "victory": false,
+        "time": 145200.20000002388
+      },
+      {
+        "victory": false,
+        "time": 84909.00000000274
+      },
+      {
+        "victory": false,
+        "time": 180000
+      },
+      {
+        "victory": false,
+        "time": 159675.40000002895
+      }
+    ]
+  },
+  {
+    "stage": 2,
+    "clearRate": "0.0%",
+    "avgTime": "65.9s",
+    "details": [
+      {
+        "victory": false,
+        "time": 57734.79999999663
+      },
+      {
+        "victory": false,
+        "time": 76476.19999999978
+      },
+      {
+        "victory": false,
+        "time": 72840.7999999985
+      },
+      {
+        "victory": false,
+        "time": 53136.59999999703
+      },
+      {
+        "victory": false,
+        "time": 65138.39999999598
+      },
+      {
+        "victory": false,
+        "time": 62366.19999999622
+      },
+      {
+        "victory": false,
+        "time": 63079.99999999616
+      },
+      {
+        "victory": false,
+        "time": 61253.99999999632
+      },
+      {
+        "victory": false,
+        "time": 71230.59999999794
+      },
+      {
+        "victory": false,
+        "time": 56688.99999999672
+      },
+      {
+        "victory": false,
+        "time": 58448.599999996564
+      },
+      {
+        "victory": false,
+        "time": 75629.59999999948
+      },
+      {
+        "victory": false,
+        "time": 64175.59999999606
+      },
+      {
+        "victory": false,
+        "time": 62200.199999996235
+      },
+      {
+        "victory": false,
+        "time": 94354.40000000605
+      },
+      {
+        "victory": false,
+        "time": 67047.39999999647
+      },
+      {
+        "victory": false,
+        "time": 55825.799999996794
+      },
+      {
+        "victory": false,
+        "time": 57220.19999999667
+      },
+      {
+        "victory": false,
+        "time": 74733.19999999917
+      },
+      {
+        "victory": false,
+        "time": 69221.99999999724
+      }
+    ]
+  },
+  {
+    "stage": 3,
+    "clearRate": "0.0%",
+    "avgTime": "74.3s",
+    "details": [
+      {
+        "victory": false,
+        "time": 78551.2000000005
+      },
+      {
+        "victory": false,
+        "time": 56987.79999999669
+      },
+      {
+        "victory": false,
+        "time": 76409.79999999976
+      },
+      {
+        "victory": false,
+        "time": 87980.00000000381
+      },
+      {
+        "victory": false,
+        "time": 68806.99999999709
+      },
+      {
+        "victory": false,
+        "time": 78219.20000000039
+      },
+      {
+        "victory": false,
+        "time": 72492.19999999838
+      },
+      {
+        "victory": false,
+        "time": 78816.8000000006
+      },
+      {
+        "victory": false,
+        "time": 75911.79999999958
+      },
+      {
+        "victory": false,
+        "time": 80759.00000000128
+      },
+      {
+        "victory": false,
+        "time": 69039.39999999717
+      },
+      {
+        "victory": false,
+        "time": 70998.19999999786
+      },
+      {
+        "victory": false,
+        "time": 45417.59999999771
+      },
+      {
+        "victory": false,
+        "time": 72226.59999999829
+      },
+      {
+        "victory": false,
+        "time": 87980.00000000381
+      },
+      {
+        "victory": false,
+        "time": 72010.79999999821
+      },
+      {
+        "victory": false,
+        "time": 71927.79999999818
+      },
+      {
+        "victory": false,
+        "time": 85091.6000000028
+      },
+      {
+        "victory": false,
+        "time": 85423.60000000292
+      },
+      {
+        "victory": false,
+        "time": 71479.59999999803
+      }
+    ]
+  },
+  {
+    "stage": 4,
+    "clearRate": "0.0%",
+    "avgTime": "37.3s",
+    "details": [
+      {
+        "victory": false,
+        "time": 45716.39999999768
+      },
+      {
+        "victory": false,
+        "time": 46247.599999997634
+      },
+      {
+        "victory": false,
+        "time": 41466.79999999805
+      },
+      {
+        "victory": false,
+        "time": 33083.79999999879
+      },
+      {
+        "victory": false,
+        "time": 42147.39999999799
+      },
+      {
+        "victory": false,
+        "time": 38727.79999999829
+      },
+      {
+        "victory": false,
+        "time": 29348.799999999115
+      },
+      {
+        "victory": false,
+        "time": 42977.39999999792
+      },
+      {
+        "victory": false,
+        "time": 31124.99999999896
+      },
+      {
+        "victory": false,
+        "time": 35557.19999999857
+      },
+      {
+        "victory": false,
+        "time": 41815.39999999802
+      },
+      {
+        "victory": false,
+        "time": 33017.399999998794
+      },
+      {
+        "victory": false,
+        "time": 35756.39999999855
+      },
+      {
+        "victory": false,
+        "time": 32635.599999998827
+      },
+      {
+        "victory": false,
+        "time": 37814.79999999837
+      },
+      {
+        "victory": false,
+        "time": 33880.59999999872
+      },
+      {
+        "victory": false,
+        "time": 34627.59999999865
+      },
+      {
+        "victory": false,
+        "time": 34328.79999999868
+      },
+      {
+        "victory": false,
+        "time": 40869.199999998105
+      },
+      {
+        "victory": false,
+        "time": 35075.79999999861
+      }
+    ]
+  },
+  {
+    "stage": 5,
+    "clearRate": "0.0%",
+    "avgTime": "49.4s",
+    "details": [
+      {
+        "victory": false,
+        "time": 45832.59999999767
+      },
+      {
+        "victory": false,
+        "time": 42844.59999999793
+      },
+      {
+        "victory": false,
+        "time": 63992.99999999608
+      },
+      {
+        "victory": false,
+        "time": 50181.79999999729
+      },
+      {
+        "victory": false,
+        "time": 51675.79999999716
+      },
+      {
+        "victory": false,
+        "time": 41699.19999999803
+      },
+      {
+        "victory": false,
+        "time": 47641.99999999751
+      },
+      {
+        "victory": false,
+        "time": 50148.59999999729
+      },
+      {
+        "victory": false,
+        "time": 45683.19999999768
+      },
+      {
+        "victory": false,
+        "time": 35673.39999999856
+      },
+      {
+        "victory": false,
+        "time": 39823.3999999982
+      },
+      {
+        "victory": false,
+        "time": 49617.39999999734
+      },
+      {
+        "victory": false,
+        "time": 50065.5999999973
+      },
+      {
+        "victory": false,
+        "time": 62382.79999999622
+      },
+      {
+        "victory": false,
+        "time": 44487.99999999779
+      },
+      {
+        "victory": false,
+        "time": 76144.19999999966
+      },
+      {
+        "victory": false,
+        "time": 53202.999999997024
+      },
+      {
+        "victory": false,
+        "time": 43259.599999997896
+      },
+      {
+        "victory": false,
+        "time": 49451.39999999735
+      },
+      {
+        "victory": false,
+        "time": 44338.5999999978
+      }
+    ]
+  },
+  {
+    "stage": 6,
+    "clearRate": "0.0%",
+    "avgTime": "15.0s",
+    "details": [
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      },
+      {
+        "victory": false,
+        "time": 15039.600000000224
+      }
+    ]
+  },
+  {
+    "stage": 7,
+    "clearRate": "0.0%",
+    "avgTime": "73.2s",
+    "details": [
+      {
+        "victory": false,
+        "time": 81140.80000000141
+      },
+      {
+        "victory": false,
+        "time": 72126.99999999825
+      },
+      {
+        "victory": false,
+        "time": 77140.20000000001
+      },
+      {
+        "victory": false,
+        "time": 74633.59999999913
+      },
+      {
+        "victory": false,
+        "time": 65503.599999995946
+      },
+      {
+        "victory": false,
+        "time": 70533.3999999977
+      },
+      {
+        "victory": false,
+        "time": 71164.19999999792
+      },
+      {
+        "victory": false,
+        "time": 82933.60000000204
+      },
+      {
+        "victory": false,
+        "time": 63129.799999996154
+      },
+      {
+        "victory": false,
+        "time": 77173.40000000002
+      },
+      {
+        "victory": false,
+        "time": 77522.00000000015
+      },
+      {
+        "victory": false,
+        "time": 77156.80000000002
+      },
+      {
+        "victory": false,
+        "time": 75662.7999999995
+      },
+      {
+        "victory": false,
+        "time": 74019.39999999892
+      },
+      {
+        "victory": false,
+        "time": 64075.99999999607
+      },
+      {
+        "victory": false,
+        "time": 73305.59999999867
+      },
+      {
+        "victory": false,
+        "time": 69055.99999999718
+      },
+      {
+        "victory": false,
+        "time": 70516.79999999769
+      },
+      {
+        "victory": false,
+        "time": 71529.39999999804
+      },
+      {
+        "victory": false,
+        "time": 74965.59999999925
+      }
+    ]
+  }
+]

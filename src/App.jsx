@@ -12,14 +12,26 @@ import './App.css';
 
 const unitImages = import.meta.glob('./assets/units/*.png', { eager: true, import: 'default' });
 
+const ITEM_CONFIG = {
+  catnip: { id: 'catnip', name: '마따따비', icon: '🌿' },
+  churu: { id: 'churu', name: '츄르', icon: '🍭' },
+  box: { id: 'box', name: '택배 상자', icon: '📦' },
+  heavy_metal: { id: 'heavy_metal', name: '헤비메탈', icon: '🎸' },
+  speaker: { id: 'speaker', name: '상상마당 스피커', icon: '🔊' },
+  anchovy: { id: 'anchovy', name: '마른 멸치', icon: '🐟' }
+};
+
 function App() {
   const [spawnedUnits, setSpawnedUnits] = createSignal({});
   const [respawnTimers, setRespawnTimers] = createSignal({}); // { deckIndex: timeLeft }
   const [deckUnits, setDeckUnits] = createSignal([]); // deck from squad
+  const [itemDeck, setItemDeck] = createSignal([]); // item deck from registry
   const [level, setLevel] = createSignal(1);
   const [gameOver, setGameOver] = createSignal('');
   const [currentSceneKey, setCurrentSceneKey] = createSignal('LobbyScene');
   const [cannonProgress, setCannonProgress] = createSignal(0);
+  const [cannonSeconds, setCannonSeconds] = createSignal(0);
+  const [stageProgress, setStageProgress] = createSignal(0);
   const [showDevMenu, setShowDevMenu] = createSignal(false);
   const [stage, setStage] = createSignal(1);
   const [stageCleared, setStageCleared] = createSignal(null);
@@ -163,6 +175,7 @@ function App() {
       const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [null, null, null] };
       const deck = squad.deck || [null, null, null];
       setDeckUnits(deck);
+      setItemDeck(gameInstance.registry.get('itemDeck') || [null]);
 
       const mIndices = gameInstance.registry.get('mortarGroupIndices') || [];
       const tIndices = gameInstance.registry.get('tankerComboIndices') || [];
@@ -179,9 +192,9 @@ function App() {
       checkTutorials({ type: 'scene_active', scene: 'GameScene' });
     });
 
-    gameInstance.events.on('update-cannon', (cp) => {
-      setCannonProgress(cp);
-    });
+    gameInstance.events.on('update-cannon', setCannonProgress);
+    gameInstance.events.on('update-cannon-seconds', setCannonSeconds);
+    gameInstance.events.on('update-stage-progress', setStageProgress);
 
     gameInstance.events.on('card-merged', () => {
       checkTutorials({ type: 'card_merged' });
@@ -323,6 +336,9 @@ function App() {
           setMortarIndices(gameInstance.registry.get('mortarGroupIndices') || []);
         }
       }
+    });
+    gameInstance.registry.events.on('changedata-itemDeck', (parent, value) => {
+      setItemDeck(value || [null]);
     });
     gameInstance.registry.events.on('changedata-leaderPerks', (parent, value) => {
       localStorage.setItem('nyanya_leaderPerks', JSON.stringify(value));
@@ -846,11 +862,31 @@ function App() {
 
             <div class="button-group upgrades-group">
               <button class="btn ally-btn shouting-btn" disabled={cannonProgress() < 100 || gameOver() !== '' || stageCleared()} onClick={handleShouting}>
-                <div class="ability-icon">🗣️</div>
+                <div class="ability-icon">{itemDeck().includes('heavy_metal') ? '🎸' : '🗣️'}</div>
                 <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
-                  {cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`}
+                  {itemDeck().includes('heavy_metal') 
+                    ? (cannonProgress() >= 100 ? 'HEAVY METAL' : `${cannonSeconds()}s`) 
+                    : (cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`)}
                 </span>
               </button>
+            </div>
+
+            <div class="button-group items-group">
+              {itemDeck().map((itemId, idx) => {
+                const item = ITEM_CONFIG[itemId];
+                return (
+                  <button class="btn item-btn" disabled={!itemId || gameOver() !== '' || stageCleared()}>
+                    {item ? (
+                      <>
+                        <div class="item-icon">{item.icon}</div>
+                        <span class="item-name">{item.name}</span>
+                      </>
+                    ) : (
+                      <div class="empty-slot">EMPTY</div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

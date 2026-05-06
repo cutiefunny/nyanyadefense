@@ -162,6 +162,7 @@ export default class GameScene extends Phaser.Scene {
         // Reset timeScale or apply passed speed
         this.time.timeScale = this.gameSpeed;
         this.runGold = 0;
+        this.heavyMetalRemainingTime = 0;
     }
 
 
@@ -620,6 +621,7 @@ export default class GameScene extends Phaser.Scene {
 
         const cannonProgress = this.skillManager.getCannonProgress();
         this.sys.game.events.emit('update-cannon', cannonProgress);
+        this.sys.game.events.emit('update-cannon-seconds', this.skillManager.getCannonSeconds());
 
         // Auto spawn enemies
         this.enemySpawnTimer += scaledDelta;
@@ -643,7 +645,9 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // Auto spawn allies (minions) - ONLY Normal Cats (비실이)
-        this.allyAutoSpawnTimer += scaledDelta;
+        this.heavyMetalRemainingTime -= scaledDelta;
+        const allyHeavyMetalMultiplier = (this.heavyMetalRemainingTime > 0) ? 3.0 : 1.0;
+        this.allyAutoSpawnTimer += scaledDelta * allyHeavyMetalMultiplier;
 
         // Auto spawn mouse (Active Play Benefit)
         this.mouseSpawnTimer += scaledDelta;

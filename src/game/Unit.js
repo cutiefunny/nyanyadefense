@@ -199,20 +199,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         // Handle Animation State
         this.updateAnimation(actuallyMoving, target, minDist);
 
-        // Boss 3 Guitar Playing Animation (Heavy Metal Skill)
-        if (this.typeKey === 'boss3' && this.isBoss && !this.isAlly && this.buffRemainingTime > 0) {
-            // Only manual-switch frames if not playing an attack animation
-            const isAttacking = this.anims.isPlaying && this.anims.currentAnim.key.includes('attack');
-            if (!isAttacking) {
-                this.guitarTimer = (this.guitarTimer || 0) + delta;
-                if (this.guitarTimer >= 100) {
-                    this.guitarTimer = 0;
-                    // Alternate between frame 0 and 1
-                    const nextFrame = (this.frame.name == 0 || this.frame.name === '0') ? 1 : 0;
-                    this.setFrame(nextFrame);
-                }
-            }
-        }
+        // Update Buffs & UI (Before early return for mortars)
+        this.updateBuffs(delta);
+        this.updateUI();
+
+        // Heavy Metal Speed Buff Calculation
+        const isHeavyMetal = this.isAlly && (this.scene.heavyMetalRemainingTime > 0);
 
         // Handle Attack
         let canAttack = true;
@@ -225,13 +217,14 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         if (this.isMortarMode) {
-            if (time - this.lastAttackTime >= this.attackCooldown) {
+            const currentCooldown = isHeavyMetal ? (this.attackCooldown / 3) : this.attackCooldown;
+            if (time - this.lastAttackTime >= currentCooldown) {
                 this.lastAttackTime = time;
                 if (target) {
                     this.throwMortar(target, this.attackDamage);
                     this.play(`${this.spriteKey}_attack`, true);
-
-                    // Recoil Effect: Move back slightly and return
+                    
+                    // Recoil Effect
                     const originalX = this.x;
                     this.scene.tweens.add({
                         targets: this,
@@ -239,12 +232,9 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                         duration: 100,
                         yoyo: true,
                         ease: 'Power1',
-                        onComplete: () => {
-                            this.x = originalX;
-                        }
+                        onComplete: () => { this.x = originalX; }
                     });
 
-                    // Return to idle after 0.3 seconds
                     this.scene.time.delayedCall(300, () => {
                         if (this.active && this.hp > 0) {
                             this.play(`${this.spriteKey}_idle`, true);
@@ -252,31 +242,21 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                     });
                 }
             }
-            return;
+            return null;
         }
 
         if (canAttack && target && minDist <= this.attackRange) {
             this.handleAttack(time, target);
         }
 
-        // (Skill logic handled by UnitSkillHandler)
-
-        // Limit ally position to be no further than enemy boss (적 보스보다 더 오른쪽에 위치 금지)
+        // Limit ally position
         if (this.isAlly && this.hp > 0) {
             const enemyBoss = this.unitManager.getEnemyBoss();
             if (enemyBoss) {
                 const stopX = enemyBoss.x - enemyBoss.logicWidth / 2;
-                if (this.x > stopX) {
-                    this.x = stopX;
-                }
+                if (this.x > stopX) this.x = stopX;
             }
         }
-
-        // Update Buffs
-        this.updateBuffs(delta);
-
-        // Update UI
-        this.updateUI();
 
         return null;
     }
@@ -834,7 +814,8 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         }
 
         // 아군 유닛 공통: 스플래시 대미지(웨이브/폭발) 피격 시 뒤로 밀림 연출
-        if (isSplash && this.isAlly) {
+        const isGlobalImmune = this.isAlly && (this.scene.heavyMetalRemainingTime > 0);
+        if (isSplash && this.isAlly && !isGlobalImmune) {
             // 양문형 탱커는 밀려나는 대신 제자리에서 잠시 멈춤
             if (this.isDoubleDoorTank) {
                 this.effectManager.playBlockEffect(this);
@@ -891,21 +872,37 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     updateBuffs(delta) {
+        if (this.isShouting) return; // Skip buff scaling/tinting if shouting animation is playing
+
+        const isHeavyMetal = this.isAlly && (this.scene.heavyMetalRemainingTime > 0);
+        
         if (this.buffRemainingTime > 0) {
             this.buffRemainingTime -= delta;
             const multiplier = this.unitManager.getStageScaleMultiplier();
             const ratio = Math.max(0, this.buffRemainingTime / 10000);
             this.setScale(this.baseScale * multiplier * (1 + 0.1 * ratio));
-
+            
             if (this.hitFlashTimer <= 0) {
-                const greenBlue = Math.floor(136 + (255 - 136) * (1 - ratio));
-                this.setTint(Phaser.Display.Color.GetColor(255, greenBlue, greenBlue));
+                if (isHeavyMetal) {
+                    this.setTint(0xff4444);
+                } else {
+                    const greenBlue = Math.floor(136 + (255 - 136) * (1 - ratio));
+                    this.setTint(Phaser.Display.Color.GetColor(255, greenBlue, greenBlue));
+                }
             }
 
             if (this.buffRemainingTime <= 0) {
                 this.setScale(this.baseScale * multiplier);
-                if (this.hitFlashTimer <= 0) this.clearTint();
+                if (this.hitFlashTimer <= 0 && !isHeavyMetal) this.clearTint();
             }
+        } else if (isHeavyMetal) {
+            if (this.hitFlashTimer <= 0) this.setTint(0xff4444);
+        } else {
+            const baseScaleFull = this.baseScale * this.unitManager.getStageScaleMultiplier();
+            if (Math.abs(this.scaleX - baseScaleFull) > 0.01) {
+                this.setScale(baseScaleFull);
+            }
+            if (this.hitFlashTimer <= 0 && this.isTinted) this.clearTint();
         }
     }
 
@@ -1003,8 +1000,9 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
                     // Knockback logic
                     if (knockbackDist > 0) {
+                        const isGlobalImmune = opp.isAlly && (this.scene.heavyMetalRemainingTime > 0);
                         const isSuperArmor = (opp.typeKey === 'tanker' && opp.specs.level >= 5) || (opp.superArmorTimer > 0);
-                        const isKnockbackImmune = opp.isKnockbackImmune || opp.isBoss || opp.isDoubleDoorTank || isSuperArmor;
+                        const isKnockbackImmune = opp.isKnockbackImmune || opp.isBoss || opp.isDoubleDoorTank || isSuperArmor || isGlobalImmune;
                         
                         if (!isKnockbackImmune) {
                             this.scene.tweens.add({

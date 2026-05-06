@@ -199,7 +199,7 @@ body {
 
 .button-group {
   display: flex;
-  gap: 15px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -321,6 +321,33 @@ body {
   opacity: 1;
   filter: none;
   cursor: default;
+}
+  
+.item-btn {
+  width: 55px;
+  height: 60px;
+  border-color: #43d8c9;
+  background: linear-gradient(145deg, rgba(67, 216, 201, 0.1), rgba(0, 0, 0, 0.3));
+  padding: 5px;
+}
+
+.item-icon {
+  font-size: 1.2rem;
+}
+
+.item-name {
+  font-size: 0.6rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.empty-slot {
+  font-size: 0.5rem;
+  color: #444;
+  font-weight: 900;
 }
 
 /* Units */

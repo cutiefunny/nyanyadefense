@@ -20,6 +20,16 @@ export default class LobbyScene extends Phaser.Scene {
         } else if (!data?.keepTab) {
             this.tab = 'MAIN';
         }
+        
+        // Items configuration
+        this.ITEM_CONFIG = {
+            catnip: { id: 'catnip', name: '마따따비', desc: '12초간 공속/이동속도 1.5배', cost: 500, type: 'consumable' },
+            churu: { id: 'churu', name: '츄르', desc: '딸피 유닛 5명 체력 50% 회복', cost: 300, type: 'consumable' },
+            box: { id: 'box', name: '택배 상자', desc: '유닛 3명에게 5초간 무적 박스', cost: 400, type: 'consumable' },
+            heavy_metal: { id: 'heavy_metal', name: '헤비메탈', desc: '30초 주기, 아군 생산속도 3배(10초)', cost: 50000, type: 'permanent' },
+            speaker: { id: 'speaker', name: '상상마당 스피커', desc: '45초 주기, 광역 넉백 충격파', cost: 30000, type: 'permanent' },
+            anchovy: { id: 'anchovy', name: '마른 멸치', desc: '골드 획득량 20% 증가 (패시브)', cost: 20000, type: 'permanent' }
+        };
 
         this.loadPersistentData();
     }
@@ -43,7 +53,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Skill Levels
         let savedSkillLevels = localStorage.getItem('nyanya_skillLevels');
-        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
+        const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1, item_slots: 1 };
         if (savedSkillLevels) {
             try {
                 this.registry.set('skillLevels', { ...defaultSkillLevels, ...JSON.parse(savedSkillLevels) });
@@ -54,9 +64,19 @@ export default class LobbyScene extends Phaser.Scene {
             this.registry.set('skillLevels', defaultSkillLevels);
         }
 
+        // Item Data
+        let savedItemInv = localStorage.getItem('nyanya_itemInventory');
+        this.registry.set('itemInventory', savedItemInv ? JSON.parse(savedItemInv) : {}); // { itemId: count }
+
+        let savedItemDeck = localStorage.getItem('nyanya_itemDeck');
+        this.registry.set('itemDeck', savedItemDeck ? JSON.parse(savedItemDeck) : [null]); // Start with 1 slot
+
+        let savedPermItems = localStorage.getItem('nyanya_permanentItems');
+        this.registry.set('permanentItems', savedPermItems ? JSON.parse(savedPermItems) : []); // [itemId, ...]
+
         // Unit Levels
         let savedUnitLevels = localStorage.getItem('nyanya_unitLevels');
-        const defaultUnitLevels = { leader: 1, normal: 1, tanker: 1, shooter: 1, healer: 1 };
+        const defaultUnitLevels = { leader: 1, normal: 1, tanker: 1, shooter: 1, healer: 1, raccoon: 1 };
         if (savedUnitLevels) {
             try {
                 this.registry.set('unitLevels', { ...defaultUnitLevels, ...JSON.parse(savedUnitLevels) });
@@ -138,7 +158,7 @@ export default class LobbyScene extends Phaser.Scene {
             localStorage.setItem('nyanya_unitLevels', JSON.stringify(defaultLevels));
         }
         if (!this.registry.get('skillLevels')) {
-            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1 };
+            const defaultSkillLevels = { shout_cooldown: 1, shout_duration: 1, normal_cooldown: 1, deck_slots: 1, item_slots: 1 };
             this.registry.set('skillLevels', defaultSkillLevels);
             localStorage.setItem('nyanya_skillLevels', JSON.stringify(defaultSkillLevels));
         }
@@ -191,8 +211,8 @@ export default class LobbyScene extends Phaser.Scene {
             this.renderBattleTab();
         } else if (this.tab === 'SQUAD') {
             this.renderSquadTab();
-        } else if (this.tab === 'GACHA') {
-            this.renderGachaTab();
+        } else if (this.tab === 'ITEM_SHOP') {
+            this.renderItemShopTab();
         }
 
         this.renderHeader();
@@ -307,7 +327,7 @@ export default class LobbyScene extends Phaser.Scene {
             { text: '전투개시!!', tab: 'BATTLE' },
             { text: '파워업', tab: 'UPGRADE' },
             { text: '부대 편성', tab: 'SQUAD' },
-            { text: '뽑기 상점', tab: 'GACHA' }
+            { text: '아이템 상점', tab: 'ITEM_SHOP' }
         ];
 
         btnConfigs.forEach((config, i) => {
@@ -455,7 +475,8 @@ export default class LobbyScene extends Phaser.Scene {
         // 2. Skills Column
         const skillTypes = [
             { id: 'normal_cooldown', name: '비실이 생산속도 증가' },
-            { id: 'deck_slots', name: '출격 슬롯 추가' }
+            { id: 'deck_slots', name: '출격 슬롯 추가' },
+            { id: 'item_slots', name: '아이템 슬롯 추가' }
         ];
         this.renderScrollableList(skillTypes, 600, listY, visibleHeight, 'skill', null);
 
@@ -521,7 +542,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             let name = type === 'unit' ? (item === 'leader' ? '김냐냐(Leader)' : ALLY_TYPES[item].name) : item.name;
             const level = levels[id] || 1;
-            const isMaxLevel = (id === 'deck_slots' && level >= 9);
+            const isMaxLevel = (id === 'deck_slots' && level >= 9) || (id === 'item_slots' && level >= 3);
 
             let upgradeCost = 0;
             let neededCards = 0;
@@ -541,10 +562,14 @@ export default class LobbyScene extends Phaser.Scene {
                     upgradeCost = Math.floor(adjustedBase * 6 * Math.pow(1.7, level - 1));
                 }
             } else {
-                if (id === 'shout_cooldown' || id === 'normal_cooldown') {
+                if (id === 'shout_cooldown') {
                     upgradeCost = Math.floor(2000 * Math.pow(1.5, level - 1));
+                } else if (id === 'normal_cooldown') {
+                    upgradeCost = Math.floor(5000 * Math.pow(2, level - 1));
                 } else if (id === 'deck_slots') {
                     upgradeCost = Math.floor(10000 * Math.pow(2, level - 1));
+                } else if (id === 'item_slots') {
+                    upgradeCost = Math.floor(20000 * Math.pow(3, level - 1));
                 } else {
                     upgradeCost = Math.floor(800 * Math.pow(1.3, level - 1));
                 }
@@ -633,6 +658,12 @@ export default class LobbyScene extends Phaser.Scene {
                         const squad = this.registry.get('squad');
                         squad.deck.push(null);
                         this.saveSquad(squad);
+                    }
+                    if (id === 'item_slots') {
+                        const itemDeck = this.registry.get('itemDeck');
+                        itemDeck.push(null);
+                        this.registry.set('itemDeck', itemDeck);
+                        localStorage.setItem('nyanya_itemDeck', JSON.stringify(itemDeck));
                     }
 
                     this.registry.set(registryKey, currentLevels);
@@ -756,28 +787,50 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
-        // ─── Current Deck Display ───
+        // ─── Current Deck & Items Display ───
         const squad = this.registry.get('squad') || { deck: [null] };
         const deckSlots = squad.deck;
+        const itemDeck = this.registry.get('itemDeck') || [null];
 
-        this.add.text(400, 225, '현재 출격 부대', {
-            fontSize: '14px',
-            fontFamily: 'Arial Black',
-            fill: '#aaaaaa'
+        // 1. Unit Deck (Leftish)
+        const deckCenterX = 280;
+        this.add.text(deckCenterX, 225, '현재 출격 부대', {
+            fontSize: '14px', fontFamily: 'Arial Black', fill: '#aaaaaa'
         }).setOrigin(0.5);
 
         for (let i = 0; i < deckSlots.length; i++) {
-            const x = 400 + (i - (deckSlots.length - 1) / 2) * 45;
+            const x = deckCenterX + (i - (deckSlots.length - 1) / 2) * 42;
             const y = 248;
             const cardObj = deckSlots[i];
             const unitType = cardObj?.type;
 
-            this.add.rectangle(x, y, 40, 40, 0x000000, 0.3).setStrokeStyle(1, 0xffffff, 0.3);
+            this.add.rectangle(x, y, 38, 38, 0x000000, 0.3).setStrokeStyle(1, 0xffffff, 0.3);
 
             if (unitType && this.textures.exists(`ally_${unitType}`)) {
-                this.add.sprite(x, y - 5, `ally_${unitType}`, 0).setDisplaySize(28, 28);
+                this.add.sprite(x, y - 5, `ally_${unitType}`, 0).setDisplaySize(26, 26);
                 this.add.text(x, y + 12, `Lv.${cardObj.level}`, {
-                    fontSize: '9px', fontFamily: 'Arial Black', fill: '#fbd46d'
+                    fontSize: '8px', fontFamily: 'Arial Black', fill: '#fbd46d'
+                }).setOrigin(0.5);
+            }
+        }
+
+        // 2. Item Deck (Rightish)
+        const itemCenterX = 520;
+        this.add.text(itemCenterX, 225, '장착 아이템', {
+            fontSize: '14px', fontFamily: 'Arial Black', fill: '#43d8c9'
+        }).setOrigin(0.5);
+
+        for (let i = 0; i < itemDeck.length; i++) {
+            const x = itemCenterX + (i - (itemDeck.length - 1) / 2) * 55;
+            const y = 248;
+            const itemId = itemDeck[i];
+
+            this.add.rectangle(x, y, 50, 38, 0x000000, 0.3).setStrokeStyle(1, 0x43d8c9, 0.3);
+
+            if (itemId && this.ITEM_CONFIG[itemId]) {
+                const item = this.ITEM_CONFIG[itemId];
+                this.add.text(x, y, item.name, {
+                    fontSize: '9px', fontFamily: 'Arial Black', fill: '#ffffff', align: 'center', wordWrap: { width: 45 }
                 }).setOrigin(0.5);
             }
         }
@@ -1276,128 +1329,133 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
-    renderGachaTab() {
+    saveItemData() {
+        localStorage.setItem('nyanya_itemInventory', JSON.stringify(this.registry.get('itemInventory')));
+        localStorage.setItem('nyanya_itemDeck', JSON.stringify(this.registry.get('itemDeck')));
+        localStorage.setItem('nyanya_permanentItems', JSON.stringify(this.registry.get('permanentItems')));
+    }
+
+    renderItemShopTab() {
         this.add.rectangle(400, 150, 800, 300, 0x000000, 0.7);
 
-        this.add.text(400, 45, '뽑기 상점 (GACHA)', {
-            fontSize: '28px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 5
+        this.add.text(400, 40, '아이템 상점 (ITEM SHOP)', {
+            fontSize: '28px', fontFamily: 'Arial Black', fill: '#43d8c9', stroke: '#000', strokeThickness: 5
         }).setOrigin(0.5);
 
-        const currentGold = this.registry.get('globalGold') || 0;
-        
-        // 1 Pull Button
-        const pull1Cost = 1000;
-        const btn1 = this.add.rectangle(250, 160, 200, 80, currentGold >= pull1Cost ? 0x3498db : 0x7f8c8d)
-            .setStrokeStyle(3, 0xffffff).setInteractive({ useHandCursor: currentGold >= pull1Cost });
-        this.add.text(250, 145, '1회 뽑기', { fontSize: '24px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
-        this.add.text(250, 175, `${pull1Cost} 냥`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
+        const gold = this.registry.get('globalGold') || 0;
+        const itemDeck = this.registry.get('itemDeck') || [null];
+        const itemInv = this.registry.get('itemInventory') || {};
+        const permItems = this.registry.get('permanentItems') || [];
 
-        // 10 Pull Button
-        const pull10Cost = 10000;
-        const btn10 = this.add.rectangle(550, 160, 200, 80, currentGold >= pull10Cost ? 0xe74c3c : 0x7f8c8d)
-            .setStrokeStyle(3, 0xffffff).setInteractive({ useHandCursor: currentGold >= pull10Cost });
-        this.add.text(550, 145, '10연속 뽑기', { fontSize: '24px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
-        this.add.text(550, 175, `${pull10Cost} 냥`, { fontSize: '16px', fontFamily: 'Arial Black', fill: '#f1c40f' }).setOrigin(0.5);
+        // ─── LEFT: Item Deck & Inventory ───
+        const leftX = 200;
+        this.add.text(leftX, 75, '아이템 배치', { fontSize: '18px', fontFamily: 'Arial Black', fill: '#fbd46d' }).setOrigin(0.5);
 
-        const performGacha = (count, cost) => {
-            if (currentGold < cost) return;
-            this.registry.set('globalGold', currentGold - cost);
+        // Deck Slots
+        itemDeck.forEach((itemId, i) => {
+            const x = leftX + (i - (itemDeck.length - 1) / 2) * 80;
+            const y = 115;
+            const slot = this.add.rectangle(x, y, 70, 70, 0x1a1a2e, 0.8).setStrokeStyle(2, 0xfbd46d, 0.5).setInteractive({ useHandCursor: true });
             
-            const stageClears = this.registry.get('stageClears') || {};
-            const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
-            const unlockedTypes = ['leader', 'normal', 'shooter', 'tanker', 'healer'].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
-            
-            let squad = this.registry.get('squad') || { inventory: [], deck: [] };
-            if (!Array.isArray(squad.inventory)) squad.inventory = [];
-            
-            const drawnCards = [];
-            for(let i=0; i<count; i++) {
-                const randomType = Phaser.Utils.Array.GetRandom(unlockedTypes);
-                squad.inventory.push({ type: randomType, level: 1 });
-                drawnCards.push(randomType);
-            }
-            this.saveSquad(squad);
-            
-            btn1.disableInteractive();
-            btn10.disableInteractive();
-
-            const overlay = this.add.rectangle(400, 150, 800, 300, 0x000000, 0.85).setDepth(4000);
-            
-            const startX = count === 1 ? 400 : 160;
-            const startY = count === 1 ? 150 : 100;
-            const spaceX = count === 1 ? 0 : 120;
-            const spaceY = count === 1 ? 0 : 110;
-
-            drawnCards.forEach((type, index) => {
-                const col = index % 5;
-                const row = Math.floor(index / 5);
-                const targetX = startX + col * spaceX;
-                const targetY = startY + row * spaceY;
-
-                const card = this.add.container(400, 150).setDepth(4001);
-                card.setScale(0);
-
-                const cardBg = this.add.rectangle(0, 0, 90, 100, 0x2c3e50).setStrokeStyle(3, 0xfbd46d);
-                const spriteName = type === 'leader' ? 'ally_leader' : `ally_${type}`;
-                const cardSprite = this.add.sprite(0, -15, spriteName, 0).setDisplaySize(48, 48);
+            if (itemId) {
+                const item = this.ITEM_CONFIG[itemId];
+                this.add.text(x, y, item.name, { fontSize: '12px', fontFamily: 'Arial Black', fill: '#fff', align: 'center', wordWrap: { width: 60 } }).setOrigin(0.5);
                 
-                const nameStr = type === 'leader' ? '김냐냐' : (ALLY_TYPES[type] ? ALLY_TYPES[type].name : type);
-                const nameText = this.add.text(0, 30, nameStr, { fontSize: '14px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0.5);
-
-                card.add([cardBg, cardSprite, nameText]);
-
-                this.tweens.add({
-                    targets: card,
-                    x: targetX,
-                    y: targetY,
-                    scaleX: 1,
-                    scaleY: 1,
-                    angle: 720,
-                    duration: 600,
-                    delay: index * 150,
-                    ease: 'Back.easeOut',
-                    onStart: () => {
-                        try { this.sound.play('hit1', { volume: 0.2, rate: 2 }); } catch(e){}
-                    }
-                });
-
-                const glow = this.add.circle(targetX, targetY, 60, 0xfbd46d, 0.6).setDepth(4000).setScale(0);
-                this.tweens.add({
-                    targets: glow,
-                    scale: 1.5,
-                    alpha: 0,
-                    duration: 800,
-                    delay: index * 150 + 500,
-                    onStart: () => {
-                        this.cameras.main.shake(100, 0.005);
-                        try { this.sound.play('hit3', { volume: 0.3 }); } catch(e){}
-                    }
-                });
-            });
-
-            this.time.delayedCall(count * 150 + 1000, () => {
-                const continueText = this.add.text(400, 270, '화면을 터치하여 계속...', {
-                    fontSize: '18px', fontFamily: 'Arial Black', fill: '#fbd46d'
-                }).setOrigin(0.5).setDepth(4001);
-
-                this.tweens.add({
-                    targets: continueText,
-                    alpha: 0.2,
-                    yoyo: true,
-                    repeat: -1,
-                    duration: 800
-                });
-
-                const closeZone = this.add.zone(400, 150, 800, 300).setInteractive().setDepth(5000);
-                closeZone.once('pointerdown', () => {
+                slot.on('pointerdown', () => {
+                    itemDeck[i] = null;
+                    this.registry.set('itemDeck', itemDeck);
+                    this.saveItemData();
                     this.scene.restart({ keepTab: true });
                 });
+            } else {
+                this.add.text(x, y, 'EMPTY', { fontSize: '12px', fontFamily: 'Arial Black', fill: '#444' }).setOrigin(0.5);
+            }
+        });
+
+        // Inventory (Owned Items to equip)
+        this.add.text(leftX, 175, '소지 중인 아이템', { fontSize: '16px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0.5);
+        
+        const ownedItems = [];
+        // Consumables with count > 0
+        Object.entries(itemInv).forEach(([id, count]) => {
+            if (count > 0) ownedItems.push({ id, count, ...this.ITEM_CONFIG[id] });
+        });
+        // Purchased Permanents not in deck
+        permItems.forEach(id => {
+            if (!itemDeck.includes(id)) ownedItems.push({ id, count: '∞', ...this.ITEM_CONFIG[id] });
+        });
+
+        if (ownedItems.length === 0) {
+            this.add.text(leftX, 220, '소지품 없음', { fontSize: '14px', fontFamily: 'Arial', fill: '#666' }).setOrigin(0.5);
+        } else {
+            ownedItems.forEach((item, i) => {
+                const x = 50 + (i % 4) * 100;
+                const y = 210 + Math.floor(i / 4) * 60;
+                if (x > 380) return; // Limit display to left side
+
+                const bg = this.add.rectangle(x, y, 90, 50, 0x2c3e50, 0.8).setStrokeStyle(1, 0xffffff, 0.3).setInteractive({ useHandCursor: true });
+                this.add.text(x, y - 8, item.name, { fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
+                this.add.text(x, y + 10, `(${item.count})`, { fontSize: '10px', fontFamily: 'Arial', fill: '#fbd46d' }).setOrigin(0.5);
+
+                bg.on('pointerdown', () => {
+                    const emptyIdx = itemDeck.indexOf(null);
+                    if (emptyIdx !== -1) {
+                        itemDeck[emptyIdx] = item.id;
+                        this.registry.set('itemDeck', itemDeck);
+                        this.saveItemData();
+                        this.scene.restart({ keepTab: true });
+                    } else {
+                        alert("슬롯이 가득 찼습니다!");
+                    }
+                });
             });
-        };
+        }
 
-        btn1.on('pointerdown', () => performGacha(1, pull1Cost));
-        btn10.on('pointerdown', () => performGacha(10, pull10Cost));
+        // ─── RIGHT: Shop ───
+        const rightX = 600;
+        this.add.text(rightX, 75, '상점 목록', { fontSize: '18px', fontFamily: 'Arial Black', fill: '#43d8c9' }).setOrigin(0.5);
 
+        const shopItems = Object.values(this.ITEM_CONFIG);
+        shopItems.forEach((item, i) => {
+            const x = rightX;
+            const y = 110 + i * 42;
+            
+            const isOwnedPermanent = item.type === 'permanent' && permItems.includes(item.id);
+            const canAfford = gold >= item.cost;
+
+            const bg = this.add.rectangle(x, y, 360, 38, 0x1a1a2e, 0.8).setStrokeStyle(2, 0x43d8c9, 0.3);
+            this.add.text(x - 170, y, item.name, { fontSize: '14px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0, 0.5);
+            this.add.text(x - 60, y, item.desc, { fontSize: '10px', fontFamily: 'Arial', fill: '#aaa' }).setOrigin(0, 0.5);
+            
+            const priceColor = isOwnedPermanent ? '#7f8c8d' : (canAfford ? '#f1c40f' : '#e74c3c');
+            const priceText = isOwnedPermanent ? '구매됨' : `${item.cost} 냥`;
+            
+            const buyBtn = this.add.rectangle(x + 135, y, 75, 26, isOwnedPermanent ? 0x7f8c8d : (canAfford ? 0x27ae60 : 0x7f8c8d))
+                .setStrokeStyle(1, 0xffffff, 0.5).setInteractive({ useHandCursor: !isOwnedPermanent && canAfford });
+            
+            this.add.text(x + 135, y, priceText, { fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
+
+            buyBtn.on('pointerdown', () => {
+                if (isOwnedPermanent) return;
+                if (gold >= item.cost) {
+                    this.registry.set('globalGold', gold - item.cost);
+                    
+                    if (item.type === 'consumable') {
+                        itemInv[item.id] = (itemInv[item.id] || 0) + 1;
+                        this.registry.set('itemInventory', itemInv);
+                    } else {
+                        permItems.push(item.id);
+                        this.registry.set('permanentItems', permItems);
+                    }
+                    
+                    this.saveItemData();
+                    this.cameras.main.flash(200, 67, 216, 201);
+                    this.scene.restart({ keepTab: true });
+                }
+            });
+        });
+
+        // Back button
         const backBtn = this.add.text(400, 275, '< 돌아가기', {
             fontSize: '24px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });

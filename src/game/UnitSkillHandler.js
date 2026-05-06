@@ -53,7 +53,7 @@ export default class UnitSkillHandler {
         
         if (!unit.isDashing && unit.dashCooldown <= 0 && target) {
             const minDist = Math.abs(unit.x - target.x) - (unit.logicWidth / 2 + target.logicWidth / 2);
-            if (minDist <= 100 && minDist > unit.attackRange + 10) {
+            if (minDist <= 120 && minDist > unit.attackRange + 5) {
                 unit.isDashing = true;
                 unit.dashCooldown = 3000;
                 const dashDist = minDist - unit.attackRange / 2;
