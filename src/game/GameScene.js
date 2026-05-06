@@ -816,7 +816,7 @@ export default class GameScene extends Phaser.Scene {
             case 'warning':
                 this.sys.game.events.emit('stage-event', { type: 'warning', message: event.message });
                 // Also show a temporary text in the middle of the screen
-                const text = this.add.text(400, 200, event.message, {
+                const text = this.add.text(400, 100, event.message, {
                     fontSize: '32px',
                     fill: '#ff0000',
                     fontStyle: 'bold',
@@ -827,7 +827,7 @@ export default class GameScene extends Phaser.Scene {
                 this.tweens.add({
                     targets: text,
                     alpha: 0,
-                    y: 150,
+                    y: 50,
                     duration: 3000,
                     onComplete: () => text.destroy()
                 });
