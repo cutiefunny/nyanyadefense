@@ -13,6 +13,53 @@ export default class EffectManager {
             tint: [0xfff176, 0xffeb3b, 0xffc107],
             emitting: false
         }).setDepth(3000);
+
+        // 2. Projectile Pools (Avoid continuous instantiation/destruction)
+        this.bulletPool = this.scene.add.group({
+            classType: Phaser.GameObjects.Arc,
+            maxSize: 50,
+            active: false,
+            visible: false
+        });
+
+        this.grenadePool = this.scene.add.group({
+            classType: Phaser.GameObjects.Arc,
+            maxSize: 20,
+            active: false,
+            visible: false
+        });
+
+        this.mortarPool = this.scene.add.group({
+            classType: Phaser.GameObjects.Arc,
+            maxSize: 10,
+            active: false,
+            visible: false
+        });
+
+        this.pelletPool = this.scene.add.group({
+            classType: Phaser.GameObjects.Arc,
+            maxSize: 100,
+            active: false,
+            visible: false
+        });
+    }
+
+    // Helper to spawn pooled projectiles
+    spawnProjectile(pool, x, y, radius, color, alpha = 1) {
+        let obj = pool.get(x, y);
+        if (!obj) return null;
+
+        obj.setActive(true)
+           .setVisible(true)
+           .setRadius(radius)
+           .setFillStyle(color, alpha)
+           .setAlpha(alpha);
+        
+        return obj;
+    }
+
+    recycleProjectile(pool, obj) {
+        pool.killAndHide(obj);
     }
 
     flashScreen(color = 0xffffff, duration = 100) {
@@ -86,13 +133,16 @@ export default class EffectManager {
 
     createProjectile(startX, startY, target, isAlly) {
         let projectileType = isAlly ? 0x43d8c9 : 0xe94560;
-        const proj = this.scene.add.circle(startX, startY, 4, projectileType).setDepth(2000);
+        const proj = this.spawnProjectile(this.bulletPool, startX, startY, 4, projectileType);
+        if (!proj) return;
+
+        proj.setDepth(2000);
         this.scene.tweens.add({
             targets: proj,
             x: target.rect ? target.rect.x : target.x,
             y: target.rect ? target.rect.y : target.y,
             duration: 150,
-            onComplete: () => proj.destroy()
+            onComplete: () => this.recycleProjectile(this.bulletPool, proj)
         });
     }
 

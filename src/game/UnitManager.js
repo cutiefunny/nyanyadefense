@@ -202,16 +202,12 @@ export default class UnitManager {
         for (let i = this.allies.length - 1; i >= 0; i--) {
             const ally = this.allies[i];
             if (!ally.isBoss) {
-                if (ally.shadow) ally.shadow.destroy();
                 ally.destroy();
                 this.allies.splice(i, 1);
             }
         }
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
-            if (enemy.shadow) enemy.shadow.destroy();
-            if (enemy.hpBarBg) enemy.hpBarBg.destroy();
-            if (enemy.hpBarFill) enemy.hpBarFill.destroy();
             enemy.destroy();
             this.enemies.splice(i, 1);
         }
