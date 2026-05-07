@@ -786,14 +786,14 @@ export default class LobbyScene extends Phaser.Scene {
         const deckSlots = squad.deck;
         const itemDeck = this.registry.get('itemDeck') || [null];
 
-        // 1. Unit Deck (Leftish)
-        const deckCenterX = 280;
-        this.add.text(deckCenterX, 225, '현재 출격 부대', {
+        // 1. Unit Deck (Left-aligned)
+        const deckStartX = 60;
+        this.add.text(deckStartX, 225, '현재 출격 부대', {
             fontSize: '14px', fontFamily: 'Arial Black', fill: '#aaaaaa'
-        }).setOrigin(0.5);
+        }).setOrigin(0, 0.5);
 
         for (let i = 0; i < deckSlots.length; i++) {
-            const x = deckCenterX + (i - (deckSlots.length - 1) / 2) * 42;
+            const x = deckStartX + 19 + i * 42;
             const y = 248;
             const cardObj = deckSlots[i];
             const unitType = cardObj?.type;
@@ -808,14 +808,14 @@ export default class LobbyScene extends Phaser.Scene {
             }
         }
 
-        // 2. Item Deck (Rightish)
-        const itemCenterX = 520;
-        this.add.text(itemCenterX, 225, '장착 아이템', {
+        // 2. Item Deck (Right-aligned)
+        const itemEndX = 740;
+        this.add.text(itemEndX, 225, '장착 아이템', {
             fontSize: '14px', fontFamily: 'Arial Black', fill: '#43d8c9'
-        }).setOrigin(0.5);
+        }).setOrigin(1, 0.5);
 
         for (let i = 0; i < itemDeck.length; i++) {
-            const x = itemCenterX + (i - (itemDeck.length - 1) / 2) * 55;
+            const x = itemEndX - 25 - (itemDeck.length - 1 - i) * 55;
             const y = 248;
             const itemId = itemDeck[i];
 

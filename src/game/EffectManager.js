@@ -218,7 +218,7 @@ export default class EffectManager {
             duration: duration,
             ease: unit.isBoss ? 'Cubic.easeOut' : 'Cubic.easeIn',
             onComplete: () => {
-                if (unit.active) unit.destroy();
+                if (unit.active) unit.unitManager.recycleUnit(unit);
             }
         });
     }

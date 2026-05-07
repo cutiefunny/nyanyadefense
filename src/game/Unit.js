@@ -7,16 +7,27 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y, spriteKey, specs, isAlly, unitManager) {
         super(scene, x, y, spriteKey);
         scene.add.existing(this);
-
         this.unitManager = unitManager;
         this.effectManager = unitManager.effectManager;
+        this.init(x, y, spriteKey, specs, isAlly);
+    }
+
+    init(x, y, spriteKey, specs, isAlly) {
+        this.setPosition(x, y);
+        this.setTexture(spriteKey);
+        this.setAlpha(1);
+        this.clearTint();
+        this.setAngle(0);
+        this.setActive(true);
+        this.setVisible(true);
+
         this.isAlly = isAlly;
         this.specs = specs;
         this.typeKey = specs.type || specs.typeKey;
 
         // Basic properties
         this.setOrigin(0.5, 1);
-        const multiplier = unitManager.getStageScaleMultiplier();
+        const multiplier = this.unitManager.getStageScaleMultiplier();
         this.baseScale = specs.scale || (isAlly ? 0.5 : 0.6);
         this.setScale(this.baseScale * multiplier);
         this.setDepth(y);
@@ -49,6 +60,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.superArmorTimer = 0; // Hidden skill timer for tanker
         this.dashCooldown = 0; // Hidden skill for normal unit
         this.isDashing = false;
+        this.targetCheckTimer = 0;
+        this.cachedTarget = null;
+        this.isDragging = false;
+        this.targetX = undefined;
 
         this.isMortarMode = specs.isMortarMode || false;
         this.isSuperMortar = specs.isSuperMortar || false;
@@ -59,6 +74,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             this.isKnockbackImmune = true;
         }
 
+        this.setFlipX(false);
         if (isAlly && !this.isMortarMode) this.setFlipX(true);
 
         this.hasSplash = specs.hasSplash || false;
@@ -82,18 +98,41 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.spriteKey = spriteKey;
         this.isSprite = true; // For compatibility with older checks
 
-        this.shadow = scene.add.ellipse(x, y, isAlly ? 40 : 40, 12, 0x000000, 0.25).setDepth(this.depth - 0.1);
+        const shadowW = this.displayWidth * (this.isBoss ? 1.5 : (this.isMortarMode ? 1.5 : 1.2));
+        const shadowH = shadowW * 0.3;
+
+        if (!this.shadow) {
+            this.shadow = this.scene.add.ellipse(x, y, shadowW, shadowH, 0x000000, 0.4);
+        }
+        this.shadow.setActive(true).setVisible(true).setPosition(x, y).setAlpha(0.4);
+        this.shadow.width = shadowW;
+        this.shadow.height = shadowH;
+        if (this.shadow.geom) {
+            this.shadow.geom.width = shadowW;
+            this.shadow.geom.height = shadowH;
+        }
+        this.shadow.setDepth(this.depth - 0.1);
+        
         if (this.isBoss) {
-            this.shadow.setSize(isAlly ? 80 : 120, 16);
             this.createHPBar();
+        } else {
+            // Hide HP bar if reused from a boss
+            if (this.hpBarBg) this.hpBarBg.setVisible(false);
+            if (this.hpBarFill) this.hpBarFill.setVisible(false);
         }
 
         // Healer Aura (Hidden Skill: 장판힐) Range Graphic
         if (this.typeKey === 'healer' && this.specs.level >= 5 && isAlly) {
+            const multiplier = this.unitManager.getStageScaleMultiplier();
             const auraW = 100 * multiplier;
             const auraH = 40 * multiplier;
-            this.auraGraphic = this.scene.add.ellipse(x, y, auraW, auraH, 0x2ecc71, 0.2).setDepth(this.depth - 0.2);
-            this.scene.tweens.add({
+            if (!this.auraGraphic) {
+                this.auraGraphic = this.scene.add.ellipse(x, y, auraW, auraH, 0x2ecc71, 0.2);
+            }
+            this.auraGraphic.setActive(true).setVisible(true).setPosition(x, y).setSize(auraW, auraH).setDepth(this.depth - 0.2);
+            
+            if (this.auraTween) this.auraTween.stop();
+            this.auraTween = this.scene.tweens.add({
                 targets: this.auraGraphic,
                 alpha: 0.1,
                 scaleX: 1.1,
@@ -113,17 +152,22 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     createHPBar() {
         const barW = this.isAlly ? 80 : 120;
         const barY = this.y - this.displayHeight - 15;
-        // Background with thin border effect using overlap
-        this.hpBarBg = this.scene.add.rectangle(this.x, barY, barW + 4, 12, 0x000000).setDepth(2000);
-        this.hpBarFill = this.scene.add.rectangle(this.x - barW / 2, barY, barW, 8, this.isAlly ? 0x2ecc71 : 0xe74c3c).setDepth(2001).setOrigin(0, 0.5);
+        if (!this.hpBarBg) {
+            this.hpBarBg = this.scene.add.rectangle(this.x, barY, barW + 4, 12, 0x000000);
+            this.hpBarFill = this.scene.add.rectangle(this.x - barW / 2, barY, barW, 8, this.isAlly ? 0x2ecc71 : 0xe74c3c).setOrigin(0, 0.5);
+        }
+        this.hpBarBg.setActive(true).setVisible(true).setPosition(this.x, barY).setSize(barW + 4, 12).setDepth(2000);
+        this.hpBarFill.setActive(true).setVisible(true).setPosition(this.x - barW / 2, barY).setSize(barW, 8).setFillStyle(this.isAlly ? 0x2ecc71 : 0xe74c3c).setDepth(2001);
     }
 
     createShield() {
         // Position it in front of the tank (right side for allies)
         const shieldX = this.x + 25;
         const shieldY = this.y - 35;
-        this.shieldGraphic = this.scene.add.image(shieldX, shieldY, 'item_shield')
-            .setDepth(this.depth + 1);
+        if (!this.shieldGraphic) {
+            this.shieldGraphic = this.scene.add.image(shieldX, shieldY, 'item_shield');
+        }
+        this.shieldGraphic.setActive(true).setVisible(true).setPosition(shieldX, shieldY).setDepth(this.depth + 1);
 
         // Scale the shield appropriately
         const multiplier = this.unitManager.getStageScaleMultiplier();
@@ -1051,11 +1095,25 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         });
     }
 
+    deactivate() {
+        this.setActive(false);
+        this.setVisible(false);
+        if (this.shadow) this.shadow.setVisible(false);
+        if (this.hpBarBg) this.hpBarBg.setVisible(false);
+        if (this.hpBarFill) this.hpBarFill.setVisible(false);
+        if (this.shieldGraphic) this.shieldGraphic.setVisible(false);
+        if (this.auraGraphic) this.auraGraphic.setVisible(false);
+        
+        if (this.auraTween) this.auraTween.stop();
+        if (this.breathingTween) this.breathingTween.stop();
+    }
+
     destroy() {
         if (this.shadow) this.shadow.destroy();
         if (this.hpBarBg) this.hpBarBg.destroy();
         if (this.hpBarFill) this.hpBarFill.destroy();
         if (this.shieldGraphic) this.shieldGraphic.destroy();
+        if (this.auraTween) this.auraTween.stop();
         if (this.auraGraphic) this.auraGraphic.destroy();
         if (this.breathingTween) this.breathingTween.stop();
         super.destroy();

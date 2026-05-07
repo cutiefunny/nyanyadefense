@@ -9,6 +9,8 @@ export default class UnitManager {
         this.effectManager = effectManager;
         this.allies = [];
         this.enemies = [];
+        this.activeEnemyBosses = [];
+        this.unitPool = [];
         this.enemySpawnCount = 0;
         this.allyDamageTaken = 0;
         this.enemyDamageTaken = 0;
@@ -52,6 +54,16 @@ export default class UnitManager {
         });
     }
 
+    getUnit(x, y, spriteKey, specs, isAlly) {
+        let unit = this.unitPool.pop();
+        if (unit) {
+            unit.init(x, y, spriteKey, specs, isAlly);
+        } else {
+            unit = new Unit(this.scene, x, y, spriteKey, specs, isAlly, this);
+        }
+        return unit;
+    }
+
     spawnAlly(typeKey, yOffsetBase = 270, extraSpecs = {}) {
         const specs = ALLY_TYPES[typeKey];
         if (!specs) return null;
@@ -91,7 +103,7 @@ export default class UnitManager {
         };
 
         const spriteKey = extraSpecs.spriteKey || 'ally_' + typeKey;
-        const ally = new Unit(this.scene, 0, yOffsetBase + yOffset, spriteKey, finalSpecs, true, this);
+        const ally = this.getUnit(0, yOffsetBase + yOffset, spriteKey, finalSpecs, true);
 
 
         this.allies.push(ally);
@@ -133,7 +145,7 @@ export default class UnitManager {
         const yOffset = zOffset * Math.sin(angleRad);
 
         const spriteKey = 'enemy_' + specs.type;
-        const enemy = new Unit(this.scene, 800, yOffsetBase + yOffset, spriteKey, specs, false, this);
+        const enemy = this.getUnit(800, yOffsetBase + yOffset, spriteKey, specs, false);
 
         // If Heavy Metal (boss3 buff) is active, apply it to newly spawned enemies
         const boss3 = this.enemies.find(e => e.isBoss && e.typeKey === 'boss3' && e.active);
@@ -186,14 +198,18 @@ export default class UnitManager {
 
         const yOffset = specs.yOffset !== undefined ? specs.yOffset : 270;
         const xPos = overrideX !== null ? overrideX : (isAlly ? 50 : 750);
-        const boss = new Unit(this.scene, xPos, yOffset, spriteKey, specs, isAlly, this);
+        const boss = this.getUnit(xPos, yOffset, spriteKey, specs, isAlly);
 
 
         // Breathing animation effect
         this.addBreathingEffect(boss);
 
-        if (isAlly) this.allies.push(boss);
-        else this.enemies.push(boss);
+        if (isAlly) {
+            this.allies.push(boss);
+        } else {
+            this.enemies.push(boss);
+            this.activeEnemyBosses.push(boss);
+        }
 
         return boss;
     }
@@ -202,19 +218,22 @@ export default class UnitManager {
         for (let i = this.allies.length - 1; i >= 0; i--) {
             const ally = this.allies[i];
             if (!ally.isBoss) {
-                ally.destroy();
+                ally.deactivate();
+                this.unitPool.push(ally);
                 this.allies.splice(i, 1);
             }
         }
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
-            enemy.destroy();
+            enemy.deactivate();
+            this.unitPool.push(enemy);
             this.enemies.splice(i, 1);
         }
+        this.activeEnemyBosses = [];
     }
 
     getEnemyBoss() {
-        return this.enemies.find(e => e.isBoss);
+        return this.activeEnemyBosses.length > 0 ? this.activeEnemyBosses[0] : undefined;
     }
 
     updateUnits(time, delta) {
@@ -243,6 +262,11 @@ export default class UnitManager {
         if (updateResult === 'dead') {
             const group = isAlly ? this.allies : this.enemies;
             group.splice(index, 1);
+
+            if (!isAlly && unit.isBoss) {
+                const bossIndex = this.activeEnemyBosses.indexOf(unit);
+                if (bossIndex > -1) this.activeEnemyBosses.splice(bossIndex, 1);
+            }
 
             this.scene.sound.play('ouch' + Phaser.Math.Between(1, 2), { volume: 0.5 });
             this.effectManager.playDeathEffect(unit);
@@ -283,8 +307,7 @@ export default class UnitManager {
                 if (isAlly) return 'defeat';
                 
                 // 적 보스가 죽었을 때, 전장에 다른 적 보스가 더 있는지 확인
-                const remainingBosses = this.enemies.some(e => e.isBoss && e !== unit);
-                if (!remainingBosses) {
+                if (this.activeEnemyBosses.length === 0) {
                     this.scene.sys.game.events.emit('boss-dead');
                     return 'victory';
                 }
@@ -293,5 +316,10 @@ export default class UnitManager {
         }
 
         return null;
+    }
+
+    recycleUnit(unit) {
+        unit.deactivate();
+        this.unitPool.push(unit);
     }
 }

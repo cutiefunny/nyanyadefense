@@ -646,7 +646,7 @@ export default class GameScene extends Phaser.Scene {
         const baseSpawnDelay = Math.max(800, 4000 - this.enemyLevel * 350);
         
         // Heavy Metal (boss3 skill) check: double spawn rate during skill duration
-        const boss3 = this.unitManager.enemies.find(e => e.isBoss && e.typeKey === 'boss3' && e.active);
+        const boss3 = this.unitManager.activeEnemyBosses.find(e => e.typeKey === 'boss3');
         const skillSpawnMultiplier = (boss3 && boss3.buffRemainingTime > 0) ? 3.0 : 1.0;
         
         const spawnDelay = baseSpawnDelay / (spawnRateMultiplier * skillSpawnMultiplier);
@@ -956,7 +956,7 @@ export default class GameScene extends Phaser.Scene {
     spawnPigeon(effects) {
         const startX = -100;
         const startY = 100;
-        const targetBosses = this.unitManager.enemies.filter(e => e.isBoss && e.active && e.hp > 0);
+        const targetBosses = this.unitManager.activeEnemyBosses;
         
         const pigeon = this.add.sprite(startX, startY, 'item_pigeon').setScale(0.8);
         pigeon.setDepth(4000);
