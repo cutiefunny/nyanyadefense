@@ -18,10 +18,10 @@ import { auth, provider, signInWithPopup, signOut, db, collection, query, orderB
 import { syncToLocal, syncToRemote } from './SyncManager.js';
 
 const originalSetItem = localStorage.setItem;
-localStorage.setItem = function(key, value) {
+localStorage.setItem = function (key, value) {
   originalSetItem.apply(this, arguments);
   if (key.startsWith('nyanya_')) {
-     window.dispatchEvent(new CustomEvent('nyanya-storage-update', { detail: { key, value } }));
+    window.dispatchEvent(new CustomEvent('nyanya-storage-update', { detail: { key, value } }));
   }
 };
 
@@ -67,6 +67,7 @@ function App() {
   const [showProfileModal, setShowProfileModal] = createSignal(false);
   const [showLeaderboard, setShowLeaderboard] = createSignal(false);
   const [leaderboardData, setLeaderboardData] = createSignal([]);
+  const [unlockedUnitsList, setUnlockedUnitsList] = createSignal(['leader', 'normal']);
 
   let syncTimeout;
   let gameContainer;
@@ -116,24 +117,27 @@ function App() {
   };
 
   onMount(() => {
+    const levels = JSON.parse(localStorage.getItem('nyanya_unitLevels') || '{"leader":1, "normal":1}');
+    setUnlockedUnitsList(Object.keys(levels).filter(k => levels[k] >= 1));
+
     if (auth) {
       auth.onAuthStateChanged(async (u) => {
         setUser(u);
         if (u) {
           const isFirstLogin = localStorage.getItem('nyanya_isFirstLogin_' + u.uid);
           if (!isFirstLogin) {
-              const result = await syncToLocal(u);
-              if (!result.hasData) {
-                  await syncToRemote(u, { nickname: u.displayName || 'Player', avatar: '🐱' });
-                  setProfile({ nickname: u.displayName || 'Player', avatar: '🐱' });
-                  setShowProfileModal(true); // Ask them to customize profile on first login
-              } else {
-                  if (result.profile) setProfile(result.profile);
-              }
-              localStorage.setItem('nyanya_isFirstLogin_' + u.uid, 'false');
-          } else {
-              const result = await syncToLocal(u);
+            const result = await syncToLocal(u);
+            if (!result.hasData) {
+              await syncToRemote(u, { nickname: u.displayName || 'Player', avatar: '🐱' });
+              setProfile({ nickname: u.displayName || 'Player', avatar: '🐱' });
+              setShowProfileModal(true); // Ask them to customize profile on first login
+            } else {
               if (result.profile) setProfile(result.profile);
+            }
+            localStorage.setItem('nyanya_isFirstLogin_' + u.uid, 'false');
+          } else {
+            const result = await syncToLocal(u);
+            if (result.profile) setProfile(result.profile);
           }
         }
       });
@@ -147,6 +151,10 @@ function App() {
           syncToRemote(u, profile());
         }, 3000); // Debounce sync
       }
+      
+      // Update unlocked units list
+      const levels = JSON.parse(localStorage.getItem('nyanya_unitLevels') || '{"leader":1, "normal":1}');
+      setUnlockedUnitsList(Object.keys(levels).filter(k => levels[k] >= 1));
     });
 
     const handleKeyDown = (e) => {
@@ -410,13 +418,13 @@ function App() {
             setItemDeck(newDeck);
             gameInstance.registry.set('itemDeck', newDeck);
             localStorage.setItem('nyanya_itemDeck', JSON.stringify(newDeck));
-            
+
             // Deduct from inventory
             const inv = gameInstance.registry.get('itemInventory') || {};
             if (inv[itemId] > 0) {
-                inv[itemId]--;
-                gameInstance.registry.set('itemInventory', inv);
-                localStorage.setItem('nyanya_itemInventory', JSON.stringify(inv));
+              inv[itemId]--;
+              gameInstance.registry.set('itemInventory', inv);
+              localStorage.setItem('nyanya_itemInventory', JSON.stringify(inv));
             }
           }
         }
@@ -462,20 +470,27 @@ function App() {
 
   return (
     <div class="app-container">
-      <div style={{ position: 'absolute', top: '10px', right: '10px', 'z-index': 1000, display: 'flex', gap: '10px', 'align-items': 'center' }}>
+      <div class="auth-header">
         {user() ? (
           <>
-            <div 
-              style={{ cursor: 'pointer', 'font-size': '12px', 'background-color': '#2c3e50', padding: '5px 10px', 'border-radius': '4px', color: '#fff' }}
+            <div
+              class="profile-chip"
               onClick={() => setShowProfileModal(true)}
             >
-              {profile().avatar} {profile().nickname}
+              {(() => {
+                const avatar = profile().avatar;
+                const unitKeys = ['leader', 'normal', 'tanker', 'shooter', 'healer', 'raccoon'];
+                if (unitKeys.includes(avatar)) {
+                  return <div class={`unit-icon ${avatar}-icon`} style={{ width: '20px', height: '20px', margin: 0, "background-size": "600% 100%" }}></div>;
+                }
+                return avatar;
+              })()} {profile().nickname}
             </div>
-            <button class="top-menu-btn" style={{ padding: '5px 10px' }} onClick={() => setShowLeaderboard(true)}>🏆 순위표</button>
-            <button class="top-menu-btn" style={{ padding: '5px 10px' }} onClick={() => signOut(auth)}>로그아웃</button>
+            <button class="top-menu-btn" onClick={() => setShowLeaderboard(true)}>순위표</button>
+            <button class="top-menu-btn" onClick={() => signOut(auth)}>로그아웃</button>
           </>
         ) : (
-          <button class="top-menu-btn" style={{ padding: '5px 10px' }} onClick={() => signInWithPopup(auth, provider)}>구글 로그인</button>
+          <button class="top-menu-btn" onClick={() => signInWithPopup(auth, provider)}>로그인</button>
         )}
       </div>
 
@@ -626,110 +641,74 @@ function App() {
           </div>
         )}
         {unlockedUnit() && (
-          <Portal>
-            <div class="game-over-screen unlock-modal" style={{
-              "position": "fixed",
-              "top": "0",
-              "left": "0",
-              "width": "100dvw",
-              "height": "100dvh",
-              "z-index": "10000",
-              "background": "rgba(0, 0, 0, 0.85)",
-              "display": "flex",
-              "justify-content": "center",
-              "align-items": "center",
-              "backdrop-filter": "blur(10px)",
-              "padding": "10px"
-            }}>
-              <div class="unlock-content" style={{
-                "text-align": "center",
-                "background": "rgba(26, 26, 46, 0.98)",
-                "padding": "20px 30px",
-                "border-radius": "24px",
-                "border": "4px solid #fbd46d",
-                "max-width": "450px",
-                "max-height": "95dvh",
-                "width": "90%",
-                "box-shadow": "0 0 50px rgba(0,0,0,0.5)",
-                "position": "relative",
-                "overflow-y": "auto",
-                "display": "flex",
-                "flex-direction": "column",
-                "gap": "10px"
-              }}>
-                <h2 class="victory-msg" style={{
-                  "font-size": "min(2rem, 8vw)",
-                  "margin": "0",
-                  "line-height": "1.2"
-                }}>NEW UNIT UNLOCKED!</h2>
-
-                <div class="unit-preview" style={{
-                  "width": "80px",
-                  "height": "80px",
-                  "margin": "10px auto"
-                }}>
-                  <div class={`unit-icon ${unlockedUnit().key}-icon`} style={{ "width": "80px", "height": "80px" }}></div>
-                </div>
-
-                <h3 style={{ "color": "#fff", "font-size": "1.5rem", "margin": "0" }}>{unlockedUnit().name}</h3>
-
-                <p style={{
-                  "color": "#aaa",
-                  "margin": "0 0 10px",
-                  "font-size": "0.95rem",
-                  "line-height": "1.4"
-                }}>스테이지 {unlockedUnit().stage} 클리어 보상으로<br />새로운 용병을 고용할 수 있게 되었습니다!</p>
-
-                <button onClick={() => {
-                  const unit = unlockedUnit();
-                  setUnlockedUnit(null);
-                  if (unit && unit.stage === 3) {
-                    setUnlockedItem(ITEM_CONFIG.heavy_metal);
-                  }
-                }} class="btn restart" style={{
-                  "width": "100%",
-                  "max-width": "260px",
-                  "margin": "0 auto",
-                  "padding": "10px",
-                  "min-height": "45px"
-                }}>확인</button>
+          <div class="modal-overlay">
+            <div class="modal-content" style={{ "width": "320px" }}>
+              <h2 style={{ "color": "#fbd46d", "font-size": "1.3rem", "margin-bottom": "10px" }}>NEW UNIT!</h2>
+              <div style={{ "width": "60px", "height": "60px", "margin": "0 auto 10px" }}>
+                <div class={`unit-icon ${unlockedUnit().key}-icon`} style={{ "width": "60px", "height": "60px" }}></div>
               </div>
+              <h3 style={{ "color": "#fff", "font-size": "1.1rem", "margin-bottom": "5px" }}>{unlockedUnit().name}</h3>
+              <p style={{ "color": "#aaa", "font-size": "0.8rem", "margin-bottom": "15px", "line-height": "1.4" }}>{unlockedUnit().desc}</p>
+              <button class="modal-btn" onClick={() => {
+                const unit = unlockedUnit();
+                setUnlockedUnit(null);
+                if (unit && unit.stage === 3) {
+                  setUnlockedItem(ITEM_CONFIG.heavy_metal);
+                }
+              }} style={{ "background": "#fbd46d", "color": "#000" }}>확인</button>
             </div>
-          </Portal>
+          </div>
         )}
+
         {unlockedItem() && (
-          <Portal>
-            <div class="game-over-screen unlock-modal" style={{
-              "position": "fixed", "top": "0", "left": "0", "width": "100dvw", "height": "100dvh", "z-index": "10001",
-              "background": "rgba(0, 0, 0, 0.85)", "display": "flex", "justify-content": "center", "align-items": "center", "backdrop-filter": "blur(10px)"
-            }}>
-              <div class="unlock-content" style={{
-                "text-align": "center", "background": "rgba(26, 26, 46, 0.98)", "padding": "30px", "border-radius": "24px",
-                "border": "4px solid #43d8c9", "max-width": "450px", "width": "90%", "box-shadow": "0 0 50px rgba(67, 216, 201, 0.3)"
-              }}>
-                <h2 class="victory-msg" style={{ "font-size": "2rem", "margin": "0", "color": "#43d8c9" }}>NEW ITEM UNLOCKED!</h2>
-                <div style={{ "font-size": "60px", "margin": "20px 0" }}>{unlockedItem().icon}</div>
-                <h3 style={{ "color": "#fff", "font-size": "1.5rem", "margin": "0" }}>{unlockedItem().name}</h3>
-                <p style={{ "color": "#aaa", "margin": "15px 0 25px", "line-height": "1.4" }}>{unlockedItem().desc}</p>
-                <button onClick={() => setUnlockedItem(null)} class="btn restart" style={{ "width": "100%", "max-width": "260px", "margin": "0 auto" }}>확인</button>
-              </div>
+          <div class="modal-overlay">
+            <div class="modal-content" style={{ "width": "320px" }}>
+              <h2 style={{ "color": "#43d8c9", "font-size": "1.3rem", "margin-bottom": "10px" }}>NEW ITEM!</h2>
+              <div style={{ "font-size": "2.5rem", "margin-bottom": "10px" }}>{unlockedItem().icon}</div>
+              <h3 style={{ "color": "#fff", "font-size": "1.1rem", "margin-bottom": "5px" }}>{unlockedItem().name}</h3>
+              <p style={{ "color": "#aaa", "font-size": "0.8rem", "margin-bottom": "15px", "line-height": "1.4" }}>{unlockedItem().desc}</p>
+              <button class="modal-btn" onClick={() => setUnlockedItem(null)} style={{ "background": "#43d8c9", "color": "#000" }}>확인</button>
             </div>
-          </Portal>
+          </div>
         )}
 
         {hiddenSkillData() && (
-          <HiddenSkillModal 
-            data={hiddenSkillData()} 
-            onClose={() => setHiddenSkillData(null)} 
+          <HiddenSkillModal
+            data={hiddenSkillData()}
+            onClose={() => setHiddenSkillData(null)}
           />
         )}
         {skillTreeData() && (
-          <SkillTreeModal 
-            data={skillTreeData()} 
-            gameInstance={gameInstance} 
-            onClose={() => setSkillTreeData(null)} 
+          <SkillTreeModal
+            data={skillTreeData()}
+            gameInstance={gameInstance}
+            onClose={() => setSkillTreeData(null)}
           />
         )}
+
+        {showGuide() && (
+          <Guide onClose={() => setShowGuide(false)} />
+        )}
+
+        {showProfileModal() && (
+          <ProfileModal
+            initialProfile={profile()}
+            unlockedUnits={unlockedUnitsList()}
+            onSave={async (newProfile) => {
+              setProfile(newProfile);
+              setShowProfileModal(false);
+              if (user()) {
+                await syncToRemote(user(), newProfile);
+              }
+            }}
+          />
+        )}
+
+
+        {showLeaderboard() && (
+          <LeaderboardModal onClose={() => setShowLeaderboard(false)} />
+        )}
+
         {currentSceneKey() === 'GameScene' && (
           <>
             <div class="top-controls-group">
@@ -797,6 +776,27 @@ function App() {
               )}
             </div>
           </div>
+        )}
+
+        {showGuide() && (
+          <Guide onClose={() => setShowGuide(false)} />
+        )}
+
+        {showProfileModal() && (
+          <ProfileModal
+            initialProfile={profile()}
+            onSave={async (newProfile) => {
+              setProfile(newProfile);
+              setShowProfileModal(false);
+              if (user()) {
+                await syncToRemote(user(), newProfile);
+              }
+            }}
+          />
+        )}
+
+        {showLeaderboard() && (
+          <LeaderboardModal onClose={() => setShowLeaderboard(false)} />
         )}
       </div>
 
@@ -881,8 +881,8 @@ function App() {
               <button class="btn ally-btn shouting-btn" disabled={cannonProgress() < 100 || gameOver() !== '' || stageCleared()} onClick={handleShouting}>
                 <div class="ability-icon">{itemDeck().includes('heavy_metal') ? '🎸' : '🗣️'}</div>
                 <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
-                  {itemDeck().includes('heavy_metal') 
-                    ? (cannonProgress() >= 100 ? 'HEAVY METAL' : `${cannonSeconds()}s`) 
+                  {itemDeck().includes('heavy_metal')
+                    ? (cannonProgress() >= 100 ? 'HEAVY METAL' : `${cannonSeconds()}s`)
                     : (cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`)}
                 </span>
               </button>
@@ -891,7 +891,7 @@ function App() {
               {itemDeck().map((itemId, idx) => {
                 const item = ITEM_CONFIG[itemId];
                 return (
-                  <button class="btn item-btn" 
+                  <button class="btn item-btn"
                     disabled={!itemId || gameOver() !== '' || stageCleared()}
                     onClick={() => handleItemUse(itemId, idx)}>
                     {item ? (
@@ -912,28 +912,7 @@ function App() {
 
 
 
-      {showGuide() && (
-        <Portal>
-          <Guide onClose={() => setShowGuide(false)} />
-        </Portal>
-      )}
 
-      {showProfileModal() && (
-        <ProfileModal 
-          initialProfile={profile()} 
-          onSave={async (newProfile) => {
-            setProfile(newProfile);
-            setShowProfileModal(false);
-            if (user()) {
-              await syncToRemote(user(), newProfile);
-            }
-          }}
-        />
-      )}
-
-      {showLeaderboard() && (
-        <LeaderboardModal onClose={() => setShowLeaderboard(false)} />
-      )}
     </div>
   );
 }
