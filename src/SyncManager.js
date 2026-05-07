@@ -3,6 +3,7 @@ import { auth, db, doc, getDoc, setDoc, updateDoc } from './firebase.js';
 const STORAGE_KEYS = [
   'nyanya_xp',
   'nyanya_unitLevels',
+  'nyanya_skillLevels',
   'nyanya_stageClears',
   'nyanya_squad',
   'nyanya_leaderPerks',

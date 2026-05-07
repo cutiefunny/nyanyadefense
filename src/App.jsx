@@ -139,6 +139,18 @@ function App() {
             const result = await syncToLocal(u);
             if (result.profile) setProfile(result.profile);
           }
+          
+          // Notify Phaser to refresh data from LocalStorage (now containing Firestore data)
+          if (gameInstance) {
+            const currentScene = gameInstance.scene.getScenes(true)[0];
+            if (currentScene) {
+              if (currentScene.scene.key === 'LobbyScene') {
+                currentScene.scene.restart({ keepTab: true });
+              } else if (currentScene.loadPersistentData) {
+                currentScene.loadPersistentData();
+              }
+            }
+          }
         }
       });
     }
@@ -371,31 +383,36 @@ function App() {
       setHiddenSkillData(data);
     });
 
-    // Registry Persistence (Global listeners)
-    gameInstance.registry.events.on('changedata-globalGold', (parent, value) => {
-      localStorage.setItem('nyanya_xp', value);
-    });
-    gameInstance.registry.events.on('changedata-unitLevels', (parent, value) => {
-      localStorage.setItem('nyanya_unitLevels', JSON.stringify(value));
-    });
-    gameInstance.registry.events.on('changedata-stageClears', (parent, value) => {
-      localStorage.setItem('nyanya_stageClears', JSON.stringify(value));
-    });
+    // Registry Persistence (Global listeners for all persistent keys)
+    const persistToStorage = (key, val) => {
+      if (val === undefined || val === null) return;
+      if (typeof val === 'object') {
+        localStorage.setItem(key, JSON.stringify(val));
+      } else {
+        localStorage.setItem(key, val);
+      }
+    };
+
+    gameInstance.registry.events.on('changedata-globalGold', (parent, value) => persistToStorage('nyanya_xp', value));
+    gameInstance.registry.events.on('changedata-unitLevels', (parent, value) => persistToStorage('nyanya_unitLevels', value));
+    gameInstance.registry.events.on('changedata-skillLevels', (parent, value) => persistToStorage('nyanya_skillLevels', value));
+    gameInstance.registry.events.on('changedata-stageClears', (parent, value) => persistToStorage('nyanya_stageClears', value));
+    gameInstance.registry.events.on('changedata-leaderPerks', (parent, value) => persistToStorage('nyanya_leaderPerks', value));
     gameInstance.registry.events.on('changedata-squad', (parent, value) => {
-      localStorage.setItem('nyanya_squad', JSON.stringify(value));
+      persistToStorage('nyanya_squad', value);
       if (currentSceneKey() === 'GameScene') {
         setDeckUnits(value.deck || [null, null, null]);
-        if (gameInstance) {
-          setMortarIndices(gameInstance.registry.get('mortarGroupIndices') || []);
-        }
+        setMortarIndices(gameInstance.registry.get('mortarGroupIndices') || []);
       }
     });
+    gameInstance.registry.events.on('changedata-itemInventory', (parent, value) => persistToStorage('nyanya_itemInventory', value));
     gameInstance.registry.events.on('changedata-itemDeck', (parent, value) => {
+      persistToStorage('nyanya_itemDeck', value);
       setItemDeck(value || [null]);
     });
-    gameInstance.registry.events.on('changedata-leaderPerks', (parent, value) => {
-      localStorage.setItem('nyanya_leaderPerks', JSON.stringify(value));
-    });
+    gameInstance.registry.events.on('changedata-permanentItems', (parent, value) => persistToStorage('nyanya_permanentItems', value));
+    gameInstance.registry.events.on('changedata-totalPlayTime', (parent, value) => persistToStorage('nyanya_totalPlayTime', value));
+    gameInstance.registry.events.on('changedata-totalCoins', (parent, value) => persistToStorage('nyanya_totalCoins', value));
 
     onCleanup(() => {
       window.removeEventListener('keydown', handleKeyDown);
