@@ -7,19 +7,9 @@ import { ALLY_TYPES } from './game/unitsConfig';
 import LEADER_SKILL_TREE from './game/leaderSkillTree.json';
 import Guide from './components/Guide';
 import TUTORIAL_CONFIG from './game/tutorialConfig.json';
+import ITEM_CONFIG from './game/itemsConfig.json';
 import TutorialOverlay from './components/TutorialOverlay';
 import './App.css';
-
-const unitImages = import.meta.glob('./assets/units/*.png', { eager: true, import: 'default' });
-
-const ITEM_CONFIG = {
-  catnip: { id: 'catnip', name: '마따따비', icon: '🌿' },
-  churu: { id: 'churu', name: '츄르', icon: '🍭' },
-  box: { id: 'box', name: '택배 상자', icon: '📦' },
-  heavy_metal: { id: 'heavy_metal', name: '헤비메탈', icon: '🎸' },
-  speaker: { id: 'speaker', name: '상상마당 스피커', icon: '🔊' },
-  anchovy: { id: 'anchovy', name: '마른 멸치', icon: '🐟' }
-};
 
 function App() {
   const [spawnedUnits, setSpawnedUnits] = createSignal({});
@@ -39,6 +29,7 @@ function App() {
   const [gameSpeed, setGameSpeed] = createSignal(1);
   const [showGuide, setShowGuide] = createSignal(false);
   const [unlockedUnit, setUnlockedUnit] = createSignal(null);
+  const [unlockedItem, setUnlockedItem] = createSignal(null);
   const [isRepeatMode, setIsRepeatMode] = createSignal(false);
   const [victoryReward, setVictoryReward] = createSignal(0);
   const [skillTreeData, setSkillTreeData] = createSignal(null);
@@ -352,6 +343,33 @@ function App() {
     });
   });
 
+  const handleItemUse = (itemId, idx) => {
+    if (gameInstance && currentSceneKey() === 'GameScene' && itemId) {
+      const scene = gameInstance.scene.getScene('GameScene');
+      if (scene && scene.useItem) {
+        const itemUsed = scene.useItem(itemId, idx);
+        if (itemUsed) {
+          const newDeck = [...itemDeck()];
+          const item = ITEM_CONFIG[itemId];
+          if (item.type === 'consumable') {
+            newDeck[idx] = null;
+            setItemDeck(newDeck);
+            gameInstance.registry.set('itemDeck', newDeck);
+            localStorage.setItem('nyanya_itemDeck', JSON.stringify(newDeck));
+            
+            // Deduct from inventory
+            const inv = gameInstance.registry.get('itemInventory') || {};
+            if (inv[itemId] > 0) {
+                inv[itemId]--;
+                gameInstance.registry.set('itemInventory', inv);
+                localStorage.setItem('nyanya_itemInventory', JSON.stringify(inv));
+            }
+          }
+        }
+      }
+    }
+  };
+
   const handleSpawn = (deckIdx) => {
     if (currentScene && !spawnedUnits()[deckIdx]) {
       currentScene.spawnDeckUnit(deckIdx);
@@ -591,13 +609,38 @@ function App() {
                   "line-height": "1.4"
                 }}>스테이지 {unlockedUnit().stage} 클리어 보상으로<br />새로운 용병을 고용할 수 있게 되었습니다!</p>
 
-                <button onClick={() => setUnlockedUnit(null)} class="btn restart" style={{
+                <button onClick={() => {
+                  const unit = unlockedUnit();
+                  setUnlockedUnit(null);
+                  if (unit && unit.stage === 3) {
+                    setUnlockedItem(ITEM_CONFIG.heavy_metal);
+                  }
+                }} class="btn restart" style={{
                   "width": "100%",
                   "max-width": "260px",
                   "margin": "0 auto",
                   "padding": "10px",
                   "min-height": "45px"
                 }}>확인</button>
+              </div>
+            </div>
+          </Portal>
+        )}
+        {unlockedItem() && (
+          <Portal>
+            <div class="game-over-screen unlock-modal" style={{
+              "position": "fixed", "top": "0", "left": "0", "width": "100dvw", "height": "100dvh", "z-index": "10001",
+              "background": "rgba(0, 0, 0, 0.85)", "display": "flex", "justify-content": "center", "align-items": "center", "backdrop-filter": "blur(10px)"
+            }}>
+              <div class="unlock-content" style={{
+                "text-align": "center", "background": "rgba(26, 26, 46, 0.98)", "padding": "30px", "border-radius": "24px",
+                "border": "4px solid #43d8c9", "max-width": "450px", "width": "90%", "box-shadow": "0 0 50px rgba(67, 216, 201, 0.3)"
+              }}>
+                <h2 class="victory-msg" style={{ "font-size": "2rem", "margin": "0", "color": "#43d8c9" }}>NEW ITEM UNLOCKED!</h2>
+                <div style={{ "font-size": "60px", "margin": "20px 0" }}>{unlockedItem().icon}</div>
+                <h3 style={{ "color": "#fff", "font-size": "1.5rem", "margin": "0" }}>{unlockedItem().name}</h3>
+                <p style={{ "color": "#aaa", "margin": "15px 0 25px", "line-height": "1.4" }}>{unlockedItem().desc}</p>
+                <button onClick={() => setUnlockedItem(null)} class="btn restart" style={{ "width": "100%", "max-width": "260px", "margin": "0 auto" }}>확인</button>
               </div>
             </div>
           </Portal>
@@ -870,12 +913,13 @@ function App() {
                 </span>
               </button>
             </div>
-
             <div class="button-group items-group">
               {itemDeck().map((itemId, idx) => {
                 const item = ITEM_CONFIG[itemId];
                 return (
-                  <button class="btn item-btn" disabled={!itemId || gameOver() !== '' || stageCleared()}>
+                  <button class="btn item-btn" 
+                    disabled={!itemId || gameOver() !== '' || stageCleared()}
+                    onClick={() => handleItemUse(itemId, idx)}>
                     {item ? (
                       <>
                         <div class="item-icon">{item.icon}</div>

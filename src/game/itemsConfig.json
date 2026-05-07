@@ -1,0 +1,80 @@
+{
+  "catnip": {
+    "id": "catnip",
+    "name": "캣닙",
+    "desc": "12초간 공속/이동속도 1.5배",
+    "cost": 500,
+    "type": "consumable",
+    "icon": "🌿",
+    "effects": {
+      "duration": 12000,
+      "attackSpeedMultiplier": 1.5,
+      "moveSpeedMultiplier": 1.5
+    }
+  },
+  "churu": {
+    "id": "churu",
+    "name": "츄르",
+    "desc": "딸피 유닛 5명 체력 50% 회복",
+    "cost": 300,
+    "type": "consumable",
+    "icon": "🍭",
+    "effects": {
+      "targetCount": 5,
+      "healPercent": 0.5
+    }
+  },
+  "pigeon": {
+    "id": "pigeon",
+    "name": "비둘기",
+    "desc": "비둘기가 포탄을 투하하여 적 보스에게 큰 피해를 입힙니다.",
+    "cost": 2000,
+    "type": "consumable",
+    "icon": "🕊️",
+    "effects": {
+      "damage": 5000,
+      "speed": 300
+    }
+  },
+  "heavy_metal": {
+    "id": "heavy_metal",
+    "name": "파란 기타",
+    "desc": "헤비메탈로 미니언들을 광폭화 시키자!",
+    "cost": 50000,
+    "type": "permanent",
+    "icon": "🎸",
+    "requiredStage": 3,
+    "hideInShop": true,
+    "effects": {
+      "duration": 10000,
+      "cooldown": 30000,
+      "damageMultiplier": 1.1,
+      "attackSpeedMultiplier": 2.0,
+      "spawnRateMultiplier": 5.0,
+      "moveSpeedMultiplier": 2.0
+    }
+  },
+  "speaker": {
+    "id": "speaker",
+    "name": "상상마당 스피커",
+    "desc": "45초 주기, 광역 넉백 충격파",
+    "cost": 30000,
+    "type": "permanent",
+    "icon": "🔊",
+    "effects": {
+      "cooldown": 45000,
+      "knockbackDistance": 100
+    }
+  },
+  "anchovy": {
+    "id": "anchovy",
+    "name": "마른 멸치",
+    "desc": "골드 획득량 20% 증가 (패시브)",
+    "cost": 20000,
+    "type": "permanent",
+    "icon": "🐟",
+    "effects": {
+      "goldMultiplier": 1.2
+    }
+  }
+}

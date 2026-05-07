@@ -6,6 +6,7 @@ import SkillManager from './SkillManager';
 
 import { ALLY_TYPES, ENEMY_TYPES } from './unitsConfig';
 import { STAGE_CONFIG } from './stagesConfig';
+import ITEM_CONFIG from './itemsConfig.json';
 
 import hit1_sound from '../assets/sounds/Hit1.wav';
 import hit2_sound from '../assets/sounds/Hit2.wav';
@@ -81,6 +82,9 @@ export default class GameScene extends Phaser.Scene {
 
         const shieldUrl = itemImages['../assets/items/shield.png'];
         if (shieldUrl) this.load.image('item_shield', shieldUrl);
+
+        const pigeonUrl = itemImages['../assets/items/pigeon.png'];
+        if (pigeonUrl) this.load.spritesheet('item_pigeon', pigeonUrl, { frameWidth: 100, frameHeight: 90 });
     }
 
     init(data) {
@@ -173,6 +177,16 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
         this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        // Pigeon animation
+        if (!this.anims.exists('pigeon_fly')) {
+            this.anims.create({
+                key: 'pigeon_fly',
+                frames: this.anims.generateFrameNumbers('item_pigeon', { start: 0, end: 2 }),
+                frameRate: 10,
+                repeat: -1
+            });
+        }
 
         // Create a simple circle texture for particles
         const circleGraphics = this.make.graphics({ x: 0, y: 0, add: false });
@@ -646,7 +660,8 @@ export default class GameScene extends Phaser.Scene {
 
         // Auto spawn allies (minions) - ONLY Normal Cats (비실이)
         this.heavyMetalRemainingTime -= scaledDelta;
-        const allyHeavyMetalMultiplier = (this.heavyMetalRemainingTime > 0) ? 3.0 : 1.0;
+        const heavyMetalEffect = ITEM_CONFIG.heavy_metal?.effects || {};
+        const allyHeavyMetalMultiplier = (this.heavyMetalRemainingTime > 0) ? (heavyMetalEffect.spawnRateMultiplier || 3.0) : 1.0;
         this.allyAutoSpawnTimer += scaledDelta * allyHeavyMetalMultiplier;
 
         // Auto spawn mouse (Active Play Benefit)
@@ -909,5 +924,135 @@ export default class GameScene extends Phaser.Scene {
 
         // 진행 중인 모든 트윈 정지
         this.tweens.killAll();
+    }
+
+    useItem(itemId, idx) {
+        if (this.isGameOver) return false;
+
+        const item = ITEM_CONFIG[itemId];
+        if (!item) return false;
+
+        switch (itemId) {
+            case 'catnip':
+                this.useCatnip(item.effects);
+                break;
+            case 'churu':
+                this.useChuru(item.effects);
+                break;
+            case 'pigeon':
+                this.spawnPigeon(item.effects);
+                break;
+            case 'heavy_metal':
+                this.fireShouting();
+                break;
+            default:
+                return false;
+        }
+
+        this.showFloatingText(`${item.name} 사용!`, 400, 100, '#ffffff');
+        return true;
+    }
+
+    spawnPigeon(effects) {
+        const startX = -100;
+        const startY = 100;
+        const targetBoss = this.unitManager.getEnemyBoss();
+        
+        const pigeon = this.add.sprite(startX, startY, 'item_pigeon').setScale(0.8);
+        pigeon.setDepth(4000);
+        pigeon.dropped = false;
+        pigeon.play('pigeon_fly');
+
+        // Bobbing animation (up and down)
+        this.tweens.add({
+            targets: pigeon,
+            y: startY + 15,
+            duration: 500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        this.tweens.add({
+            targets: pigeon,
+            x: 900,
+            duration: 3000,
+            onUpdate: (tween, target) => {
+                if (targetBoss && targetBoss.active && !pigeon.dropped) {
+                    // Calculate target drop point: Boss X - horizontal displacement of bomb
+                    const horizontalSpeed = 1000 / 3000;
+                    const fallDuration = 600;
+                    const dropPointX = targetBoss.x - (horizontalSpeed * fallDuration);
+                    
+                    if (target.x >= dropPointX) {
+                        pigeon.dropped = true;
+                        this.dropBomb(target.x, target.y, effects.damage || 5000);
+                    }
+                }
+            },
+            onComplete: () => {
+                pigeon.destroy();
+            }
+        });
+    }
+
+    dropBomb(x, y, damage) {
+        const bomb = this.add.circle(x, y, 10, 0x333333).setDepth(3999);
+        const targetBoss = this.unitManager.getEnemyBoss();
+        const targetY = targetBoss ? targetBoss.y - 20 : 300;
+        
+        // Horizontal speed of pigeon: 1000 pixels / 3000ms = 1/3 pixels per ms
+        const horizontalSpeed = 1000 / 3000;
+        const fallDuration = 600; // slightly longer for better curve
+        const targetX = x + (horizontalSpeed * fallDuration);
+
+        this.tweens.add({
+            targets: bomb,
+            x: targetX,
+            y: targetY,
+            duration: fallDuration,
+            ease: 'Sine.easeIn',
+            onComplete: () => {
+                bomb.destroy();
+                this.explodeBomb(targetX, targetY, damage);
+            }
+        });
+    }
+
+    explodeBomb(x, y, damage) {
+        const explosion = this.add.circle(x, y, 10, 0xff6600, 1).setDepth(5000);
+        this.tweens.add({
+            targets: explosion,
+            radius: 100,
+            alpha: 0,
+            duration: 400,
+            ease: 'Cubic.easeOut',
+            onComplete: () => explosion.destroy()
+        });
+
+        this.cameras.main.shake(200, 0.01);
+        this.sound.play('boom', { volume: 0.7 });
+
+        const targetBoss = this.unitManager.getEnemyBoss();
+        if (targetBoss && Math.abs(targetBoss.x - x) < 80) {
+            targetBoss.takeDamage(damage, true);
+            this.showFloatingText(`CRITICAL HIT!`, x, y - 50, '#ff1111');
+        }
+    }
+
+    useCatnip(effects) {
+        this.heavyMetalRemainingTime = effects.duration || 12000;
+    }
+
+    useChuru(effects) {
+        const allies = this.unitManager.allies.filter(a => a.hp > 0 && a.hp < a.maxHp);
+        allies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+        const targets = allies.slice(0, effects.targetCount || 5);
+        
+        targets.forEach(target => {
+            const healAmount = target.maxHp * (effects.healPercent || 0.5);
+            target.hp = Math.min(target.maxHp, target.hp + healAmount);
+            this.showFloatingText(`+${Math.floor(healAmount)}`, target.x, target.y - 40, '#2ecc71');
+        });
     }
 }

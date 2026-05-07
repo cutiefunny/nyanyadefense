@@ -1,4 +1,5 @@
 import LEADER_SKILL_TREE from './leaderSkillTree.json';
+import ITEM_CONFIG from './itemsConfig.json';
 
 export default class SkillManager {
     constructor(scene, unitManager) {
@@ -33,13 +34,14 @@ export default class SkillManager {
 
         const itemDeck = this.scene.registry.get('itemDeck') || [];
         const hasHeavyMetal = itemDeck.includes('heavy_metal');
+        const heavyMetalEffect = ITEM_CONFIG.heavy_metal?.effects || {};
 
-        this.cannonCooldown = hasHeavyMetal ? 30000 : currentCooldown * (1 + perkEffects.shout_cooldown_mult);
-        return { hasHeavyMetal, currentCooldown, perkEffects };
+        this.cannonCooldown = hasHeavyMetal ? (heavyMetalEffect.cooldown || 30000) : currentCooldown * (1 + perkEffects.shout_cooldown_mult);
+        return { hasHeavyMetal, currentCooldown, perkEffects, heavyMetalEffect };
     }
 
     useShouting() {
-        const { hasHeavyMetal, currentCooldown, perkEffects } = this.updateConfig();
+        const { hasHeavyMetal, currentCooldown, perkEffects, heavyMetalEffect } = this.updateConfig();
         const skillLevels = this.scene.registry.get('skillLevels') || { shout_cooldown: 1, shout_duration: 1 };
         const currentDuration = 10000 + (skillLevels.shout_duration - 1) * 2000;
         const currentRange = 250; 
@@ -61,7 +63,7 @@ export default class SkillManager {
             }
         });
 
-        const finalDuration = hasHeavyMetal ? 10000 : currentDuration + perkEffectsFull.shout_duration_add;
+        const finalDuration = hasHeavyMetal ? (heavyMetalEffect.duration || 10000) : currentDuration + perkEffectsFull.shout_duration_add;
         const finalRange = currentRange * (1 + perkEffectsFull.shout_range_mult);
         const finalCooldown = this.cannonCooldown;
 

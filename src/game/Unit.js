@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import LEADER_SKILL_TREE from './leaderSkillTree.json';
 import UnitSkillHandler from './UnitSkillHandler';
+import ITEM_CONFIG from './itemsConfig.json';
 
 export default class Unit extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y, spriteKey, specs, isAlly, unitManager) {
@@ -216,8 +217,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             }
         }
 
+        const heavyMetalEffect = ITEM_CONFIG.heavy_metal?.effects || {};
+
         if (this.isMortarMode) {
-            const currentCooldown = isHeavyMetal ? (this.attackCooldown / 3) : this.attackCooldown;
+            const currentCooldown = isHeavyMetal ? (this.attackCooldown / (heavyMetalEffect.attackSpeedMultiplier || 2.0)) : this.attackCooldown;
             if (time - this.lastAttackTime >= currentCooldown) {
                 this.lastAttackTime = time;
                 if (target) {
@@ -397,6 +400,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         if (this.buffRemainingTime > 0 && !this.isAlly) {
             currentSpeed *= 2;
         }
+        if (this.isAlly && this.scene.heavyMetalRemainingTime > 0) {
+            const heavyMetalEffect = ITEM_CONFIG.heavy_metal?.effects || {};
+            currentSpeed *= (heavyMetalEffect.moveSpeedMultiplier || 2.0);
+        }
         let moveAmount = currentSpeed * (delta / 16) * desiredMove;
 
         // Map bounds & Boss-relative constraints
@@ -448,6 +455,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         if (this.buffRemainingTime > 0) {
             currentDamage *= 1.1;
             currentCooldown *= 0.5;
+        }
+
+        if (this.isAlly && this.scene.heavyMetalRemainingTime > 0) {
+            const heavyMetalEffect = ITEM_CONFIG.heavy_metal?.effects || {};
+            currentDamage *= (heavyMetalEffect.damageMultiplier || 1.1);
+            currentCooldown /= (heavyMetalEffect.attackSpeedMultiplier || 2.0);
         }
 
         if (time - this.lastAttackTime >= currentCooldown) {

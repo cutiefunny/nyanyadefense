@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ALLY_TYPES, BOSS_CONFIG } from './unitsConfig';
 import { STAGE_CONFIG } from './stagesConfig';
+import ITEM_CONFIG from './itemsConfig.json';
 import lobby_bg from '../assets/lobby_bg.png';
 import lobby_cat from '../assets/lobby_cat.jpg';
 
@@ -22,14 +23,7 @@ export default class LobbyScene extends Phaser.Scene {
         }
         
         // Items configuration
-        this.ITEM_CONFIG = {
-            catnip: { id: 'catnip', name: '마따따비', desc: '12초간 공속/이동속도 1.5배', cost: 500, type: 'consumable' },
-            churu: { id: 'churu', name: '츄르', desc: '딸피 유닛 5명 체력 50% 회복', cost: 300, type: 'consumable' },
-            box: { id: 'box', name: '택배 상자', desc: '유닛 3명에게 5초간 무적 박스', cost: 400, type: 'consumable' },
-            heavy_metal: { id: 'heavy_metal', name: '헤비메탈', desc: '30초 주기, 아군 생산속도 3배(10초)', cost: 50000, type: 'permanent' },
-            speaker: { id: 'speaker', name: '상상마당 스피커', desc: '45초 주기, 광역 넉백 충격파', cost: 30000, type: 'permanent' },
-            anchovy: { id: 'anchovy', name: '마른 멸치', desc: '골드 획득량 20% 증가 (패시브)', cost: 20000, type: 'permanent' }
-        };
+        this.ITEM_CONFIG = ITEM_CONFIG;
 
         this.loadPersistentData();
     }
@@ -1415,28 +1409,33 @@ export default class LobbyScene extends Phaser.Scene {
         const rightX = 600;
         this.add.text(rightX, 75, '상점 목록', { fontSize: '18px', fontFamily: 'Arial Black', fill: '#43d8c9' }).setOrigin(0.5);
 
-        const shopItems = Object.values(this.ITEM_CONFIG);
+        const shopItems = Object.values(this.ITEM_CONFIG).filter(item => !item.hideInShop);
+        const stageClears = this.registry.get('stageClears') || {};
+
         shopItems.forEach((item, i) => {
             const x = rightX;
             const y = 110 + i * 42;
             
+            const isLocked = item.requiredStage && !(stageClears[item.requiredStage] > 0);
             const isOwnedPermanent = item.type === 'permanent' && permItems.includes(item.id);
             const canAfford = gold >= item.cost;
 
             const bg = this.add.rectangle(x, y, 360, 38, 0x1a1a2e, 0.8).setStrokeStyle(2, 0x43d8c9, 0.3);
-            this.add.text(x - 170, y, item.name, { fontSize: '14px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0, 0.5);
-            this.add.text(x - 60, y, item.desc, { fontSize: '10px', fontFamily: 'Arial', fill: '#aaa' }).setOrigin(0, 0.5);
+            this.add.text(x - 170, y, item.name, { fontSize: '14px', fontFamily: 'Arial Black', fill: isLocked ? '#555' : '#ffffff' }).setOrigin(0, 0.5);
+            this.add.text(x - 60, y, isLocked ? `스테이지 ${item.requiredStage} 클리어 시 해금` : item.desc, { 
+                fontSize: '10px', fontFamily: 'Arial', fill: isLocked ? '#e74c3c' : '#aaa' 
+            }).setOrigin(0, 0.5);
             
-            const priceColor = isOwnedPermanent ? '#7f8c8d' : (canAfford ? '#f1c40f' : '#e74c3c');
-            const priceText = isOwnedPermanent ? '구매됨' : `${item.cost} 냥`;
+            const priceColor = isOwnedPermanent ? '#7f8c8d' : (isLocked ? '#555' : (canAfford ? '#f1c40f' : '#e74c3c'));
+            const priceText = isOwnedPermanent ? '구매됨' : (isLocked ? '잠김' : `${item.cost} 냥`);
             
-            const buyBtn = this.add.rectangle(x + 135, y, 75, 26, isOwnedPermanent ? 0x7f8c8d : (canAfford ? 0x27ae60 : 0x7f8c8d))
-                .setStrokeStyle(1, 0xffffff, 0.5).setInteractive({ useHandCursor: !isOwnedPermanent && canAfford });
+            const buyBtn = this.add.rectangle(x + 135, y, 75, 26, isOwnedPermanent ? 0x7f8c8d : (isLocked ? 0x333333 : (canAfford ? 0x27ae60 : 0x7f8c8d)))
+                .setStrokeStyle(1, 0xffffff, 0.5).setInteractive({ useHandCursor: !isOwnedPermanent && !isLocked && canAfford });
             
             this.add.text(x + 135, y, priceText, { fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
 
             buyBtn.on('pointerdown', () => {
-                if (isOwnedPermanent) return;
+                if (isOwnedPermanent || isLocked) return;
                 if (gold >= item.cost) {
                     this.registry.set('globalGold', gold - item.cost);
                     
