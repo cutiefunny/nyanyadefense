@@ -39,6 +39,7 @@ export default class Unit extends Phaser.GameObjects.Sprite {
         this.isKnockbackImmune = specs.isKnockbackImmune || false;
         this.stunRemainingTime = 0;
         this.buffRemainingTime = 0;
+        this.catnipRemainingTime = 0;
         this.hitFlashTimer = 0;
         this.retreatTimer = 0; // 보스 생존용 후퇴 타이머
         this.isBoss = specs.isBoss || false;
@@ -404,6 +405,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             const heavyMetalEffect = ITEM_CONFIG.heavy_metal?.effects || {};
             currentSpeed *= (heavyMetalEffect.moveSpeedMultiplier || 2.0);
         }
+        if (this.catnipRemainingTime > 0) {
+            const catnipEffect = ITEM_CONFIG.catnip?.effects || {};
+            currentSpeed *= (catnipEffect.moveSpeedMultiplier || 2.0);
+        }
         let moveAmount = currentSpeed * (delta / 16) * desiredMove;
 
         // Map bounds & Boss-relative constraints
@@ -461,6 +466,12 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             const heavyMetalEffect = ITEM_CONFIG.heavy_metal?.effects || {};
             currentDamage *= (heavyMetalEffect.damageMultiplier || 1.1);
             currentCooldown /= (heavyMetalEffect.attackSpeedMultiplier || 2.0);
+        }
+
+        if (this.catnipRemainingTime > 0) {
+            const catnipEffect = ITEM_CONFIG.catnip?.effects || {};
+            currentDamage *= (catnipEffect.damageMultiplier || 2.0);
+            currentCooldown /= (catnipEffect.attackSpeedMultiplier || 2.0);
         }
 
         if (time - this.lastAttackTime >= currentCooldown) {
@@ -885,9 +896,14 @@ export default class Unit extends Phaser.GameObjects.Sprite {
     }
 
     updateBuffs(delta) {
-        if (this.isShouting) return; // Skip buff scaling/tinting if shouting animation is playing
+        if (this.isShouting) return;
+
+        if (this.catnipRemainingTime > 0) {
+            this.catnipRemainingTime -= delta;
+        }
 
         const isHeavyMetal = this.isAlly && (this.scene.heavyMetalRemainingTime > 0);
+        const isCatnip = this.catnipRemainingTime > 0;
         
         if (this.buffRemainingTime > 0) {
             this.buffRemainingTime -= delta;
@@ -896,7 +912,9 @@ export default class Unit extends Phaser.GameObjects.Sprite {
             this.setScale(this.baseScale * multiplier * (1 + 0.1 * ratio));
             
             if (this.hitFlashTimer <= 0) {
-                if (isHeavyMetal) {
+                if (isCatnip) {
+                    this.setTint(0xff00ff); // Magenta for catnip
+                } else if (isHeavyMetal) {
                     this.setTint(0xff4444);
                 } else {
                     const greenBlue = Math.floor(136 + (255 - 136) * (1 - ratio));
@@ -906,8 +924,10 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
             if (this.buffRemainingTime <= 0) {
                 this.setScale(this.baseScale * multiplier);
-                if (this.hitFlashTimer <= 0 && !isHeavyMetal) this.clearTint();
+                if (this.hitFlashTimer <= 0 && !isHeavyMetal && !isCatnip) this.clearTint();
             }
+        } else if (isCatnip) {
+            if (this.hitFlashTimer <= 0) this.setTint(0xff00ff);
         } else if (isHeavyMetal) {
             if (this.hitFlashTimer <= 0) this.setTint(0xff4444);
         } else {

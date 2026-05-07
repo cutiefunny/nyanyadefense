@@ -1041,15 +1041,16 @@ export default class GameScene extends Phaser.Scene {
     }
 
     useCatnip(effects) {
-        this.heavyMetalRemainingTime = effects.duration || 12000;
+        const leader = this.unitManager.allies.find(a => a.isBoss && a.isAlly);
+        if (leader) {
+            leader.catnipRemainingTime = effects.duration || 10000;
+        }
     }
 
     useChuru(effects) {
-        const allies = this.unitManager.allies.filter(a => a.hp > 0 && a.hp < a.maxHp);
-        allies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
-        const targets = allies.slice(0, effects.targetCount || 5);
+        const allies = this.unitManager.allies.filter(a => a.hp > 0);
         
-        targets.forEach(target => {
+        allies.forEach(target => {
             const healAmount = target.maxHp * (effects.healPercent || 0.5);
             target.hp = Math.min(target.maxHp, target.hp + healAmount);
             this.showFloatingText(`+${Math.floor(healAmount)}`, target.x, target.y - 40, '#2ecc71');
