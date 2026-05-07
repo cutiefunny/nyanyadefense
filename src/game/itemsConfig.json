@@ -2,7 +2,7 @@
   "catnip": {
     "id": "catnip",
     "name": "캣닙",
-    "desc": "10초간 리더 광폭화(공격력/공속 2배), 다른 스킬과 중복 적용 가능.",
+    "desc": "10초간 리더 광폭화(공격력/공속 2배)",
     "cost": 1000,
     "type": "consumable",
     "icon": "🌿",
@@ -27,13 +27,25 @@
   "pigeon": {
     "id": "pigeon",
     "name": "비둘기",
-    "desc": "비둘기가 적 보스에게 포탄을 투하한다!",
+    "desc": "비둘기가 적 보스에게 포탄을 투하!",
     "cost": 2000,
     "type": "consumable",
     "icon": "🕊️",
     "effects": {
       "hpPercentDamage": 0.3,
       "speed": 300
+    }
+  },
+  "3x_speed": {
+    "id": "3x_speed",
+    "name": "3배속",
+    "desc": "게임 속도를 3배로! 5개 묶음 판매!",
+    "cost": 5000,
+    "type": "consumable",
+    "icon": "🚀",
+    "effects": {
+      "speed": 300,
+      "purchaseCount": 5
     }
   },
   "heavy_metal": {
@@ -61,6 +73,7 @@
     "cost": 30000,
     "type": "permanent",
     "icon": "🔊",
+    "hideInShop": true,
     "effects": {
       "cooldown": 45000,
       "knockbackDistance": 100
@@ -73,6 +86,7 @@
     "cost": 20000,
     "type": "permanent",
     "icon": "🐟",
+    "hideInShop": true,
     "effects": {
       "goldMultiplier": 1.2
     }

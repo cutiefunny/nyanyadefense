@@ -747,6 +747,7 @@ export default class GameScene extends Phaser.Scene {
                 let drawnCardKey = '';
                 
                 if (unlockedTypes.length > 0) {
+                    const isDoubleReward = Math.random() < 0.2;
                     const randomType = (clearCount === 0 && newlyUnlocked) ? newlyUnlocked[0] : Phaser.Utils.Array.GetRandom(unlockedTypes);
                     let squad = this.registry.get('squad') || { inventory: [], deck: [] };
                     if (!Array.isArray(squad.inventory)) squad.inventory = [];
@@ -757,13 +758,14 @@ export default class GameScene extends Phaser.Scene {
                     else if (this.stage === 5) rewardLevel = 3;
 
                     if (randomType === 'leader' || randomType === 'normal') {
-                        rewardCount = Math.pow(2, rewardLevel - 1) * 2; // Doubled
+                        const multiplier = isDoubleReward ? 2 : 1;
+                        rewardCount = Math.pow(2, rewardLevel - 1) * multiplier; 
                         for (let i = 0; i < rewardCount; i++) {
                             squad.inventory.push({ type: randomType, level: 1 });
                         }
                         rewardLevel = 1; 
                     } else {
-                        rewardCount = 2; // Doubled
+                        rewardCount = isDoubleReward ? 2 : 1;
                         for (let i = 0; i < rewardCount; i++) {
                             squad.inventory.push({ type: randomType, level: rewardLevel });
                         }
@@ -944,6 +946,9 @@ export default class GameScene extends Phaser.Scene {
                 break;
             case 'heavy_metal':
                 this.fireShouting();
+                break;
+            case '3x_speed':
+                this.gameSpeed = 3;
                 break;
             default:
                 return false;

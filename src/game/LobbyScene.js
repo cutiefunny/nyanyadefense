@@ -823,8 +823,9 @@ export default class LobbyScene extends Phaser.Scene {
 
             if (itemId && this.ITEM_CONFIG[itemId]) {
                 const item = this.ITEM_CONFIG[itemId];
-                this.add.text(x, y, item.name, {
-                    fontSize: '9px', fontFamily: 'Arial Black', fill: '#ffffff', align: 'center', wordWrap: { width: 45 }
+                this.add.text(x, y - 5, item.icon || '📦', { fontSize: '18px' }).setOrigin(0.5);
+                this.add.text(x, y + 12, item.name, {
+                    fontSize: '8px', fontFamily: 'Arial Black', fill: '#ffffff', align: 'center'
                 }).setOrigin(0.5);
             }
         }
@@ -1458,7 +1459,8 @@ export default class LobbyScene extends Phaser.Scene {
                     this.registry.set('globalGold', gold - item.cost);
                     
                     if (item.type === 'consumable') {
-                        itemInv[item.id] = (itemInv[item.id] || 0) + 1;
+                        const countToAdd = item.effects?.purchaseCount || 1;
+                        itemInv[item.id] = (itemInv[item.id] || 0) + countToAdd;
                         this.registry.set('itemInventory', itemInv);
                     } else {
                         permItems.push(item.id);
