@@ -590,6 +590,10 @@ export default class GameScene extends Phaser.Scene {
         const currentGlobal = this.registry.get('globalGold') || 0;
         this.registry.set('globalGold', currentGlobal + intAmount);
 
+        // Update total coins collected
+        const totalCoins = this.registry.get('totalCoins') || 0;
+        this.registry.set('totalCoins', totalCoins + intAmount);
+
         // Visual indicator
         this.showFloatingText(`+${intAmount} 냥`, x, y, '#fbd46d');
     }
@@ -628,6 +632,10 @@ export default class GameScene extends Phaser.Scene {
 
         // Apply game speed multiplier to delta for custom logic
         const scaledDelta = delta * this.gameSpeed;
+        
+        // Track total playtime
+        const currentPlayTime = this.registry.get('totalPlayTime') || 0;
+        this.registry.set('totalPlayTime', currentPlayTime + delta);
         this.stageTime += scaledDelta;
         this.battleTime += scaledDelta;
 
@@ -731,6 +739,9 @@ export default class GameScene extends Phaser.Scene {
                 const finalReward = Math.floor((config.clearReward || 0) * clearRewardMultiplier);
 
                 this.registry.set('globalGold', currentGlobal + finalReward);
+                
+                const totalCoins = this.registry.get('totalCoins') || 0;
+                this.registry.set('totalCoins', totalCoins + finalReward);
 
                 // Update clear counts (Clone object to trigger registry change event)
                 const stageClears = { ...stageClearsBefore };

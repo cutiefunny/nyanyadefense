@@ -11,7 +11,19 @@ import ITEM_CONFIG from './game/itemsConfig.json';
 import TutorialOverlay from './components/TutorialOverlay';
 import HiddenSkillModal from './components/HiddenSkillModal';
 import SkillTreeModal from './components/SkillTreeModal';
+import LeaderboardModal from './components/LeaderboardModal';
+import ProfileModal from './components/ProfileModal';
 import './App.css';
+import { auth, provider, signInWithPopup, signOut, db, collection, query, orderBy, limit, getDocs } from './firebase.js';
+import { syncToLocal, syncToRemote } from './SyncManager.js';
+
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function(key, value) {
+  originalSetItem.apply(this, arguments);
+  if (key.startsWith('nyanya_')) {
+     window.dispatchEvent(new CustomEvent('nyanya-storage-update', { detail: { key, value } }));
+  }
+};
 
 function App() {
   const [spawnedUnits, setSpawnedUnits] = createSignal({});
@@ -50,6 +62,13 @@ function App() {
   );
   const [activeTutorial, setActiveTutorial] = createSignal(null);
   const [currentTab, setCurrentTab] = createSignal('MAIN');
+  const [user, setUser] = createSignal(null);
+  const [profile, setProfile] = createSignal({ nickname: '', avatar: '🐱' });
+  const [showProfileModal, setShowProfileModal] = createSignal(false);
+  const [showLeaderboard, setShowLeaderboard] = createSignal(false);
+  const [leaderboardData, setLeaderboardData] = createSignal([]);
+
+  let syncTimeout;
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
@@ -97,6 +116,39 @@ function App() {
   };
 
   onMount(() => {
+    if (auth) {
+      auth.onAuthStateChanged(async (u) => {
+        setUser(u);
+        if (u) {
+          const isFirstLogin = localStorage.getItem('nyanya_isFirstLogin_' + u.uid);
+          if (!isFirstLogin) {
+              const result = await syncToLocal(u);
+              if (!result.hasData) {
+                  await syncToRemote(u, { nickname: u.displayName || 'Player', avatar: '🐱' });
+                  setProfile({ nickname: u.displayName || 'Player', avatar: '🐱' });
+                  setShowProfileModal(true); // Ask them to customize profile on first login
+              } else {
+                  if (result.profile) setProfile(result.profile);
+              }
+              localStorage.setItem('nyanya_isFirstLogin_' + u.uid, 'false');
+          } else {
+              const result = await syncToLocal(u);
+              if (result.profile) setProfile(result.profile);
+          }
+        }
+      });
+    }
+
+    window.addEventListener('nyanya-storage-update', () => {
+      const u = user();
+      if (u) {
+        clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(() => {
+          syncToRemote(u, profile());
+        }, 3000); // Debounce sync
+      }
+    });
+
     const handleKeyDown = (e) => {
       if (e.key === '`') {
         setShowDevMenu((prev) => !prev);
@@ -410,6 +462,23 @@ function App() {
 
   return (
     <div class="app-container">
+      <div style={{ position: 'absolute', top: '10px', right: '10px', 'z-index': 1000, display: 'flex', gap: '10px', 'align-items': 'center' }}>
+        {user() ? (
+          <>
+            <div 
+              style={{ cursor: 'pointer', 'font-size': '12px', 'background-color': '#2c3e50', padding: '5px 10px', 'border-radius': '4px', color: '#fff' }}
+              onClick={() => setShowProfileModal(true)}
+            >
+              {profile().avatar} {profile().nickname}
+            </div>
+            <button class="top-menu-btn" style={{ padding: '5px 10px' }} onClick={() => setShowLeaderboard(true)}>🏆 순위표</button>
+            <button class="top-menu-btn" style={{ padding: '5px 10px' }} onClick={() => signOut(auth)}>로그아웃</button>
+          </>
+        ) : (
+          <button class="top-menu-btn" style={{ padding: '5px 10px' }} onClick={() => signInWithPopup(auth, provider)}>구글 로그인</button>
+        )}
+      </div>
+
       <div class="game-wrapper">
 
         <div ref={gameContainer} class="phaser-container"></div>
@@ -849,6 +918,22 @@ function App() {
         </Portal>
       )}
 
+      {showProfileModal() && (
+        <ProfileModal 
+          initialProfile={profile()} 
+          onSave={async (newProfile) => {
+            setProfile(newProfile);
+            setShowProfileModal(false);
+            if (user()) {
+              await syncToRemote(user(), newProfile);
+            }
+          }}
+        />
+      )}
+
+      {showLeaderboard() && (
+        <LeaderboardModal onClose={() => setShowLeaderboard(false)} />
+      )}
     </div>
   );
 }
