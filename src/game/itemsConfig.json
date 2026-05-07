@@ -32,7 +32,7 @@
     "type": "consumable",
     "icon": "🕊️",
     "effects": {
-      "damage": 5000,
+      "hpPercentDamage": 0.3,
       "speed": 300
     }
   },

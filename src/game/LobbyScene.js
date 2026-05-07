@@ -1353,9 +1353,16 @@ export default class LobbyScene extends Phaser.Scene {
             
             if (itemId) {
                 const item = this.ITEM_CONFIG[itemId];
-                this.add.text(x, y, item.name, { fontSize: '12px', fontFamily: 'Arial Black', fill: '#fff', align: 'center', wordWrap: { width: 60 } }).setOrigin(0.5);
+                this.add.text(x, y - 8, item.icon || '📦', { fontSize: '24px' }).setOrigin(0.5);
+                this.add.text(x, y + 18, item.name, { fontSize: '10px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
                 
                 slot.on('pointerdown', () => {
+                    // Return to inventory if consumable
+                    if (item.type === 'consumable') {
+                        itemInv[itemId] = (itemInv[itemId] || 0) + 1;
+                        this.registry.set('itemInventory', itemInv);
+                    }
+                    
                     itemDeck[i] = null;
                     this.registry.set('itemDeck', itemDeck);
                     this.saveItemData();
@@ -1388,13 +1395,24 @@ export default class LobbyScene extends Phaser.Scene {
                 if (x > 380) return; // Limit display to left side
 
                 const bg = this.add.rectangle(x, y, 90, 50, 0x2c3e50, 0.8).setStrokeStyle(1, 0xffffff, 0.3).setInteractive({ useHandCursor: true });
-                this.add.text(x, y - 8, item.name, { fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
-                this.add.text(x, y + 10, `(${item.count})`, { fontSize: '10px', fontFamily: 'Arial', fill: '#fbd46d' }).setOrigin(0.5);
+                this.add.text(x - 20, y, item.icon || '📦', { fontSize: '20px' }).setOrigin(0.5);
+                this.add.text(x + 15, y - 5, item.name, { fontSize: '9px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
+                this.add.text(x + 15, y + 10, `(${item.count})`, { fontSize: '9px', fontFamily: 'Arial', fill: '#fbd46d' }).setOrigin(0.5);
 
                 bg.on('pointerdown', () => {
                     const emptyIdx = itemDeck.indexOf(null);
                     if (emptyIdx !== -1) {
+                        // Check if already in deck (if permanent, maybe only one allowed? 
+                        // But ITEM_SHOP logic already handles permanent existence in ownedItems)
+                        
                         itemDeck[emptyIdx] = item.id;
+                        
+                        // Decrement inventory if consumable
+                        if (item.type === 'consumable') {
+                            itemInv[item.id] = Math.max(0, (itemInv[item.id] || 1) - 1);
+                            this.registry.set('itemInventory', itemInv);
+                        }
+
                         this.registry.set('itemDeck', itemDeck);
                         this.saveItemData();
                         this.scene.restart({ keepTab: true });

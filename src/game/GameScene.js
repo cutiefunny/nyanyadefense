@@ -956,11 +956,11 @@ export default class GameScene extends Phaser.Scene {
     spawnPigeon(effects) {
         const startX = -100;
         const startY = 100;
-        const targetBoss = this.unitManager.getEnemyBoss();
+        const targetBosses = this.unitManager.enemies.filter(e => e.isBoss && e.active && e.hp > 0);
         
         const pigeon = this.add.sprite(startX, startY, 'item_pigeon').setScale(0.8);
         pigeon.setDepth(4000);
-        pigeon.dropped = false;
+        pigeon.targetsHit = new Set();
         pigeon.play('pigeon_fly');
 
         // Bobbing animation (up and down)
@@ -978,17 +978,20 @@ export default class GameScene extends Phaser.Scene {
             x: 900,
             duration: 3000,
             onUpdate: (tween, target) => {
-                if (targetBoss && targetBoss.active && !pigeon.dropped) {
-                    // Calculate target drop point: Boss X - horizontal displacement of bomb
-                    const horizontalSpeed = 1000 / 3000;
-                    const fallDuration = 600;
-                    const dropPointX = targetBoss.x - (horizontalSpeed * fallDuration);
-                    
-                    if (target.x >= dropPointX) {
-                        pigeon.dropped = true;
-                        this.dropBomb(target.x, target.y, effects.damage || 5000);
+                targetBosses.forEach(boss => {
+                    if (boss.active && boss.hp > 0 && !pigeon.targetsHit.has(boss)) {
+                        // Calculate target drop point: Boss X - horizontal displacement of bomb
+                        const horizontalSpeed = 1000 / 3000;
+                        const fallDuration = 600;
+                        const dropPointX = boss.x - (horizontalSpeed * fallDuration);
+                        
+                        if (target.x >= dropPointX) {
+                            pigeon.targetsHit.add(boss);
+                            const damage = boss.hp * (effects.hpPercentDamage || 0.3);
+                            this.dropBomb(target.x, target.y, damage, boss);
+                        }
                     }
-                }
+                });
             },
             onComplete: () => {
                 pigeon.destroy();
@@ -996,14 +999,13 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
-    dropBomb(x, y, damage) {
+    dropBomb(x, y, damage, targetBoss) {
         const bomb = this.add.circle(x, y, 10, 0x333333).setDepth(3999);
-        const targetBoss = this.unitManager.getEnemyBoss();
         const targetY = targetBoss ? targetBoss.y - 20 : 300;
         
         // Horizontal speed of pigeon: 1000 pixels / 3000ms = 1/3 pixels per ms
         const horizontalSpeed = 1000 / 3000;
-        const fallDuration = 600; // slightly longer for better curve
+        const fallDuration = 600; 
         const targetX = x + (horizontalSpeed * fallDuration);
 
         this.tweens.add({
@@ -1014,12 +1016,12 @@ export default class GameScene extends Phaser.Scene {
             ease: 'Sine.easeIn',
             onComplete: () => {
                 bomb.destroy();
-                this.explodeBomb(targetX, targetY, damage);
+                this.explodeBomb(targetX, targetY, damage, targetBoss);
             }
         });
     }
 
-    explodeBomb(x, y, damage) {
+    explodeBomb(x, y, damage, targetBoss) {
         const explosion = this.add.circle(x, y, 10, 0xff6600, 1).setDepth(5000);
         this.tweens.add({
             targets: explosion,
@@ -1027,16 +1029,15 @@ export default class GameScene extends Phaser.Scene {
             alpha: 0,
             duration: 400,
             ease: 'Cubic.easeOut',
-            onComplete: () => explosion.destroy()
+            onComplete: () => { if (explosion.active) explosion.destroy(); }
         });
 
         this.cameras.main.shake(200, 0.01);
         this.sound.play('boom', { volume: 0.7 });
 
-        const targetBoss = this.unitManager.getEnemyBoss();
-        if (targetBoss && Math.abs(targetBoss.x - x) < 80) {
+        if (targetBoss && targetBoss.active && Math.abs(targetBoss.x - x) < 80) {
             targetBoss.takeDamage(damage, true);
-            this.showFloatingText(`CRITICAL HIT!`, x, y - 50, '#ff1111');
+            this.showFloatingText(`CRITICAL HIT! -30%`, x, y - 50, '#ff1111');
         }
     }
 
