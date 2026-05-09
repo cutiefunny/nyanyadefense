@@ -970,13 +970,14 @@ export default class GameScene extends Phaser.Scene {
     }
 
     spawnPigeon(effects) {
-        const startX = -100;
-        const startY = 100;
-        const targetBosses = this.unitManager.activeEnemyBosses;
+        const startX = -250;
+        const endX = 900;
+        const duration = 2500;
+        const startY = 80;
+        const horizontalSpeed = (endX - startX) / duration;
         
         const pigeon = this.add.sprite(startX, startY, 'item_pigeon').setScale(0.8);
         pigeon.setDepth(4000);
-        pigeon.targetsHit = new Set();
         pigeon.play('pigeon_fly');
 
         // Bobbing animation (up and down)
@@ -989,25 +990,18 @@ export default class GameScene extends Phaser.Scene {
             ease: 'Sine.easeInOut'
         });
 
+        const bombInterval = 80; // Drop bomb every 80 pixels for carpet bombing
+        let lastBombX = startX - bombInterval; // Trigger first bomb immediately
+
         this.tweens.add({
             targets: pigeon,
-            x: 900,
-            duration: 3000,
+            x: endX,
+            duration: duration,
             onUpdate: (tween, target) => {
-                targetBosses.forEach(boss => {
-                    if (boss.active && boss.hp > 0 && !pigeon.targetsHit.has(boss)) {
-                        // Calculate target drop point: Boss X - horizontal displacement of bomb
-                        const horizontalSpeed = 1000 / 3000;
-                        const fallDuration = 600;
-                        const dropPointX = boss.x - (horizontalSpeed * fallDuration);
-                        
-                        if (target.x >= dropPointX) {
-                            pigeon.targetsHit.add(boss);
-                            const damage = boss.hp * (effects.hpPercentDamage || 0.3);
-                            this.dropBomb(target.x, target.y, damage, boss);
-                        }
-                    }
-                });
+                if (target.x - lastBombX >= bombInterval) {
+                    lastBombX = target.x;
+                    this.dropBomb(target.x, target.y, horizontalSpeed);
+                }
             },
             onComplete: () => {
                 pigeon.destroy();
@@ -1015,12 +1009,10 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
-    dropBomb(x, y, damage, targetBoss) {
-        const bomb = this.add.circle(x, y, 10, 0x333333).setDepth(3999);
-        const targetY = targetBoss ? targetBoss.y - 20 : 300;
+    dropBomb(x, y, horizontalSpeed) {
+        const bomb = this.add.circle(x, y, 8, 0x333333).setDepth(3999);
+        const targetY = 280; // Ground level
         
-        // Horizontal speed of pigeon: 1000 pixels / 3000ms = 1/3 pixels per ms
-        const horizontalSpeed = 1000 / 3000;
         const fallDuration = 600; 
         const targetX = x + (horizontalSpeed * fallDuration);
 
@@ -1032,29 +1024,42 @@ export default class GameScene extends Phaser.Scene {
             ease: 'Sine.easeIn',
             onComplete: () => {
                 bomb.destroy();
-                this.explodeBomb(targetX, targetY, damage, targetBoss);
+                this.explodeBomb(targetX, targetY);
             }
         });
     }
 
-    explodeBomb(x, y, damage, targetBoss) {
+    explodeBomb(x, y) {
         const explosion = this.add.circle(x, y, 10, 0xff6600, 1).setDepth(5000);
         this.tweens.add({
             targets: explosion,
-            radius: 100,
+            radius: 120,
             alpha: 0,
             duration: 400,
             ease: 'Cubic.easeOut',
             onComplete: () => { if (explosion.active) explosion.destroy(); }
         });
 
-        this.cameras.main.shake(200, 0.01);
-        this.sound.play('boom', { volume: 0.7 });
+        this.cameras.main.shake(150, 0.005);
+        this.sound.play('boom', { volume: 0.5 });
 
-        if (targetBoss && targetBoss.active && Math.abs(targetBoss.x - x) < 80) {
-            targetBoss.takeDamage(damage, true);
-            this.showFloatingText(`CRITICAL HIT! -30%`, x, y - 50, '#ff1111');
-        }
+        // Carpet Bombing logic: Hit all enemies in range
+        const enemies = this.unitManager.enemies;
+        const splashRange = 100;
+
+        enemies.forEach(enemy => {
+            if (enemy.active && enemy.hp > 0 && Math.abs(enemy.x - x) <= splashRange) {
+                if (enemy.isBoss) {
+                    // Boss takes 10% of Max HP damage per bomb hit
+                    const damageToApply = enemy.maxHp * 0.1;
+                    enemy.takeDamage(damageToApply, true);
+                    this.showFloatingText(`-10% HP!`, enemy.x, enemy.y - 80, '#ff1111');
+                } else {
+                    // Normal enemy: Removed
+                    enemy.takeDamage(enemy.hp + 9999, true); 
+                }
+            }
+        });
     }
 
     useCatnip(effects) {

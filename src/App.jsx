@@ -487,29 +487,31 @@ function App() {
 
   return (
     <div class="app-container">
-      <div class="auth-header">
-        {user() ? (
-          <>
-            <div
-              class="profile-chip"
-              onClick={() => setShowProfileModal(true)}
-            >
-              {(() => {
-                const avatar = profile().avatar;
-                const unitKeys = ['leader', 'normal', 'tanker', 'shooter', 'healer', 'raccoon'];
-                if (unitKeys.includes(avatar)) {
-                  return <div class={`unit-icon ${avatar}-icon`} style={{ width: '20px', height: '20px', margin: 0, "background-size": "600% 100%" }}></div>;
-                }
-                return avatar;
-              })()} {profile().nickname}
-            </div>
-            <button class="top-menu-btn" onClick={() => setShowLeaderboard(true)}>순위표</button>
-            <button class="top-menu-btn" onClick={() => signOut(auth)}>로그아웃</button>
-          </>
-        ) : (
-          <button class="top-menu-btn" onClick={() => signInWithPopup(auth, provider)}>로그인</button>
-        )}
-      </div>
+      {currentSceneKey() === 'LobbyScene' && (
+        <div class="auth-header">
+          {user() ? (
+            <>
+              <div
+                class="profile-chip"
+                onClick={() => setShowProfileModal(true)}
+              >
+                {(() => {
+                  const avatar = profile().avatar;
+                  const unitKeys = ['leader', 'normal', 'tanker', 'shooter', 'healer', 'raccoon'];
+                  if (unitKeys.includes(avatar)) {
+                    return <div class={`unit-icon ${avatar}-icon`} style={{ width: '20px', height: '20px', margin: 0, "background-size": "600% 100%" }}></div>;
+                  }
+                  return avatar;
+                })()} {profile().nickname}
+              </div>
+              <button class="top-menu-btn" onClick={() => setShowLeaderboard(true)}>순위표</button>
+              <button class="top-menu-btn" onClick={() => signOut(auth)}>로그아웃</button>
+            </>
+          ) : (
+            <button class="top-menu-btn" onClick={() => signInWithPopup(auth, provider)}>로그인</button>
+          )}
+        </div>
+      )}
 
       <div class="game-wrapper">
 

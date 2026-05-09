@@ -27,8 +27,8 @@
   "pigeon": {
     "id": "pigeon",
     "name": "비둘기",
-    "desc": "비둘기가 적 보스에게 포탄을 투하!",
-    "cost": 2000,
+    "desc": "맵 전체 융단폭격! 적 유닛 제거 및 보스 체력 10%씩 타격",
+    "cost": 3000,
     "type": "consumable",
     "icon": "🕊️",
     "effects": {
