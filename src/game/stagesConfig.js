@@ -214,7 +214,7 @@ export const STAGE_CONFIG = {
         },
         clearReward: 500000,
         scaleMultiplier: 0.7,
-        nextStage: null,
+        nextStage: 8,
         events: [
             {
 
@@ -224,6 +224,19 @@ export const STAGE_CONFIG = {
             enemySpeedMultiplier: 1.0,
             spawnRateMultiplier: 0.5,
             description: '입구가 이 정도라면, 홍익대학교는 얼마나 크고 화려한 곳일까? 라고 생각만 하자!'
+        }
+    },
+    8: {
+        name: '당인리 발전소',
+        background: 'bg_stage8',
+        objective: 'survival',
+        survivalTime: 60,
+        boss: null,
+        clearReward: 1000000,
+        scaleMultiplier: 1.0,
+        nextStage: null,
+        traits: {
+            description: '당인리 발전소에서의 생존 게임! 60초간 몰려오는 겍코 부대를 막아내라!'
         }
     }
 };

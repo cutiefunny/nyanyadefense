@@ -54,6 +54,7 @@ function App() {
   const [victoryDrawnCardCount, setVictoryDrawnCardCount] = createSignal(1);
   const [mortarIndices, setMortarIndices] = createSignal([]);
   const [allyHPs, setAllyHPs] = createSignal({});
+  const [survivalTimer, setSurvivalTimer] = createSignal(0);
   const [completedTutorials, setCompletedTutorials] = createSignal(
     JSON.parse(localStorage.getItem('nyanya_completedTutorials') || '[]')
   );
@@ -321,6 +322,10 @@ function App() {
         }
         return next;
       });
+    });
+
+    gameInstance.events.on('update-survival-timer', (timeLeft) => {
+      setSurvivalTimer(timeLeft);
     });
 
     gameInstance.events.on('game-over', (result, reward = 0, drawnCard = '', drawnCardLevel = 1, drawnCardCount = 1) => {
@@ -747,6 +752,12 @@ function App() {
                 if (currentScene) currentScene.retreat();
               }}>후퇴</button>
             </div>
+            {survivalTimer() > 0 && (
+              <div class="survival-timer-display">
+                <div class="timer-label">생존 제한 시간</div>
+                <div class="timer-value">{Math.ceil(survivalTimer())}s</div>
+              </div>
+            )}
           </>
         )}
 
@@ -822,7 +833,8 @@ function App() {
       {currentSceneKey() === 'GameScene' && (
         <div class="controls-panel">
           <div class="main-controls">
-            <div class="button-group allies-group">
+            <div class="button-group battle-group">
+              {/* Unit Deck */}
               {deckUnits().map((cardObj, idx) => {
                 if (!cardObj || !cardObj.type) return null;
                 const unitType = cardObj.type;
@@ -831,23 +843,16 @@ function App() {
                 const isUsed = spawnedUnits()[idx];
                 const isMortarPart = mortarIndices().includes(idx);
 
-                // HP Bar logic for normal and combo units
+                // HP Bar logic
                 let currentHP = 0;
                 if (isUsed) {
                   if (isMortarPart) {
                     currentHP = allyHPs()[mortarIndices()[0]] || 0;
                   } else {
-                    // Check for tanker combo (if I had those indices in App.jsx too)
-                    // For now, check if the index itself has HP reported
                     currentHP = allyHPs()[idx] ?? 0;
-                    // Fallback for tanker combo if idx is idx2
-                    if (currentHP === 0 && idx > 0) {
-                      // Simple check for tanker combo if not explicitly tracked yet
-                      // Actually, I should probably export tankerComboIndices too
-                      const tIndices = gameInstance?.registry.get('tankerComboIndices') || [];
-                      if (tIndices.includes(idx)) {
-                        currentHP = allyHPs()[tIndices[0]] || 0;
-                      }
+                    const tIndices = gameInstance?.registry.get('tankerComboIndices') || [];
+                    if (currentHP === 0 && tIndices.includes(idx)) {
+                      currentHP = allyHPs()[tIndices[0]] || 0;
                     }
                   }
                 }
@@ -864,17 +869,8 @@ function App() {
                     )}
                     {respawnTimers()[idx] !== undefined && (
                       <div class="respawn-overlay" style={{
-                        "position": "absolute",
-                        "top": "0",
-                        "left": "0",
-                        "width": "100%",
-                        "height": "100%",
-                        "background": "rgba(0,0,0,0.6)",
-                        "display": "flex",
-                        "align-items": "center",
-                        "justify-content": "center",
-                        "z-index": "20",
-                        "border-radius": "8px"
+                        "position": "absolute", "top": "0", "left": "0", "width": "100%", "height": "100%", "background": "rgba(0,0,0,0.6)",
+                        "display": "flex", "align-items": "center", "justify-content": "center", "z-index": "20", "border-radius": "8px"
                       }}>
                         <span style={{ "color": "#fbd46d", "font-size": "24px", "font-weight": "900", "text-shadow": "0 0 10px #000" }}>
                           {respawnTimers()[idx]}
@@ -884,29 +880,13 @@ function App() {
                     {isMortarPart && idx === mortarIndices()[1] && (
                       <div class="bundled-label">박격포병 부대</div>
                     )}
-                    <div class={`unit-icon ${unitType}-icon`} style={{
-                      "background-color": "transparent"
-                    }}></div>
-                    <span class="cost">{`${cardObj.level}★ ${spec?.name?.split(' ')[0]}`}</span>
+                    <div class={`unit-icon ${unitType}-icon`} style={{ "background-color": "transparent" }}></div>
+                    <span class="cost">{`${cardObj.level}★`}</span>
                   </button>
                 );
               })}
-              {deckUnits().every(u => u === null) && (
-                <span style={{ "color": "#888", "font-size": "12px", "padding": "10px" }}>덱이 비어있습니다. 로비에서 부대를 편성해주세요.</span>
-              )}
-            </div>
 
-            <div class="button-group upgrades-group">
-              <button class="btn ally-btn shouting-btn" disabled={cannonProgress() < 100 || gameOver() !== '' || stageCleared()} onClick={handleShouting}>
-                <div class="ability-icon">{itemDeck().includes('heavy_metal') ? '🎸' : '🗣️'}</div>
-                <span class={cannonProgress() >= 100 ? 'cost ready' : 'cost'}>
-                  {itemDeck().includes('heavy_metal')
-                    ? (cannonProgress() >= 100 ? 'HEAVY METAL' : `${cannonSeconds()}s`)
-                    : (cannonProgress() >= 100 ? 'READY' : `${cannonProgress()}%`)}
-                </span>
-              </button>
-            </div>
-            <div class="button-group items-group">
+              {/* Items */}
               {itemDeck().map((itemId, idx) => {
                 const item = ITEM_CONFIG[itemId];
                 return (
@@ -914,12 +894,9 @@ function App() {
                     disabled={!itemId || gameOver() !== '' || stageCleared()}
                     onClick={() => handleItemUse(itemId, idx)}>
                     {item ? (
-                      <>
-                        <div class="item-icon">{item.icon}</div>
-                        <span class="item-name">{item.name}</span>
-                      </>
+                      <div class="item-icon">{item.icon}</div>
                     ) : (
-                      <div class="empty-slot">EMPTY</div>
+                      <div class="empty-slot" style={{ "font-size": "0.4rem" }}>EMPTY</div>
                     )}
                   </button>
                 );

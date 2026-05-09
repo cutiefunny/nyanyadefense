@@ -8,7 +8,8 @@ export const ALLY_TYPES = {
 
 export const ENEMY_TYPES = [
     { type: 'dog', hp: 90, speed: -0.8, damage: 10, range: 10, cooldown: 1200, color: 0xe94560, w: 40, h: 40, bonusKnockback: 0, scale: 0.65, reward: 25 },
-    { type: 'wawa', hp: 120, speed: -2.0, damage: 12, range: 10, cooldown: 500, color: 0xffffff, w: 25, h: 25, bonusKnockback: 0, scale: 0.5, reward: 20 }
+    { type: 'wawa', hp: 120, speed: -2.0, damage: 12, range: 10, cooldown: 500, color: 0xffffff, w: 25, h: 25, bonusKnockback: 0, scale: 0.5, reward: 20 },
+    { type: 'gekko', hp: 200, speed: -1.5, damage: 18, range: 30, cooldown: 1000, color: 0x2ecc71, w: 60, h: 60, bonusKnockback: 0.2, scale: 0.407, reward: 100, isInverted: true }
 ];
 
 export const BOSS_CONFIG = {

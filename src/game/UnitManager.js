@@ -69,7 +69,13 @@ export default class UnitManager {
         if (!specs) return null;
 
         const angleRad = Phaser.Math.DegToRad(5);
-        const zOffset = Phaser.Math.Between(-150, 150);
+        let zRange = 150;
+        let yBaseAdjust = 0;
+        if (this.scene.stage === 8) {
+            zRange = 10; // Width 20px
+            yBaseAdjust = 30; // 10 from previous + 20 more
+        }
+        const zOffset = Phaser.Math.Between(-zRange, zRange);
         const yOffset = zOffset * Math.sin(angleRad);
 
         const unitLevels = this.scene.registry.get('unitLevels') || {};
@@ -103,7 +109,7 @@ export default class UnitManager {
         };
 
         const spriteKey = extraSpecs.spriteKey || 'ally_' + typeKey;
-        const ally = this.getUnit(0, yOffsetBase + yOffset, spriteKey, finalSpecs, true);
+        const ally = this.getUnit(0, yOffsetBase + yOffset + yBaseAdjust, spriteKey, finalSpecs, true);
 
 
         this.allies.push(ally);
@@ -115,7 +121,10 @@ export default class UnitManager {
         const enemyCount = ENEMY_TYPES.length;
         let typeChoice = 0;
 
-        if (level >= 3 && this.enemySpawnCount % 5 === 0 && enemyCount >= 2) {
+        if (this.scene.stage === 8) {
+            typeChoice = ENEMY_TYPES.findIndex(e => e.type === 'gekko');
+            if (typeChoice === -1) typeChoice = 0;
+        } else if (level >= 3 && this.enemySpawnCount % 5 === 0 && enemyCount >= 2) {
             typeChoice = Math.min(3, enemyCount - 1);
         } else {
             const rand = Phaser.Math.Between(1, 100);
@@ -141,11 +150,19 @@ export default class UnitManager {
         specs.speed *= traitMultiplier; // Apply stage trait
 
         const angleRad = Phaser.Math.DegToRad(5);
-        const zOffset = Phaser.Math.Between(-150, 150);
+        let zRange = 150;
+        let yBaseAdjust = 0;
+
+        if (this.scene.stage === 8) {
+            zRange = 10; // Width 20px (from -10 to 10)
+            yBaseAdjust = 30; // Further lowered by 20px
+        }
+
+        const zOffset = Phaser.Math.Between(-zRange, zRange);
         const yOffset = zOffset * Math.sin(angleRad);
 
         const spriteKey = 'enemy_' + specs.type;
-        const enemy = this.getUnit(800, yOffsetBase + yOffset, spriteKey, specs, false);
+        const enemy = this.getUnit(800, yOffsetBase + yOffset + yBaseAdjust, spriteKey, specs, false);
 
         // If Heavy Metal (boss3 buff) is active, apply it to newly spawned enemies
         const boss3 = this.enemies.find(e => e.isBoss && e.typeKey === 'boss3' && e.active);
@@ -174,6 +191,7 @@ export default class UnitManager {
             specs.level = level;
             spriteKey = 'ally_leader';
         } else {
+            if (!stageConfig.boss) return null;
             if (stageConfig.boss.isCustom) {
                 specs = {
                     ...BOSS_CONFIG.boss,
@@ -196,7 +214,10 @@ export default class UnitManager {
             specs.damage *= clearBonus;
         }
 
-        const yOffset = specs.yOffset !== undefined ? specs.yOffset : 270;
+        let yOffset = specs.yOffset !== undefined ? specs.yOffset : 270;
+        if (this.scene.stage === 8) {
+            yOffset += 30;
+        }
         const xPos = overrideX !== null ? overrideX : (isAlly ? 50 : 750);
         const boss = this.getUnit(xPos, yOffset, spriteKey, specs, isAlly);
 

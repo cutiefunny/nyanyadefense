@@ -64,12 +64,17 @@ export default class GameScene extends Phaser.Scene {
             const match = path.match(/boss(\d*)\.png$/);
             if (match) {
                 const suffix = match[1];
+                if (suffix === '8') return; // Gekko (boss8.png) handled separately
                 const key = `enemy_boss${suffix}`;
                 const fWidth = 200; // All bosses use 200x200 except mortar
                 const fHeight = 200;
                 this.load.spritesheet(key, unitImages[path], { frameWidth: fWidth, frameHeight: fHeight });
             }
         });
+
+        // Load Gekko (boss8.png) as image for manual frame definition
+        const gekkoUrl = unitImages['../assets/units/boss8.png'];
+        if (gekkoUrl) this.load.image('enemy_gekko', gekkoUrl);
 
         const leaderUrl = unitImages['../assets/units/leader.png'];
         if (leaderUrl) this.load.spritesheet('ally_leader', leaderUrl, { frameWidth: 100, frameHeight: 100 });
@@ -177,6 +182,21 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
         this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        // Gekko (boss8.png) Frame Definitions
+        if (this.textures.exists('enemy_gekko')) {
+            const tex = this.textures.get('enemy_gekko');
+            // Check if frames already exist to avoid errors on restart
+            // Using numeric strings for frames to satisfy parts of the engine that expect frame indices
+            if (!tex.has('0')) {
+                tex.add('0', 0, 0, 0, 172, 172); // idle
+                tex.add('1', 0, 172, 0, 172, 172); // walk1
+                tex.add('2', 0, 344, 0, 172, 172); // walk2
+                tex.add('3', 0, 516, 0, 282, 172); // attack
+                tex.add('4', 0, 798, 0, 172, 172); // hurt
+                tex.add('5', 0, 970, 0, 222, 172); // jump
+            }
+        }
 
         // Pigeon animation
         if (!this.anims.exists('pigeon_fly')) {
@@ -352,7 +372,19 @@ export default class GameScene extends Phaser.Scene {
             }
         });
 
-        allUnitKeys.forEach(key => this.createUnitAnimations(key));
+        allUnitKeys.forEach(key => {
+            if (key === 'enemy_gekko') return; // Skip Gekko, handled below
+            this.createUnitAnimations(key);
+        });
+
+        // Create Gekko specific animations with numeric frame references
+        if (this.textures.exists('enemy_gekko') && !this.anims.exists('enemy_gekko_idle')) {
+            this.anims.create({ key: 'enemy_gekko_idle', frames: [{ key: 'enemy_gekko', frame: '0' }], frameRate: 1, repeat: -1 });
+            this.anims.create({ key: 'enemy_gekko_walk', frames: [{ key: 'enemy_gekko', frame: '1' }, { key: 'enemy_gekko', frame: '2' }], frameRate: 4, repeat: -1 });
+            this.anims.create({ key: 'enemy_gekko_attack', frames: [{ key: 'enemy_gekko', frame: '3' }], frameRate: 8, repeat: 0 });
+            this.anims.create({ key: 'enemy_gekko_hurt', frames: [{ key: 'enemy_gekko', frame: '4' }], frameRate: 8, repeat: 0 });
+            this.anims.create({ key: 'enemy_gekko_jump', frames: [{ key: 'enemy_gekko', frame: '5' }], frameRate: 8, repeat: 0 });
+        }
 
         if (this.textures.exists('bg_mouse') && !this.anims.exists('bg_mouse_walk')) {
             this.anims.create({ key: 'bg_mouse_walk', frames: this.anims.generateFrameNumbers('bg_mouse', { start: 0, end: 1 }), frameRate: 8, repeat: -1 });
@@ -659,11 +691,27 @@ export default class GameScene extends Phaser.Scene {
         
         const spawnDelay = baseSpawnDelay / (spawnRateMultiplier * skillSpawnMultiplier);
 
-        if (this.enemySpawnTimer > spawnDelay) {
+        if (this.stage === 8) {
+            // Stage 8: 3 Gekkos per second (333ms interval)
+            if (this.enemySpawnTimer > 333) {
+                this.unitManager.spawnEnemy(this.enemyLevel); // UnitManager will use 'gekko' type if stage traits defined? No, I'll force it here or in UnitManager.
+                this.enemySpawnTimer = 0;
+            }
+        } else if (this.enemySpawnTimer > spawnDelay) {
             if (this.stage !== 5 && this.stage !== 6) {
                 this.spawnEnemy();
             }
             this.enemySpawnTimer = 0;
+        }
+
+        // Survival Victory Check
+        if (config.objective === 'survival') {
+            const remainingTime = Math.max(0, config.survivalTime - (this.stageTime / 1000));
+            this.sys.game.events.emit('update-survival-timer', remainingTime);
+            
+            if (remainingTime <= 0 && !this.isGameOver) {
+                this.handleVictory(); // Trigger victory
+            }
         }
 
         // Auto spawn allies (minions) - ONLY Normal Cats (비실이)
@@ -729,91 +777,7 @@ export default class GameScene extends Phaser.Scene {
         const gameResult = this.unitManager.updateUnits(this.battleTime, scaledDelta);
         if (gameResult && !this.isGameOver) {
             if (gameResult === 'victory') {
-                const config = STAGE_CONFIG[this.stage];
-                // Add reward to global gold immediately on victory
-                const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
-                const clearCount = stageClearsBefore[this.stage] || 0;
-                const clearRewardMultiplier = 1 + (clearCount * 0.02);
-
-                const currentGlobal = this.registry.get('globalGold') || 0;
-                const finalReward = Math.floor((config.clearReward || 0) * clearRewardMultiplier);
-
-                this.registry.set('globalGold', currentGlobal + finalReward);
-                
-                const totalCoins = this.registry.get('totalCoins') || 0;
-                this.registry.set('totalCoins', totalCoins + finalReward);
-
-                // Update clear counts (Clone object to trigger registry change event)
-                const stageClears = { ...stageClearsBefore };
-                stageClears[this.stage] = clearCount + 1;
-                this.registry.set('stageClears', stageClears);
-
-                // Draw 1 random unlocked unit card
-                let rewardLevel = 1;
-                let rewardCount = 1;
-                const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
-                const unlockedTypes = ['leader', ...Object.keys(ALLY_TYPES)].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
-                
-                const newlyUnlocked = Object.entries(ALLY_TYPES).find(([key, spec]) => spec.unlockStage === this.stage);
-                let drawnCardKey = '';
-                
-                if (unlockedTypes.length > 0) {
-                    const isDoubleReward = Math.random() < 0.2;
-                    const randomType = (clearCount === 0 && newlyUnlocked) ? newlyUnlocked[0] : Phaser.Utils.Array.GetRandom(unlockedTypes);
-                    let squad = this.registry.get('squad') || { inventory: [], deck: [] };
-                    if (!Array.isArray(squad.inventory)) squad.inventory = [];
-                    
-                    if (this.stage === 2) rewardLevel = Phaser.Math.Between(1, 2);
-                    else if (this.stage === 3) rewardLevel = 2;
-                    else if (this.stage === 4) rewardLevel = Phaser.Math.Between(2, 3);
-                    else if (this.stage === 5) rewardLevel = 3;
-
-                    if (randomType === 'leader' || randomType === 'normal') {
-                        const multiplier = isDoubleReward ? 2 : 1;
-                        rewardCount = Math.pow(2, rewardLevel - 1) * multiplier; 
-                        for (let i = 0; i < rewardCount; i++) {
-                            squad.inventory.push({ type: randomType, level: 1 });
-                        }
-                        rewardLevel = 1; 
-                    } else {
-                        rewardCount = isDoubleReward ? 2 : 1;
-                        for (let i = 0; i < rewardCount; i++) {
-                            squad.inventory.push({ type: randomType, level: rewardLevel });
-                        }
-                    }
-
-                    this.registry.set('squad', squad);
-                    localStorage.setItem('nyanya_squad', JSON.stringify(squad));
-                    drawnCardKey = randomType;
-                }
-
-                // Check for first time clear to show unlock notice
-                if (clearCount === 0) {
-                    const newlyUnlocked = Object.entries(ALLY_TYPES).find(([key, spec]) => spec.unlockStage === this.stage);
-                    if (newlyUnlocked) {
-                        this.sys.game.events.emit('unit-unlocked', {
-                            key: newlyUnlocked[0],
-                            name: newlyUnlocked[1].name,
-                            stage: this.stage
-                        });
-                    }
-                }
-
-                // Start Victory UI (Minimized Production for Performance)
-                this.isGameOver = true;
-
-                if (config && config.nextStage) {
-                    this.time.delayedCall(200, () => { 
-                        this.time.timeScale = 1;
-                        this.scene.pause();
-                        this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: finalReward, drawnCard: drawnCardKey, drawnCardLevel: rewardLevel, drawnCardCount: rewardCount });
-                    });
-                } else {
-                    this.time.delayedCall(200, () => { 
-                        this.time.timeScale = 1;
-                        this.sys.game.events.emit('game-over', 'victory', finalReward, drawnCardKey, rewardLevel, rewardCount);
-                    });
-                }
+                this.handleVictory();
             } else {
                 // Defeat UI (Minimized Production for Performance)
                 this.isGameOver = true;
@@ -825,6 +789,97 @@ export default class GameScene extends Phaser.Scene {
                     this.sys.game.events.emit('game-over', gameResult, this.runGold || 0);
                 });
             }
+        }
+    }
+
+    handleVictory() {
+        if (this.isGameOver) return;
+        
+        const config = STAGE_CONFIG[this.stage];
+        // Add reward to global gold immediately on victory
+        const stageClearsBefore = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+        const clearCount = stageClearsBefore[this.stage] || 0;
+        const clearRewardMultiplier = 1 + (clearCount * 0.02);
+
+        const currentGlobal = this.registry.get('globalGold') || 0;
+        const finalReward = Math.floor((config.clearReward || 0) * clearRewardMultiplier);
+
+        this.registry.set('globalGold', currentGlobal + finalReward);
+        
+        const totalCoins = this.registry.get('totalCoins') || 0;
+        this.registry.set('totalCoins', totalCoins + finalReward);
+
+        // Update clear counts (Clone object to trigger registry change event)
+        const stageClears = { ...stageClearsBefore };
+        stageClears[this.stage] = clearCount + 1;
+        this.registry.set('stageClears', stageClears);
+
+        // Draw 1 random unlocked unit card
+        let rewardLevel = 1;
+        let rewardCount = 1;
+        const maxClearedStage = Object.keys(stageClears).reduce((max, s) => stageClears[s] > 0 ? Math.max(max, parseInt(s)) : max, 0);
+        const unlockedTypes = ['leader', ...Object.keys(ALLY_TYPES)].filter(t => t === 'leader' || (ALLY_TYPES[t] && (ALLY_TYPES[t].unlockStage || 0) <= maxClearedStage));
+        
+        const newlyUnlocked = Object.entries(ALLY_TYPES).find(([key, spec]) => spec.unlockStage === this.stage);
+        let drawnCardKey = '';
+        
+        if (unlockedTypes.length > 0) {
+            const isDoubleReward = Math.random() < 0.2;
+            const randomType = (clearCount === 0 && newlyUnlocked) ? newlyUnlocked[0] : Phaser.Utils.Array.GetRandom(unlockedTypes);
+            let squad = this.registry.get('squad') || { inventory: [], deck: [] };
+            if (!Array.isArray(squad.inventory)) squad.inventory = [];
+            
+            if (this.stage === 2) rewardLevel = Phaser.Math.Between(1, 2);
+            else if (this.stage === 3) rewardLevel = 2;
+            else if (this.stage === 4) rewardLevel = Phaser.Math.Between(2, 3);
+            else if (this.stage === 5) rewardLevel = 3;
+            else if (this.stage === 8) rewardLevel = 5; // Stage 8 gives high level cards
+
+            if (randomType === 'leader' || randomType === 'normal') {
+                const multiplier = isDoubleReward ? 2 : 1;
+                rewardCount = Math.pow(2, rewardLevel - 1) * multiplier; 
+                for (let i = 0; i < rewardCount; i++) {
+                    squad.inventory.push({ type: randomType, level: 1 });
+                }
+                rewardLevel = 1; 
+            } else {
+                rewardCount = isDoubleReward ? 2 : 1;
+                for (let i = 0; i < rewardCount; i++) {
+                    squad.inventory.push({ type: randomType, level: rewardLevel });
+                }
+            }
+
+            this.registry.set('squad', squad);
+            localStorage.setItem('nyanya_squad', JSON.stringify(squad));
+            drawnCardKey = randomType;
+        }
+
+        // Check for first time clear to show unlock notice
+        if (clearCount === 0) {
+            const newlyUnlocked = Object.entries(ALLY_TYPES).find(([key, spec]) => spec.unlockStage === this.stage);
+            if (newlyUnlocked) {
+                this.sys.game.events.emit('unit-unlocked', {
+                    key: newlyUnlocked[0],
+                    name: newlyUnlocked[1].name,
+                    stage: this.stage
+                });
+            }
+        }
+
+        // Start Victory UI (Minimized Production for Performance)
+        this.isGameOver = true;
+
+        if (config && config.nextStage) {
+            this.time.delayedCall(200, () => { 
+                this.time.timeScale = 1;
+                this.scene.pause();
+                this.sys.game.events.emit('stage-clear', { stage: this.stage, reward: finalReward, drawnCard: drawnCardKey, drawnCardLevel: rewardLevel, drawnCardCount: rewardCount });
+            });
+        } else {
+            this.time.delayedCall(200, () => { 
+                this.time.timeScale = 1;
+                this.sys.game.events.emit('game-over', 'victory', finalReward, drawnCardKey, rewardLevel, rewardCount);
+            });
         }
     }
 

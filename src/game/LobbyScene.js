@@ -14,6 +14,37 @@ export default class LobbyScene extends Phaser.Scene {
         this.tab = 'MAIN'; // Default tab is now the cat base
     }
 
+    calculateCombatPower(deck) {
+        let totalCP = 0;
+        
+        // Include Leader
+        const unitLevels = this.registry.get('unitLevels') || {};
+        const leaderLevel = unitLevels.leader || 1;
+        const leaderSpec = BOSS_CONFIG.leader;
+        const leaderLevelBonus = 1 + (leaderLevel - 1) * 0.2;
+        totalCP += (leaderSpec.hp * leaderLevelBonus / 10) + (leaderSpec.damage * leaderLevelBonus * 5) + ((leaderSpec.defense || 0) * 20);
+
+        // Include Deck Units
+        deck.forEach(card => {
+            if (!card) return;
+            const spec = ALLY_TYPES[card.type];
+            if (!spec) return;
+
+            const level = card.level || 1;
+            const levelBonus = (card.type === 'healer') ? (1 + (level - 1) * 0.1) : (1 + (level - 1) * 0.2);
+            
+            const hp = spec.hp * levelBonus;
+            const damage = spec.damage * levelBonus;
+            let defense = spec.defense || 0;
+            if (card.type === 'tanker') defense += (level - 1) * 2;
+
+            // Simple CP formula: (HP / 10) + (Damage * 5) + (Defense * 20)
+            const cp = (hp / 10) + (damage * 5) + (defense * 20);
+            totalCP += cp;
+        });
+        return Math.floor(totalCP);
+    }
+
     init(data) {
         // 내부 탭 전환이 아닌 경우(외부에서 씬 시작)에만 MAIN으로 리셋
         if (data?.tab) {
@@ -690,9 +721,9 @@ export default class LobbyScene extends Phaser.Scene {
             strokeThickness: 5
         }).setOrigin(0.5);
 
-        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+        const stageClears = this.registry.get('stageClears') || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
         if (this.stagePage === undefined) this.stagePage = 0;
-        const totalStages = [1, 2, 3, 4, 5, 6, 7];
+        const totalStages = Object.keys(STAGE_CONFIG).map(Number).sort((a, b) => a - b);
         const pageSize = 3;
         
         // Pagination arrows
@@ -808,6 +839,11 @@ export default class LobbyScene extends Phaser.Scene {
             }
         }
 
+        const combatPower = this.calculateCombatPower(deckSlots);
+        this.add.text(deckStartX, 275, `총 전투력: ${combatPower}`, {
+            fontSize: '16px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 3
+        }).setOrigin(0, 0.5);
+
         // 2. Item Deck (Right-aligned)
         const itemEndX = 740;
         this.add.text(itemEndX, 225, '장착 아이템', {
@@ -920,7 +956,7 @@ export default class LobbyScene extends Phaser.Scene {
         }).setOrigin(0, 0);
         modal.add(desc);
 
-        // Boss Info Section
+        // Boss Info Section or Survival Info
         if (config.boss) {
             const bossSprite = this.add.sprite(-25, 45, config.boss.spriteKey || 'enemy_dog', 0)
                 .setDisplaySize(80, 80);
@@ -934,6 +970,15 @@ export default class LobbyScene extends Phaser.Scene {
             }).setOrigin(0, 0);
             
             modal.add([bossSprite, bossDesc]);
+        } else if (config.objective === 'survival') {
+            const timerIcon = this.add.text(-25, 45, '⏳', { fontSize: '64px' }).setOrigin(0.5);
+            const survivalText = this.add.text(30, 30, `생존 목표: ${config.survivalTime}초\n\n몰려오는 겍코 부대를 막아내며\n제한 시간 동안 버티세요!`, {
+                fontSize: '16px',
+                fontFamily: 'Arial Black',
+                fill: '#e94560',
+                wordWrap: { width: 250 }
+            }).setOrigin(0, 0);
+            modal.add([timerIcon, survivalText]);
         }
 
         const closeBtn = this.add.text(280, -110, '✕', {
@@ -1131,6 +1176,11 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.add.text(rightPanelCenterX, deckSectionY, `[ 출격 덱 (${deckSlots.length}슬롯) (클릭:해제) ]`, {
             fontSize: '13px', fontFamily: 'Arial Black', fill: '#e74c3c'
+        }).setOrigin(0.5);
+
+        const combatPower = this.calculateCombatPower(deckSlots);
+        this.add.text(rightPanelCenterX, deckSectionY + 18, `전투력: ${combatPower}`, {
+            fontSize: '16px', fontFamily: 'Arial Black', fill: '#fbd46d', stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5);
 
         for (let i = 0; i < deckSlots.length; i++) {
