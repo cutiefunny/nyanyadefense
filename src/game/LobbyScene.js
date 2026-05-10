@@ -218,15 +218,28 @@ export default class LobbyScene extends Phaser.Scene {
             const match = path.match(/boss(\d*)\.png$/);
             if (match) {
                 const suffix = match[1];
+                if (suffix === '8') return; // Gekko (boss8.png) handled separately
                 const key = `enemy_boss${suffix}`;
                 // Use 200x200 for bosses as per GameScene logic
                 this.load.spritesheet(key, unitImages[path], { frameWidth: 200, frameHeight: 200 });
             }
         });
+
+        // Load Gekko (boss8.png) as image for manual frame definition
+        const gekkoUrl = unitImages['../assets/units/boss8.png'];
+        if (gekkoUrl) this.load.image('enemy_gekko', gekkoUrl);
     }
 
     create() {
         this.renderBackground();
+
+        // Gekko (boss8.png) Frame Definition for Modal
+        if (this.textures.exists('enemy_gekko')) {
+            const tex = this.textures.get('enemy_gekko');
+            if (!tex.has('0')) {
+                tex.add('0', 0, 0, 0, 172, 172); // idle
+            }
+        }
 
         if (this.tab === 'MAIN') {
             this.renderMainScreen();
@@ -971,14 +984,22 @@ export default class LobbyScene extends Phaser.Scene {
             
             modal.add([bossSprite, bossDesc]);
         } else if (config.objective === 'survival') {
-            const timerIcon = this.add.text(-25, 45, '⏳', { fontSize: '64px' }).setOrigin(0.5);
+            if (stageId === 8 && this.textures.exists('enemy_gekko')) {
+                const gekkoIcon = this.add.sprite(-25, 45, 'enemy_gekko', '0')
+                    .setDisplaySize(120, 120);
+                modal.add(gekkoIcon);
+            } else {
+                const timerIcon = this.add.text(-25, 45, '⏳', { fontSize: '64px' }).setOrigin(0.5);
+                modal.add(timerIcon);
+            }
+
             const survivalText = this.add.text(30, 30, `생존 목표: ${config.survivalTime}초\n\n몰려오는 겍코 부대를 막아내며\n제한 시간 동안 버티세요!`, {
                 fontSize: '16px',
                 fontFamily: 'Arial Black',
                 fill: '#e94560',
                 wordWrap: { width: 250 }
             }).setOrigin(0, 0);
-            modal.add([timerIcon, survivalText]);
+            modal.add(survivalText);
         }
 
         const closeBtn = this.add.text(280, -110, '✕', {

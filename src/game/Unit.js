@@ -553,7 +553,16 @@ export default class Unit extends Phaser.GameObjects.Sprite {
 
                 // Play a heal sound if available (reuse hit for now or just silent)
             } else if (this.typeKey === 'boss7') {
-                this.throwGrenade(target, currentDamage);
+                const minDist = Math.max(0, Math.abs(this.x - target.x) - (this.logicWidth / 2 + target.logicWidth / 2));
+                if (minDist <= 150) {
+                    // Close Range: Shotgun
+                    this.scene.sound.play('shotgun', { volume: 0.8 });
+                    target.takeDamage(currentDamage * 1.5, this.isAlly); // Slightly higher damage for shotgun
+                    this.applySplashDamage(target.x, target.y, currentDamage * 0.7, 50); // Small splash
+                } else {
+                    // Long Range: Grenade (Original behavior)
+                    this.throwGrenade(target, currentDamage);
+                }
             } else if (this.typeKey === 'boss6') {
                 this.fireWavePattern();
             } else if (this.typeKey === 'gekko' && Math.random() < 0.15) {
@@ -625,15 +634,21 @@ export default class Unit extends Phaser.GameObjects.Sprite {
                 // If buffed, ignore knockback immunity for normal tankers, but Double-Door tankers and bosses stay immune
                 const isDoubleDoor = target.isDoubleDoorTank || false;
                 const isSuperArmor = (target.typeKey === 'tanker' && target.specs.level >= 5) || (target.superArmorTimer > 0);
-                const targetImmune = this.buffRemainingTime > 0 ? (target.isBoss || isDoubleDoor || isSuperArmor) : (target.isKnockbackImmune || target.isBoss);
+                
+                // Immunity logic:
+                // 1. Bosses and Super Armor are always immune.
+                // 2. Double Door Tankers are NOT fully immune (they take 20% knockback).
+                // 3. Normal units with isKnockbackImmune are immune unless attacker is buffed.
+                const targetImmune = target.isBoss || isSuperArmor || (target.isKnockbackImmune && !isDoubleDoor && this.buffRemainingTime <= 0);
 
                 if (!targetImmune && Math.random() <= knockbackChance) {
                     target.stunRemainingTime = 400;
 
-                    // Normal tankers (who have isKnockbackImmune) only move 10% of the distance
                     let kbDistance = 40;
-                    if (this.buffRemainingTime > 0 && target.isKnockbackImmune) {
-                        kbDistance = 4;
+                    if (isDoubleDoor) {
+                        kbDistance = 8; // 20% of 40
+                    } else if (this.buffRemainingTime > 0 && target.isKnockbackImmune) {
+                        kbDistance = 4; // 10% of 40
                     }
 
                     this.scene.tweens.add({

@@ -230,13 +230,13 @@ export const STAGE_CONFIG = {
         name: '당인리 발전소',
         background: 'bg_stage8',
         objective: 'survival',
-        survivalTime: 60,
+        survivalTime: 120,
         boss: null,
         clearReward: 1000000,
         scaleMultiplier: 1.0,
         nextStage: null,
         traits: {
-            description: '당인리 발전소에서의 생존 게임! 60초간 몰려오는 겍코 부대를 막아내라!'
+            description: '상수동의 최남단이자 한강의 관문인 당인리 발전소는 현재 동네 반려견들의 집회 장소가 되었다!'
         }
     }
 };

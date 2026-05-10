@@ -20,6 +20,7 @@ import boss3_skill_sound from '../assets/sounds/boss3_skill.mp3';
 import boom_sound from '../assets/sounds/Boom.wav';
 import canon_sound from '../assets/sounds/canon.wav';
 import grenade_sound from '../assets/sounds/grenade.wav';
+import shotgun_sound from '../assets/sounds/shotgun.mp3';
 
 // Vite dynamic glob import for all unit png files
 const unitImages = import.meta.glob('../assets/units/*.png', { eager: true, import: 'default' });
@@ -47,6 +48,7 @@ export default class GameScene extends Phaser.Scene {
         this.load.audio('boom', boom_sound);
         this.load.audio('canon', canon_sound);
         this.load.audio('grenade', grenade_sound);
+        this.load.audio('shotgun', shotgun_sound);
 
         // Dynamically load all ally and enemy sprite sheets
         Object.keys(ALLY_TYPES).forEach(key => {
@@ -172,6 +174,7 @@ export default class GameScene extends Phaser.Scene {
         this.time.timeScale = this.gameSpeed;
         this.runGold = 0;
         this.heavyMetalRemainingTime = 0;
+        this.gekkoSpawnDelay = 333; // Initial delay for Stage 8
     }
 
 
@@ -188,8 +191,8 @@ export default class GameScene extends Phaser.Scene {
             const tex = this.textures.get('enemy_gekko');
             // Check if frames already exist to avoid errors on restart
             // Using numeric strings for frames to satisfy parts of the engine that expect frame indices
-            if (!tex.has('0')) {
-                tex.add('0', 0, 0, 0, 172, 172); // idle
+            if (!tex.has('1')) {
+                if (!tex.has('0')) tex.add('0', 0, 0, 0, 172, 172); // idle
                 tex.add('1', 0, 172, 0, 172, 172); // walk1
                 tex.add('2', 0, 344, 0, 172, 172); // walk2
                 tex.add('3', 0, 516, 0, 282, 172); // attack
@@ -692,10 +695,11 @@ export default class GameScene extends Phaser.Scene {
         const spawnDelay = baseSpawnDelay / (spawnRateMultiplier * skillSpawnMultiplier);
 
         if (this.stage === 8) {
-            // Stage 8: 3 Gekkos per second (333ms interval)
-            if (this.enemySpawnTimer > 333) {
-                this.unitManager.spawnEnemy(this.enemyLevel); // UnitManager will use 'gekko' type if stage traits defined? No, I'll force it here or in UnitManager.
+            // Stage 8: 2~4 Gekkos per second (250ms ~ 500ms interval)
+            if (this.enemySpawnTimer > this.gekkoSpawnDelay) {
+                this.unitManager.spawnEnemy(this.enemyLevel);
                 this.enemySpawnTimer = 0;
+                this.gekkoSpawnDelay = Phaser.Math.Between(250, 500);
             }
         } else if (this.enemySpawnTimer > spawnDelay) {
             if (this.stage !== 5 && this.stage !== 6) {

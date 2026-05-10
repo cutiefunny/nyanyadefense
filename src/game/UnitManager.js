@@ -135,6 +135,15 @@ export default class UnitManager {
             }
         }
 
+        // Validate choice against unlockStage (except for stage 8 which forces gekko)
+        const chosenEnemy = ENEMY_TYPES[typeChoice] || ENEMY_TYPES[0];
+        if (this.scene.stage !== 8 && chosenEnemy.unlockStage) {
+            const stageClears = this.scene.registry.get('stageClears') || {};
+            if (!(stageClears[chosenEnemy.unlockStage] > 0)) {
+                typeChoice = 0; // Fallback to basic enemy if locked
+            }
+        }
+
         const specs = { ...(ENEMY_TYPES[typeChoice] || ENEMY_TYPES[0]) };
         const stageConfig = STAGE_CONFIG[this.scene.stage];
         const traitMultiplier = stageConfig?.traits?.enemySpeedMultiplier || 1.0;
