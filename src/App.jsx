@@ -224,6 +224,7 @@ function App() {
       setStageCleared(null);
       setIsAutoMode(true);
       setSpawnedUnits({ normal: false, tanker: false, shooter: false });
+      setSurvivalTimer(0);
       checkTutorials();
     });
 
@@ -237,6 +238,7 @@ function App() {
       setCurrentSceneKey('GameScene');
       setGameOver('');
       setStage(scene.stage);
+      setSurvivalTimer(0);
       // Load deck from squad data
       const squad = gameInstance.registry.get('squad') || { inventory: {}, deck: [null, null, null] };
       const deck = squad.deck || [null, null, null];
@@ -334,6 +336,7 @@ function App() {
       setVictoryDrawnCard(drawnCard);
       setVictoryDrawnCardLevel(drawnCardLevel);
       setVictoryDrawnCardCount(drawnCardCount);
+      setSurvivalTimer(0);
       setShowGuide(false);
       setActiveTutorial(null);
       if (result === 'victory' && isRepeatMode()) {
@@ -491,7 +494,7 @@ function App() {
   };
 
   return (
-    <div class="app-container">
+    <div class="app-container" classList={{ 'in-game': currentSceneKey() === 'GameScene' }}>
       {currentSceneKey() === 'LobbyScene' && (
         <div class="auth-header">
           {user() ? (

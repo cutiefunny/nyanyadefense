@@ -44,6 +44,9 @@ body {
   .app-container {
     padding-top: 55px; /* Create space for auth header */
   }
+  .app-container.in-game {
+    padding-top: 15px; /* Shift up in game */
+  }
 }
 
 .auth-header {
