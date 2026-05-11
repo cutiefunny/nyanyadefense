@@ -69,6 +69,9 @@ function App() {
   const [showLeaderboard, setShowLeaderboard] = createSignal(false);
   const [leaderboardData, setLeaderboardData] = createSignal([]);
   const [unlockedUnitsList, setUnlockedUnitsList] = createSignal(['leader', 'normal']);
+  const [showInstallPrompt, setShowInstallPrompt] = createSignal(false);
+  const [installDeviceType, setInstallDeviceType] = createSignal(null);
+  let deferredPrompt = null;
 
   let syncTimeout;
   let gameContainer;
@@ -144,6 +147,26 @@ function App() {
   };
 
   onMount(() => {
+    // PWA Install Prompt Logic
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone || document.referrer.includes('android-app://');
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isAndroid = /android/.test(userAgent);
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+
+    if (!isStandalone) {
+      if (isAndroid) {
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          setInstallDeviceType('android');
+          setShowInstallPrompt(true);
+        });
+      } else if (isIOS) {
+        setInstallDeviceType('ios');
+        setTimeout(() => setShowInstallPrompt(true), 1500);
+      }
+    }
+
     const levels = JSON.parse(localStorage.getItem('nyanya_unitLevels') || '{"leader":1, "normal":1}');
     setUnlockedUnitsList(Object.keys(levels).filter(k => levels[k] >= 1));
 
@@ -865,6 +888,42 @@ function App() {
 
         {showLeaderboard() && (
           <LeaderboardModal onClose={() => setShowLeaderboard(false)} />
+        )}
+
+        {showInstallPrompt() && (
+          <div class="modal-overlay" style={{ "z-index": "10000" }}>
+            <div class="modal-content" style={{ "width": "320px", "text-align": "center" }}>
+              <h2 style={{ "color": "#43d8c9", "font-size": "1.3rem", "margin-bottom": "10px" }}>앱 설치 안내</h2>
+              <div style={{ "margin-bottom": "20px" }}>
+                {installDeviceType() === 'android' ? (
+                  <p style={{ "color": "#fff", "font-size": "1rem", "line-height": "1.5", "margin": "0" }}>
+                    더 나은 환경에서 플레이하려면<br/>앱을 설치해보세요!
+                  </p>
+                ) : (
+                  <p style={{ "color": "#fff", "font-size": "1rem", "line-height": "1.5", "margin": "0" }}>
+                    아래 <strong>공유</strong> 버튼을 누르고<br/>
+                    <strong>'홈 화면에 추가'</strong>를 선택하여<br/>
+                    앱을 설치해보세요!
+                  </p>
+                )}
+              </div>
+              <div style={{ "display": "flex", "gap": "10px", "justify-content": "center" }}>
+                <button class="modal-btn" onClick={() => setShowInstallPrompt(false)} style={{ "background": "#444", "color": "#fff", "flex": "1", "margin": "0" }}>닫기</button>
+                {installDeviceType() === 'android' && (
+                  <button class="modal-btn" onClick={async () => {
+                    if (deferredPrompt) {
+                      deferredPrompt.prompt();
+                      const { outcome } = await deferredPrompt.userChoice;
+                      if (outcome === 'accepted') {
+                        setShowInstallPrompt(false);
+                      }
+                      deferredPrompt = null;
+                    }
+                  }} style={{ "background": "#43d8c9", "color": "#000", "flex": "1", "margin": "0" }}>설치하기</button>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
