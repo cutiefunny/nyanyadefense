@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup } from 'solid-js';
+import { createSignal, onMount, onCleanup, createEffect } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import Phaser from 'phaser';
 import LobbyScene from './game/LobbyScene';
@@ -74,6 +74,32 @@ function App() {
   let gameContainer;
   let gameInstance = null;
   let currentScene = null;
+  let wakeLockSentinel = null;
+
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator && !wakeLockSentinel) {
+      try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+      } catch (err) {
+        console.error(`Wake Lock Error: ${err.name}, ${err.message}`);
+      }
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLockSentinel) {
+      await wakeLockSentinel.release();
+      wakeLockSentinel = null;
+    }
+  };
+
+  createEffect(() => {
+    if (currentSceneKey() === 'GameScene' && isAutoMode() && isRepeatMode()) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+  });
 
   const isTriggerMatched = (trigger, data) => {
     switch (trigger.type) {
@@ -169,6 +195,13 @@ function App() {
       const levels = JSON.parse(localStorage.getItem('nyanya_unitLevels') || '{"leader":1, "normal":1}');
       setUnlockedUnitsList(Object.keys(levels).filter(k => levels[k] >= 1));
     });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && currentSceneKey() === 'GameScene' && isAutoMode() && isRepeatMode()) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleKeyDown = (e) => {
       if (e.key === '`') {
@@ -423,6 +456,8 @@ function App() {
     gameInstance.registry.events.on('changedata-totalCoins', (parent, value) => persistToStorage('nyanya_totalCoins', value));
 
     onCleanup(() => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      releaseWakeLock();
       window.removeEventListener('keydown', handleKeyDown);
       if (gameInstance) {
         gameInstance.destroy(true);
