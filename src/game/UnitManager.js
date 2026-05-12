@@ -124,6 +124,9 @@ export default class UnitManager {
         if (this.scene.stage === 8) {
             typeChoice = ENEMY_TYPES.findIndex(e => e.type === 'gekko');
             if (typeChoice === -1) typeChoice = 0;
+        } else if (this.scene.stage === 10) {
+            typeChoice = ENEMY_TYPES.findIndex(e => e.type === 'wawa');
+            if (typeChoice === -1) typeChoice = 0;
         } else if (level >= 3 && this.enemySpawnCount % 5 === 0 && enemyCount >= 2) {
             typeChoice = Math.min(3, enemyCount - 1);
         } else {

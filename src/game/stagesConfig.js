@@ -234,9 +234,49 @@ export const STAGE_CONFIG = {
         boss: null,
         clearReward: 1000000,
         scaleMultiplier: 1.0,
-        nextStage: null,
+        nextStage: 9,
         traits: {
             description: '상수동의 최남단이자 한강의 관문인 당인리 발전소는 현재 동네 반려견들의 집회 장소가 되었다!'
+        }
+    },
+    9: {
+        name: '합정역',
+        background: 'bg_stage9',
+        boss: {
+            isCustom: true,
+            type: 'dog',
+            spriteKey: 'enemy_dog',
+            hp: 30000,
+            damage: 80,
+            w: 80,
+            scale: 1.0,
+            reward: 100000,
+            isBoss: true,
+            range: 30,
+            cooldown: 1500,
+            bossDescription: '합정역으로 가는 길은 멀고도 험하다.'
+        },
+        clearReward: 1500000,
+        scaleMultiplier: 1.0,
+        nextStage: 10,
+        events: [],
+        traits: {
+            enemySpeedMultiplier: 1.2,
+            spawnRateMultiplier: 1.2,
+            description: '합정역으로 향하는 길목.'
+        }
+    },
+    10: {
+        name: '멘헤라 공원',
+        background: 'bg_stage10',
+        objective: 'survival',
+        survivalTime: 120,
+        boss: null,
+        clearReward: 3000000,
+        scaleMultiplier: 0.7,
+        nextStage: null,
+        traits: {
+            description: '멘헤라 공원에 진입했다. 치와와들의 엄청난 러쉬를 버텨내라!'
         }
     }
 };

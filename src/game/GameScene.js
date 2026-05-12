@@ -21,6 +21,7 @@ import boom_sound from '../assets/sounds/Boom.wav';
 import canon_sound from '../assets/sounds/canon.wav';
 import grenade_sound from '../assets/sounds/grenade.wav';
 import shotgun_sound from '../assets/sounds/shotgun.mp3';
+import stage10_npc_img from '../assets/backgrounds/stage10_npc.png';
 
 // Vite dynamic glob import for all unit png files
 const unitImages = import.meta.glob('../assets/units/*.png', { eager: true, import: 'default' });
@@ -92,6 +93,8 @@ export default class GameScene extends Phaser.Scene {
 
         const pigeonUrl = itemImages['../assets/items/pigeon.png'];
         if (pigeonUrl) this.load.spritesheet('item_pigeon', pigeonUrl, { frameWidth: 100, frameHeight: 90 });
+
+        this.load.spritesheet('stage10_npc', stage10_npc_img, { frameWidth: 138, frameHeight: 325 });
     }
 
     init(data) {
@@ -175,6 +178,7 @@ export default class GameScene extends Phaser.Scene {
         this.runGold = 0;
         this.heavyMetalRemainingTime = 0;
         this.gekkoSpawnDelay = 333; // Initial delay for Stage 8
+        this.wawaSpawnDelay = 150; // Initial delay for Stage 10 rush
     }
 
 
@@ -393,6 +397,33 @@ export default class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'bg_mouse_walk', frames: this.anims.generateFrameNumbers('bg_mouse', { start: 0, end: 1 }), frameRate: 8, repeat: -1 });
         }
 
+        if (this.textures.exists('stage10_npc')) {
+            if (this.anims.exists('stage10_npc_idle')) this.anims.remove('stage10_npc_idle');
+            if (this.anims.exists('stage10_npc_walk')) this.anims.remove('stage10_npc_walk');
+
+            this.anims.create({ 
+                key: 'stage10_npc_idle', 
+                frames: [{ key: 'stage10_npc', frame: 0 }], 
+                frameRate: 1, 
+                repeat: -1 
+            });
+            this.anims.create({ 
+                key: 'stage10_npc_walk', 
+                frames: [
+                    { key: 'stage10_npc', frame: 1 },
+                    { key: 'stage10_npc', frame: 2 },
+                    { key: 'stage10_npc', frame: 3 },
+                    { key: 'stage10_npc', frame: 2 }
+                ], 
+                frameRate: 6, 
+                repeat: -1 
+            });
+        }
+
+        if (this.stage === 10) {
+            this.spawnStage10NPC();
+        }
+
         this.level = 1;
         this.isGameOver = false;
         this.enemySpawnTimer = 0;
@@ -554,6 +585,57 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
+    spawnStage10NPC() {
+        if (this.isGameOver) return;
+        if (this.currentStage10NPC && this.currentStage10NPC.active) return;
+
+        const startX = Phaser.Math.Between(100, 700);
+        const startY = Phaser.Math.Between(220, 260); // Background level so it doesn't overlap front action too much
+        
+        // npc image size is 139x325. Scale it down a bit so it fits the scene.
+        const npc = this.add.sprite(startX, startY, 'stage10_npc').setOrigin(0.5, 1).setScale(0.315);
+        npc.setDepth(startY - 50); // Behind units usually at depth 250+
+        this.currentStage10NPC = npc;
+
+        const moveRandomly = () => {
+            if (!npc.active || this.isGameOver || this.stage !== 10) {
+                if (npc.active) npc.destroy();
+                return;
+            }
+
+            const action = Phaser.Math.Between(0, 1);
+            if (action === 0) {
+                // Idle
+                npc.play({ key: 'stage10_npc_idle', repeat: -1 });
+                this.time.delayedCall(Phaser.Math.Between(2000, 4000), moveRandomly);
+            } else {
+                // Walk
+                const targetX = Phaser.Math.Between(100, 700);
+                const dist = Math.abs(targetX - npc.x);
+                npc.setFlipX(targetX < npc.x); 
+                
+                npc.play({ key: 'stage10_npc_walk', repeat: -1 });
+                
+                const speed = 50; 
+                const duration = (dist / speed) * 1000;
+
+                this.tweens.add({
+                    targets: npc,
+                    x: targetX,
+                    duration: duration,
+                    ease: 'Linear',
+                    onComplete: () => {
+                        if (!npc.active) return;
+                        npc.play({ key: 'stage10_npc_idle', repeat: -1 });
+                        this.time.delayedCall(Phaser.Math.Between(1000, 2000), moveRandomly);
+                    }
+                });
+            }
+        };
+
+        moveRandomly();
+    }
+
     spawnAlly(typeKey) {
         if (this.isGameOver) return;
         this.unitManager.spawnAlly(typeKey);
@@ -601,6 +683,13 @@ export default class GameScene extends Phaser.Scene {
         }
         // Update all existing units to match the new stage's scale multiplier
         this.unitManager.updateAllUnitScales();
+
+        if (this.stage === 10) {
+            this.spawnStage10NPC();
+        } else if (this.currentStage10NPC) {
+            this.currentStage10NPC.destroy();
+            this.currentStage10NPC = null;
+        }
 
         // Reset stage timer and processed events
         this.stageTime = 0;
@@ -700,6 +789,13 @@ export default class GameScene extends Phaser.Scene {
                 this.unitManager.spawnEnemy(this.enemyLevel);
                 this.enemySpawnTimer = 0;
                 this.gekkoSpawnDelay = Phaser.Math.Between(250, 500);
+            }
+        } else if (this.stage === 10) {
+            // Stage 10: Chihuahua rush!
+            if (this.enemySpawnTimer > this.wawaSpawnDelay) {
+                this.unitManager.spawnEnemy(this.enemyLevel);
+                this.enemySpawnTimer = 0;
+                this.wawaSpawnDelay = Phaser.Math.Between(150, 400); // 150ms ~ 400ms interval
             }
         } else if (this.enemySpawnTimer > spawnDelay) {
             if (this.stage !== 5 && this.stage !== 6) {
