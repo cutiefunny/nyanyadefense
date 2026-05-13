@@ -974,6 +974,19 @@ export default class GameScene extends Phaser.Scene {
         // Start Victory UI (Minimized Production for Performance)
         this.isGameOver = true;
 
+        // Probabilistic Reward: Blue Guitar (heavy_metal) on Stage 3
+        if (this.stage === 3) {
+            const permItems = this.registry.get('permanentItems') || [];
+            if (!permItems.includes('heavy_metal')) {
+                const dropChance = 0.3; // 30% chance
+                if (Math.random() < dropChance) {
+                    this.time.delayedCall(1000, () => {
+                        this.sys.game.events.emit('item-unlocked', ITEM_CONFIG.heavy_metal);
+                    });
+                }
+            }
+        }
+
         if (config && config.nextStage) {
             this.time.delayedCall(200, () => { 
                 this.time.timeScale = 1;

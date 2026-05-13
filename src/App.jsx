@@ -439,6 +439,10 @@ function App() {
       setUnlockedUnit(info);
     });
 
+    gameInstance.events.on('item-unlocked', (item) => {
+      setUnlockedItem(item);
+    });
+
     gameInstance.events.on('show-leader-skill-tree', (data) => {
       setSkillTreeData(data);
     });
@@ -735,11 +739,7 @@ function App() {
               <h3 style={{ "color": "#fff", "font-size": "1.1rem", "margin-bottom": "5px" }}>{unlockedUnit().name}</h3>
               <p style={{ "color": "#aaa", "font-size": "0.8rem", "margin-bottom": "15px", "line-height": "1.4" }}>{unlockedUnit().desc}</p>
               <button class="modal-btn" onClick={() => {
-                const unit = unlockedUnit();
                 setUnlockedUnit(null);
-                if (unit && unit.stage === 3) {
-                  setUnlockedItem(ITEM_CONFIG.heavy_metal);
-                }
               }} style={{ "background": "#fbd46d", "color": "#000" }}>확인</button>
             </div>
           </div>
@@ -752,7 +752,20 @@ function App() {
               <div style={{ "font-size": "2.5rem", "margin-bottom": "10px" }}>{unlockedItem().icon}</div>
               <h3 style={{ "color": "#fff", "font-size": "1.1rem", "margin-bottom": "5px" }}>{unlockedItem().name}</h3>
               <p style={{ "color": "#aaa", "font-size": "0.8rem", "margin-bottom": "15px", "line-height": "1.4" }}>{unlockedItem().desc}</p>
-              <button class="modal-btn" onClick={() => setUnlockedItem(null)} style={{ "background": "#43d8c9", "color": "#000" }}>확인</button>
+              <button class="modal-btn" onClick={() => {
+                const item = unlockedItem();
+                if (item && item.type === 'permanent') {
+                  const savedPerms = JSON.parse(localStorage.getItem('nyanya_permanentItems') || '[]');
+                  if (!savedPerms.includes(item.id)) {
+                    savedPerms.push(item.id);
+                    localStorage.setItem('nyanya_permanentItems', JSON.stringify(savedPerms));
+                    if (gameInstance) {
+                      gameInstance.registry.set('permanentItems', savedPerms);
+                    }
+                  }
+                }
+                setUnlockedItem(null);
+              }} style={{ "background": "#43d8c9", "color": "#000" }}>확인</button>
             </div>
           </div>
         )}
