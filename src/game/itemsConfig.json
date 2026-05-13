@@ -90,5 +90,13 @@
     "effects": {
       "goldMultiplier": 1.2
     }
+  },
+  "lucky_pack": {
+    "id": "lucky_pack",
+    "name": "럭키 카드 팩",
+    "desc": "랜덤 유닛 카드 1장을 획득합니다.",
+    "cost": 30000,
+    "type": "gacha",
+    "icon": "🎁"
   }
 }

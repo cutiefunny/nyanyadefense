@@ -16,7 +16,7 @@ export default class LobbyScene extends Phaser.Scene {
 
     calculateCombatPower(deck) {
         let totalCP = 0;
-        
+
         // Include Leader
         const unitLevels = this.registry.get('unitLevels') || {};
         const leaderLevel = unitLevels.leader || 1;
@@ -32,7 +32,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             const level = card.level || 1;
             const levelBonus = (card.type === 'healer') ? (1 + (level - 1) * 0.1) : (1 + (level - 1) * 0.2);
-            
+
             const hp = spec.hp * levelBonus;
             const damage = spec.damage * levelBonus;
             let defense = spec.defense || 0;
@@ -52,7 +52,7 @@ export default class LobbyScene extends Phaser.Scene {
         } else if (!data?.keepTab) {
             this.tab = 'MAIN';
         }
-        
+
         // Items configuration
         this.ITEM_CONFIG = ITEM_CONFIG;
 
@@ -512,13 +512,13 @@ export default class LobbyScene extends Phaser.Scene {
 
         // 2. Skills Column
         const skillTypes = [
-            { id: 'normal_cooldown', name: '비실이 생산속도 증가' },
+            { id: 'normal_cooldown', name: '비실이 생산 속도 증가' },
             { id: 'deck_slots', name: '출격 슬롯 추가' },
             { id: 'item_slots', name: '아이템 슬롯 추가' }
         ];
         this.renderScrollableList(skillTypes, 600, listY, visibleHeight, 'skill', null);
 
-        const backBtn = this.add.text(400, 275, '< 돌아가기', {
+        const backBtn = this.add.text(200, 275, '< 돌아가기', {
             fontSize: '24px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
@@ -572,7 +572,7 @@ export default class LobbyScene extends Phaser.Scene {
         items.forEach((item, i) => {
             const y = i * itemHeight + 26; // relative to container
             const id = type === 'unit' ? item : item.id;
-            
+
             let cardCount = 0;
             if (id === 'leader' || id === 'normal') {
                 cardCount = invCards.filter(c => c.type === id).length;
@@ -603,18 +603,18 @@ export default class LobbyScene extends Phaser.Scene {
                 if (id === 'shout_cooldown') {
                     upgradeCost = Math.floor(2000 * Math.pow(1.5, level - 1));
                 } else if (id === 'normal_cooldown') {
-                    upgradeCost = Math.floor(5000 * Math.pow(2, level - 1));
+                    upgradeCost = Math.floor(10000 * Math.pow(2, level - 1));
                 } else if (id === 'deck_slots') {
                     upgradeCost = Math.floor(10000 * Math.pow(2, level - 1));
                 } else if (id === 'item_slots') {
                     upgradeCost = Math.floor(20000 * Math.pow(3, level - 1));
                 } else {
-                    upgradeCost = Math.floor(800 * Math.pow(1.3, level - 1));
+                    upgradeCost = Math.floor(800 * Math.pow(1.5, level - 1));
                 }
             }
 
-            const canAfford = !isMaxLevel && ((id === 'leader' || id === 'normal') && type === 'unit' 
-                ? cardCount >= neededCards 
+            const canAfford = !isMaxLevel && ((id === 'leader' || id === 'normal') && type === 'unit'
+                ? cardCount >= neededCards
                 : gold >= upgradeCost);
 
             const bg = this.add.rectangle(0, y, 370, 48, 0x1a1a2e, 0.8)
@@ -738,7 +738,7 @@ export default class LobbyScene extends Phaser.Scene {
         if (this.stagePage === undefined) this.stagePage = 0;
         const totalStages = Object.keys(STAGE_CONFIG).map(Number).sort((a, b) => a - b);
         const pageSize = 3;
-        
+
         // Pagination arrows
         if (this.stagePage > 0) {
             const leftArrow = this.add.text(100, 160, '◀', {
@@ -900,9 +900,9 @@ export default class LobbyScene extends Phaser.Scene {
         // Check for 3 consecutive shooters for mortar tutorial
         const deck = squad.deck;
         for (let i = 0; i <= deck.length - 3; i++) {
-            if (deck[i]?.type === 'shooter' && 
-                deck[i+1]?.type === 'shooter' && 
-                deck[i+2]?.type === 'shooter') {
+            if (deck[i]?.type === 'shooter' &&
+                deck[i + 1]?.type === 'shooter' &&
+                deck[i + 2]?.type === 'shooter') {
                 this.sys.game.events.emit('mortar-detected');
                 break;
             }
@@ -910,7 +910,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Check for 2 consecutive tankers for tanker-combo tutorial
         for (let i = 0; i <= deck.length - 2; i++) {
-            if (deck[i]?.type === 'tanker' && deck[i+1]?.type === 'tanker') {
+            if (deck[i]?.type === 'tanker' && deck[i + 1]?.type === 'tanker') {
                 this.sys.game.events.emit('tanker-combo-detected');
                 break;
             }
@@ -973,7 +973,7 @@ export default class LobbyScene extends Phaser.Scene {
         if (config.boss) {
             const bossSprite = this.add.sprite(-25, 45, config.boss.spriteKey || 'enemy_dog', 0)
                 .setDisplaySize(80, 80);
-            
+
             const bossDesc = this.add.text(30, 10, config.boss.bossDescription || '', {
                 fontSize: '14px',
                 fontFamily: 'Arial',
@@ -981,7 +981,7 @@ export default class LobbyScene extends Phaser.Scene {
                 wordWrap: { width: 250 },
                 fontStyle: 'italic'
             }).setOrigin(0, 0);
-            
+
             modal.add([bossSprite, bossDesc]);
         } else if (config.objective === 'survival') {
             if (stageId === 8 && this.textures.exists('enemy_gekko')) {
@@ -1069,13 +1069,13 @@ export default class LobbyScene extends Phaser.Scene {
         autoMergeBtn.on('pointerdown', () => {
             let merged = false;
             let hasPairs = true;
-            while(hasPairs) {
+            while (hasPairs) {
                 hasPairs = false;
-                for(let i=0; i<invCards.length; i++) {
+                for (let i = 0; i < invCards.length; i++) {
                     if (invCards[i].type === 'leader' || invCards[i].type === 'normal') continue;
-                    for(let j=i+1; j<invCards.length; j++) {
+                    for (let j = i + 1; j < invCards.length; j++) {
                         if (invCards[j].type === 'leader' || invCards[j].type === 'normal') continue;
-                        if(invCards[i].type === invCards[j].type && invCards[i].level === invCards[j].level) {
+                        if (invCards[i].type === invCards[j].type && invCards[i].level === invCards[j].level) {
                             invCards[i].level += 1;
                             invCards.splice(j, 1);
                             hasPairs = true;
@@ -1083,7 +1083,7 @@ export default class LobbyScene extends Phaser.Scene {
                             break;
                         }
                     }
-                    if(hasPairs) break;
+                    if (hasPairs) break;
                 }
             }
             if (merged) {
@@ -1101,7 +1101,7 @@ export default class LobbyScene extends Phaser.Scene {
         for (let i = 0; i < invCards.length; i++) {
             const card = invCards[i];
             if (card.type === 'leader' || card.type === 'normal') continue;
-            
+
             const row = Math.floor(displayIndex / maxCols);
             const col = displayIndex % maxCols;
             const x = invLeftX + 32 + col * gridSpacingX;
@@ -1143,7 +1143,7 @@ export default class LobbyScene extends Phaser.Scene {
                         // Merge!
                         card.level += 1;
                         this.sys.game.events.emit('card-merged');
-                        
+
                         // Emit hidden skills triggers
                         if (card.level >= 5) {
                             if (card.type === 'tanker' && !localStorage.getItem('nyanya_hiddenSkillSeen_tanker')) {
@@ -1223,7 +1223,7 @@ export default class LobbyScene extends Phaser.Scene {
 
                     // Place selected card into this slot
                     deckSlots[i] = selectedCard;
-                    
+
                     if (prevInSlot) {
                         // Swap: put previous card into the same inventory slot
                         invCards[this.selectedCardIndex] = prevInSlot;
@@ -1271,7 +1271,7 @@ export default class LobbyScene extends Phaser.Scene {
             // Unit Name & Stats Display with Premium Box
             const spec = ALLY_TYPES[selectedCard.type] || BOSS_CONFIG[selectedCard.type] || { hp: 0, damage: 0, defense: 0, name: selectedCard.type };
             const level = selectedCard.level || 1;
-            
+
             const levelBonus = (selectedCard.type === 'healer') ? (1 + (level - 1) * 0.1) : (1 + (level - 1) * 0.2);
             const curHP = Math.floor(spec.hp * levelBonus);
             const curATK = Math.floor(spec.damage * levelBonus);
@@ -1307,16 +1307,16 @@ export default class LobbyScene extends Phaser.Scene {
             const baseNameText = `${spec.name} (Lv.${level})`;
             const nameStyle = { fontSize: '15px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 2 };
             const skillStyle = { fontSize: '15px', fontFamily: 'Arial Black', fill: '#f1c40f', stroke: '#000', strokeThickness: 2 };
-            
+
             if (skillName) {
                 const nameObj = this.make.text({ x: 0, y: 0, text: baseNameText, style: nameStyle });
                 const skillObj = this.make.text({ x: 0, y: 0, text: skillName, style: skillStyle });
                 const totalWidth = nameObj.width + 8 + skillObj.width;
                 const startX = statsCenterX - totalWidth / 2;
-                
+
                 this.add.text(startX, deployY - 62, baseNameText, nameStyle).setOrigin(0, 0.5);
                 this.add.text(startX + nameObj.width + 8, deployY - 62, skillName, skillStyle).setOrigin(0, 0.5);
-                
+
                 nameObj.destroy();
                 skillObj.destroy();
             } else {
@@ -1324,7 +1324,7 @@ export default class LobbyScene extends Phaser.Scene {
             }
 
             const statsStyle = { fontSize: '13px', fontFamily: 'Arial Black', stroke: '#000', strokeThickness: 2 };
-            
+
             if (curDEF > 0) {
                 this.add.text(statsCenterX - 85, deployY - 40, `HP: ${curHP}`, { ...statsStyle, fill: '#ff7675' }).setOrigin(0.5);
                 this.add.text(statsCenterX, deployY - 40, `${atkLabel}: ${curDPS}`, { ...statsStyle, fill: '#fab1a0' }).setOrigin(0.5);
@@ -1338,7 +1338,7 @@ export default class LobbyScene extends Phaser.Scene {
             const deployBtn = this.add.rectangle(130, deployY, 130, 30, 0x27ae60)
                 .setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
-            
+
             this.add.text(130, deployY, `덱에 배치`, {
                 fontSize: '14px', fontFamily: 'Arial Black', fill: '#fff'
             }).setOrigin(0.5);
@@ -1362,7 +1362,7 @@ export default class LobbyScene extends Phaser.Scene {
             const bigSellBtn = this.add.rectangle(270, deployY, 130, 30, 0xc0392b)
                 .setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
-            
+
             this.add.text(270, deployY, `판매 (${refundAmount} 냥)`, {
                 fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff'
             }).setOrigin(0.5);
@@ -1370,7 +1370,7 @@ export default class LobbyScene extends Phaser.Scene {
             bigSellBtn.on('pointerdown', () => {
                 const currentGold = this.registry.get('globalGold') || 0;
                 this.registry.set('globalGold', currentGold + refundAmount);
-                
+
                 invCards.splice(this.selectedCardIndex, 1);
                 this.selectedCardIndex = undefined;
                 squad.inventory = invCards;
@@ -1422,19 +1422,19 @@ export default class LobbyScene extends Phaser.Scene {
             const x = leftX + (i - (itemDeck.length - 1) / 2) * 80;
             const y = 115;
             const slot = this.add.rectangle(x, y, 70, 70, 0x1a1a2e, 0.8).setStrokeStyle(2, 0xfbd46d, 0.5).setInteractive({ useHandCursor: true });
-            
+
             if (itemId) {
                 const item = this.ITEM_CONFIG[itemId];
                 this.add.text(x, y - 8, item.icon || '📦', { fontSize: '24px' }).setOrigin(0.5);
                 this.add.text(x, y + 18, item.name, { fontSize: '10px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
-                
+
                 slot.on('pointerdown', () => {
                     // Return to inventory if consumable
                     if (item.type === 'consumable') {
                         itemInv[itemId] = (itemInv[itemId] || 0) + 1;
                         this.registry.set('itemInventory', itemInv);
                     }
-                    
+
                     itemDeck[i] = null;
                     this.registry.set('itemDeck', itemDeck);
                     this.saveItemData();
@@ -1447,7 +1447,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Inventory (Owned Items to equip)
         this.add.text(leftX, 175, '소지 중인 아이템', { fontSize: '16px', fontFamily: 'Arial Black', fill: '#ffffff' }).setOrigin(0.5);
-        
+
         const ownedItems = [];
         // Consumables with count > 0
         Object.entries(itemInv).forEach(([id, count]) => {
@@ -1476,9 +1476,9 @@ export default class LobbyScene extends Phaser.Scene {
                     if (emptyIdx !== -1) {
                         // Check if already in deck (if permanent, maybe only one allowed? 
                         // But ITEM_SHOP logic already handles permanent existence in ownedItems)
-                        
+
                         itemDeck[emptyIdx] = item.id;
-                        
+
                         // Decrement inventory if consumable
                         if (item.type === 'consumable') {
                             itemInv[item.id] = Math.max(0, (itemInv[item.id] || 1) - 1);
@@ -1505,39 +1505,46 @@ export default class LobbyScene extends Phaser.Scene {
         shopItems.forEach((item, i) => {
             const x = rightX;
             const y = 110 + i * 42;
-            
+
             const isLocked = item.requiredStage && !(stageClears[item.requiredStage] > 0);
             const isOwnedPermanent = item.type === 'permanent' && permItems.includes(item.id);
             const canAfford = gold >= item.cost;
 
             const bg = this.add.rectangle(x, y, 360, 38, 0x1a1a2e, 0.8).setStrokeStyle(2, 0x43d8c9, 0.3);
             this.add.text(x - 170, y, item.name, { fontSize: '14px', fontFamily: 'Arial Black', fill: isLocked ? '#555' : '#ffffff' }).setOrigin(0, 0.5);
-            this.add.text(x - 60, y, isLocked ? `스테이지 ${item.requiredStage} 클리어 시 해금` : item.desc, { 
-                fontSize: '10px', fontFamily: 'Arial', fill: isLocked ? '#e74c3c' : '#aaa' 
+            this.add.text(x - 60, y, isLocked ? `스테이지 ${item.requiredStage} 클리어 시 해금` : item.desc, {
+                fontSize: '10px', fontFamily: 'Arial', fill: isLocked ? '#e74c3c' : '#aaa'
             }).setOrigin(0, 0.5);
-            
+
             const priceColor = isOwnedPermanent ? '#7f8c8d' : (isLocked ? '#555' : (canAfford ? '#f1c40f' : '#e74c3c'));
             const priceText = isOwnedPermanent ? '구매됨' : (isLocked ? '잠김' : `${item.cost} 냥`);
-            
+
             const buyBtn = this.add.rectangle(x + 135, y, 75, 26, isOwnedPermanent ? 0x7f8c8d : (isLocked ? 0x333333 : (canAfford ? 0x27ae60 : 0x7f8c8d)))
                 .setStrokeStyle(1, 0xffffff, 0.5).setInteractive({ useHandCursor: !isOwnedPermanent && !isLocked && canAfford });
-            
+
             this.add.text(x + 135, y, priceText, { fontSize: '11px', fontFamily: 'Arial Black', fill: '#fff' }).setOrigin(0.5);
 
             buyBtn.on('pointerdown', () => {
                 if (isOwnedPermanent || isLocked) return;
                 if (gold >= item.cost) {
                     this.registry.set('globalGold', gold - item.cost);
-                    
+
                     if (item.type === 'consumable') {
                         const countToAdd = item.effects?.purchaseCount || 1;
                         itemInv[item.id] = (itemInv[item.id] || 0) + countToAdd;
                         this.registry.set('itemInventory', itemInv);
+                    } else if (item.type === 'gacha') {
+                        const squad = this.registry.get('squad');
+                        const pool = ['normal', 'tanker', 'shooter', 'healer', 'raccoon'];
+                        const result = pool[Math.floor(Math.random() * pool.length)];
+                        squad.inventory.push({ type: result, level: 1 });
+                        this.saveSquad(squad);
+                        alert(`축하합니다! [${ALLY_TYPES[result].name}] 카드를 획득했습니다!`);
                     } else {
                         permItems.push(item.id);
                         this.registry.set('permanentItems', permItems);
                     }
-                    
+
                     this.saveItemData();
                     this.cameras.main.flash(200, 67, 216, 201);
                     this.scene.restart({ keepTab: true });
@@ -1546,7 +1553,7 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         // Back button
-        const backBtn = this.add.text(400, 275, '< 돌아가기', {
+        const backBtn = this.add.text(200, 275, '< 돌아가기', {
             fontSize: '24px', fontFamily: 'Arial Black', fill: '#ffffff', stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
