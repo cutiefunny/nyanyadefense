@@ -446,7 +446,7 @@ export default class GameScene extends Phaser.Scene {
         const isMortar = key === 'ally_mortar';
         
         let frameConfig;
-        if (key === 'enemy_boss6' || key === 'enemy_boss7') {
+        if (key === 'enemy_boss6' || key === 'enemy_boss7' || key === 'enemy_boss9') {
             // New boss mapping: 0: idle, 1: attack, 2: hurt
             frameConfig = { walk: [0, 0], attack: [1, 1], hurt: [2, 2] };
         } else if (isBossSprite) {

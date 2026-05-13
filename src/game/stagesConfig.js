@@ -240,30 +240,31 @@ export const STAGE_CONFIG = {
         }
     },
     9: {
-        name: '합정역',
+        name: '도토리 캐리커쳐',
         background: 'bg_stage9',
         boss: {
             isCustom: true,
-            type: 'dog',
-            spriteKey: 'enemy_dog',
+            type: 'boss9',
+            spriteKey: 'enemy_boss9',
             hp: 30000,
             damage: 80,
-            w: 80,
-            scale: 1.0,
+            w: 120,
+            scale: 0.7,
             reward: 100000,
             isBoss: true,
             range: 30,
             cooldown: 1500,
-            bossDescription: '합정역으로 가는 길은 멀고도 험하다.'
+            yOffset: 290,
+            bossDescription: '도토리의 거대 근육다람쥐를 쓰러뜨려라!'
         },
         clearReward: 1500000,
-        scaleMultiplier: 1.0,
+        scaleMultiplier: 0.8,
         nextStage: 10,
         events: [],
         traits: {
             enemySpeedMultiplier: 1.2,
             spawnRateMultiplier: 1.2,
-            description: '합정역으로 향하는 길목.'
+            description: '도토리 캐리커쳐 홍대 2호점이다!'
         }
     },
     10: {
