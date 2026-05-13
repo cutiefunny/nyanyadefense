@@ -64,3 +64,23 @@ export const syncToRemote = async (user, profileData = null) => {
 
   await setDoc(userRef, payload, { merge: true });
 };
+
+export const resetData = async (user) => {
+  STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+  // Also clear any other nyanya_ keys that might not be in the list
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('nyanya_')) {
+      localStorage.removeItem(key);
+    }
+  });
+
+  if (user) {
+    const userRef = doc(db, 'users', user.uid);
+    await setDoc(userRef, { 
+      gameData: {}, 
+      totalPlayTime: 0, 
+      totalCoins: 0,
+      lastSync: new Date().toISOString() 
+    }, { merge: true });
+  }
+};

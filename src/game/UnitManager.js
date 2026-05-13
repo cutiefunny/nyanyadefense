@@ -121,12 +121,18 @@ export default class UnitManager {
         const enemyCount = ENEMY_TYPES.length;
         let typeChoice = 0;
 
+        let isBigWawa = false;
         if (this.scene.stage === 8) {
             typeChoice = ENEMY_TYPES.findIndex(e => e.type === 'gekko');
             if (typeChoice === -1) typeChoice = 0;
         } else if (this.scene.stage === 10) {
             typeChoice = ENEMY_TYPES.findIndex(e => e.type === 'wawa');
             if (typeChoice === -1) typeChoice = 0;
+
+            // Intermittently spawn Big Chihuahua (approx every 15 enemies)
+            if (this.enemySpawnCount > 0 && this.enemySpawnCount % 15 === 0) {
+                isBigWawa = true;
+            }
         } else if (level >= 3 && this.enemySpawnCount % 5 === 0 && enemyCount >= 2) {
             typeChoice = Math.min(3, enemyCount - 1);
         } else {
@@ -148,6 +154,16 @@ export default class UnitManager {
         }
 
         const specs = { ...(ENEMY_TYPES[typeChoice] || ENEMY_TYPES[0]) };
+
+        if (isBigWawa) {
+            specs.hp *= 5; // Much tougher
+            specs.damage *= 2;
+            specs.w *= 2;
+            specs.h *= 2;
+            specs.scale *= 2;
+            specs.reward *= 10;
+        }
+
         const stageConfig = STAGE_CONFIG[this.scene.stage];
         const traitMultiplier = stageConfig?.traits?.enemySpeedMultiplier || 1.0;
 
@@ -175,6 +191,11 @@ export default class UnitManager {
 
         const spriteKey = 'enemy_' + specs.type;
         const enemy = this.getUnit(800, yOffsetBase + yOffset + yBaseAdjust, spriteKey, specs, false);
+
+        if (isBigWawa) {
+            enemy.setTint(0xff8888); // Reddish tint to indicate power
+            this.scene.showFloatingText('대왕 치와와 등장!!', 750, enemy.y - 80, '#ffcc00');
+        }
 
         // If Heavy Metal (boss3 buff) is active, apply it to newly spawned enemies
         const boss3 = this.enemies.find(e => e.isBoss && e.typeKey === 'boss3' && e.active);

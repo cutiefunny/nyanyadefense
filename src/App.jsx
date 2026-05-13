@@ -15,7 +15,7 @@ import LeaderboardModal from './components/LeaderboardModal';
 import ProfileModal from './components/ProfileModal';
 import './App.css';
 import { auth, provider, signInWithPopup, signOut, db, collection, query, orderBy, limit, getDocs } from './firebase.js';
-import { syncToLocal, syncToRemote } from './SyncManager.js';
+import { syncToLocal, syncToRemote, resetData } from './SyncManager.js';
 
 const originalSetItem = localStorage.setItem;
 localStorage.setItem = function (key, value) {
@@ -786,6 +786,12 @@ function App() {
                 await syncToRemote(user(), newProfile);
               }
             }}
+            onReset={async () => {
+              if (confirm('정말로 모든 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
+                await resetData(user());
+                window.location.reload();
+              }
+            }}
           />
         )}
 
@@ -873,18 +879,6 @@ function App() {
           <Guide onClose={() => setShowGuide(false)} />
         )}
 
-        {showProfileModal() && (
-          <ProfileModal
-            initialProfile={profile()}
-            onSave={async (newProfile) => {
-              setProfile(newProfile);
-              setShowProfileModal(false);
-              if (user()) {
-                await syncToRemote(user(), newProfile);
-              }
-            }}
-          />
-        )}
 
         {showLeaderboard() && (
           <LeaderboardModal onClose={() => setShowLeaderboard(false)} />

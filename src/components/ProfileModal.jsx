@@ -4,6 +4,7 @@ import { Portal } from 'solid-js/web';
 export default function ProfileModal(props) {
   const [nickname, setNickname] = createSignal(props.initialProfile?.nickname || 'Player');
   const [avatar, setAvatar] = createSignal(props.initialProfile?.avatar || '🐱');
+  const [confirmReset, setConfirmReset] = createSignal(false);
 
   const unitNames = {
     leader: '김냐냐',
@@ -80,7 +81,41 @@ export default function ProfileModal(props) {
           />
         </div>
 
-        <button class="modal-btn" onClick={handleSave} style={{ 'background-color': '#2ecc71', 'margin-top': '10px' }}>저장</button>
+        <div style={{ display: 'flex', 'flex-direction': 'column', gap: '10px', 'margin-top': '20px' }}>
+          <button class="modal-btn" onClick={handleSave} style={{ 'background-color': '#2ecc71', margin: 0 }}>저장</button>
+          
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', 'margin-top': '10px', 'padding-top': '10px' }}>
+            <button 
+              class="modal-btn" 
+              onClick={() => {
+                if (confirmReset()) {
+                  props.onReset();
+                } else {
+                  setConfirmReset(true);
+                }
+              }} 
+              style={{ 
+                'background-color': confirmReset() ? '#e74c3c' : 'transparent', 
+                border: '1px solid #e74c3c',
+                color: '#fff',
+                margin: 0,
+                'font-size': '0.8rem',
+                padding: '8px'
+              }}
+            >
+              {confirmReset() ? '정말로 초기화하시겠습니까? (클릭 시 실행)' : '게임 데이터 초기화'}
+            </button>
+            {confirmReset() && (
+              <button 
+                class="modal-btn" 
+                onClick={() => setConfirmReset(false)}
+                style={{ background: 'transparent', border: 'none', color: '#aaa', 'font-size': '0.7rem', 'margin-top': '5px' }}
+              >
+                취소
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
