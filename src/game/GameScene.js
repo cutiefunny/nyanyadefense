@@ -255,11 +255,12 @@ export default class GameScene extends Phaser.Scene {
         // Spawn Mortar Groups if exist (Merge 3 shooters into 1 Mortar)
         this.mortarGroupIndices.forEach(indices => {
             const cardObj = this.deck[indices[0]];
+            const avgLevel = Math.round(indices.reduce((sum, idx) => sum + (this.deck[idx].level || 1), 0) / indices.length);
             
             // Spawn only ONE unit for the 3-unit combo
             const mortar = this.unitManager.spawnAlly(cardObj.type, 270, { 
                 deckIndex: indices[0], 
-                level: cardObj.level || 1,
+                level: avgLevel,
                 isMortarMode: true,
                 spriteKey: 'ally_mortar'
             });
@@ -284,9 +285,11 @@ export default class GameScene extends Phaser.Scene {
         // Spawn Super Mortar Groups (5 shooters)
         this.superMortarGroupIndices.forEach(indices => {
             const cardObj = this.deck[indices[0]];
+            const avgLevel = Math.round(indices.reduce((sum, idx) => sum + (this.deck[idx].level || 1), 0) / indices.length);
+
             const mortar = this.unitManager.spawnAlly(cardObj.type, 270, { 
                 deckIndex: indices[0], 
-                level: cardObj.level || 1,
+                level: avgLevel,
                 isMortarMode: true,
                 isSuperMortar: true,
                 spriteKey: 'ally_mortar'
@@ -312,6 +315,8 @@ export default class GameScene extends Phaser.Scene {
             const idx2 = indices[1];
             const card1 = this.deck[idx1];
             const card2 = this.deck[idx2];
+            
+            const avgLevel = Math.round(((card1.level || 1) + (card2.level || 1)) / 2);
 
             // Calculate defense based on levels
             const getDefense = (type, level) => {
@@ -326,7 +331,7 @@ export default class GameScene extends Phaser.Scene {
 
             const tank = this.unitManager.spawnAlly('tanker', 270, {
                 deckIndex: idx1, // Use first index
-                level: Math.max(card1.level || 1, card2.level || 1),
+                level: avgLevel,
                 isDoubleDoorTank: true,
                 defense1: def1,
                 defense2: def2
